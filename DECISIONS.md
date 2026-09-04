@@ -394,6 +394,53 @@ une punition de ne pas avoir retravaillé — alors que le point 1 dit que rien 
 fane jamais. La profondeur doit rester lisible comme de la distance : le plant
 du fond est entier, net, un peu plus loin.
 
+### Deux vues, pas une échelle
+
+**Décidé :** le paysage ne se dézoome pas. Deux vues, dont une seule est
+soumise à l'exigence de retour.
+
+⚠️ **Le dézoom progressif est la croissance logarithmique du point 6,
+transposée d'un cran.** Si tout doit tenir dans le cadre, un paragraphe déplace
+1,92 % / n de ce qu'on regarde :
+
+| plants | mots | dézoom pour tout tenir | vue du plant seul |
+|---|---|---|---|
+| 5 | 25 000 | 0,384 % | 1,92 % |
+| **14** | **70 000** | **0,137 %** | 1,92 % |
+| 27 | 135 000 | 0,071 % | 1,92 % |
+| 52 | 260 000 | 0,037 % | 1,92 % |
+
+Le seuil de mort donné au point 6 est 0,14 % par paragraphe, atteint à
+70 000 mots. Le dézoom l'atteint à 14 plants — **soit 70 000 mots**. Le même
+mur, au même endroit. Les cycles de 5 000 mots avaient racheté ce retour ; le
+dézoom le redépenserait.
+
+Une barre défilante à échelle constante garde le retour mais perd l'ensemble —
+or l'ensemble est ce pour quoi le cadeau existe, à la fin. Les deux exigences
+sont contraires : aucune échelle unique ne les tient. Le point 12 avait déjà
+séparé les deux régimes sans le dire — « seul le plant en cours est vivant ».
+
+- **Vue de travail** — le plant en cours, seul, dans le volet. Son échelle est
+  fixée par sa taille **finale**, jamais par sa taille du moment. ⚠️ Le cadrer
+  sur le plant tel qu'il est détruirait le retour par l'autre bout : s'il
+  remplit toujours le volet, un plant jeune et un plant achevé se ressemblent
+  et la croissance devient invisible. Voir `planche_volet.png`.
+- **Vue d'ensemble** — le paysage entier, ouvert délibérément. Aucune exigence
+  de retour : on n'écrit pas pendant qu'on la regarde.
+
+**Décidé :** la vue d'ensemble compresse **en groupant, pas en réduisant**. La
+hiérarchie du point 6 le donne gratuitement : les plants d'une même parcelle se
+serrent et se recouvrent — c'est le même texte, ils font un relief — et les
+parcelles respirent entre elles. Mesuré sur une thèse de 146 000 mots :
+49 plants, 4 parcelles, **12 803 px en bande linéaire contre 4 826 en massifs
+(38 %)**. Et ça se lit comme un paysage au lieu d'une rangée. Voir
+`planche_apercu.png`.
+
+**Conséquence pour l'add-in :** le volet Word est une colonne étroite et haute
+(~320-450 px). Une bande horizontale y est le pire format possible. La vue de
+travail va dans le volet ; la vue d'ensemble appartient à un **dialogue**
+(`displayDialogAsync`), qui s'ouvre en fenêtre large.
+
 ---
 
 ## 15. Le ton des phrases
@@ -471,10 +518,10 @@ le mécanisme n'exige rien de personne. Mais il ne remplace personne non plus.
     même phrase deux soirs de suite. Corrigé en chaînant les tours ; l'écart
     minimum passe à 4. Mais avec dix phrases dans le paquet, l'écart moyen
     plafonne à 10 nuits. La vraie réponse reste d'atteindre vingt phrases.
-11. **Le paysage complet fait 13 000 px de large** pour une thèse de 52 plants.
-    Il faudra un cadrage — vue d'ensemble contractée, ou navigation par
-    parcelle. La question n'est pas technique, elle est de savoir ce qu'on
-    regarde le plus souvent.
+11. ~~**Le paysage complet fait 13 000 px de large.**~~ **Réglé** — voir le
+    point 14, « deux vues, pas une échelle ». Reste à trancher une chose : ce
+    que le volet montre quand le plant en cours vient de naître et qu'il est
+    donc presque vide. Le plant précédent en fond ? La parcelle entière ?
 
 ---
 

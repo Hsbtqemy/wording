@@ -170,3 +170,129 @@ if __name__ == "__main__":
                   f"{' | NUIT' if p['nuit'] else ''}")
     open("planche_paysage.svg", "w", encoding="utf-8").write(svg(plants))
     print("\nplanche_paysage.svg ecrit")
+
+
+# --------------------------------------------------------------------------
+# Deux vues, pas une echelle
+# --------------------------------------------------------------------------
+# Le dezoom progressif est la croissance logarithmique du point 6, transposee
+# d'un cran. Mesure : si tout doit tenir dans le cadre, un paragraphe deplace
+# 1,92 % / n de ce qu'on regarde. A 14 plants — 70 000 mots — cela fait
+# 0,137 %, c'est-a-dire exactement le seuil ou le point 6 declare le mecanisme
+# mort, atteint exactement au meme nombre de mots. Les cycles de 5 000 mots
+# avaient rachete ce retour ; le dezoom le redepenserait.
+#
+# Une barre defilante a l'echelle constante garde le retour, mais perd
+# l'ensemble — or l'ensemble est ce pour quoi le cadeau existe, a la fin.
+#
+# Les deux exigences sont contraires, donc aucune echelle unique ne les tient.
+# La decision 12 avait deja separe les deux regimes sans le dire : « seul le
+# plant en cours est vivant ; les plants acheves sont rasterises une fois ».
+#
+#   VUE DE TRAVAIL   le plant en cours, a taille pleine, dans le volet.
+#                    Retour intact, 1,92 % par paragraphe, indefiniment.
+#                    Les plants acheves ne sont meme pas dessines.
+#
+#   VUE D'ENSEMBLE   le paysage entier, ouvert deliberement. Aucune exigence
+#                    de retour : on n'ecrit pas pendant qu'on la regarde.
+#
+# Contrainte de forme : le volet Word est une colonne etroite et haute
+# (~320-450 px de large). Une bande horizontale y est le pire format possible.
+# La vue d'ensemble appartient donc a un dialogue (displayDialogAsync), qui
+# s'ouvre en fenetre large ; le volet garde la vue de travail.
+
+
+def gabarit(plant: dict, graine: int):
+    """
+    L'encombrement que CE plant atteindra une fois plein.
+
+    Le volet ne doit pas cadrer sur le plant tel qu'il est : s'il le remplit
+    toujours, un plant jeune et un plant acheve se ressemblent et la croissance
+    devient invisible — on aurait detruit le retour par l'autre bout, en
+    voulant le preserver. On cadre donc sur la taille FINALE : un plant jeune
+    occupe une fraction du volet, et chaque paragraphe en remplit 1,92 %, ce
+    qui est exactement la garantie de la decision 6.
+    """
+    plein = dict(plant)
+    plein["extension"] = 1.0
+    plein["maturite"] = max(plant.get("maturite", 0.0), 0.85)
+    t = depuis_plant(plein, graine)
+    return t.largeur(), t.hauteur()
+
+
+def vue_de_travail(plant: dict, graine: int, largeur=360, hauteur=440,
+                   marge=28) -> str:
+    """
+    Le plant en cours, seul. C'est ce que le volet montre pendant qu'on ecrit,
+    et son echelle ne change JAMAIS : elle est fixee par la taille finale du
+    plant, pas par sa taille du moment.
+    """
+    cadre = (f'<svg xmlns="http://www.w3.org/2000/svg" '
+             f'viewBox="0 0 {largeur} {hauteur}" width="100%">'
+             f'<rect width="{largeur}" height="{hauteur}" fill="{FOND}"/>')
+    if not plant.get("famille"):
+        return cadre + "</svg>"
+
+    gl, gh = gabarit(plant, graine)
+    k = min((largeur - 2 * marge) / gl, (hauteur - 2 * marge) / gh)
+    t = depuis_plant(plant, graine)
+    # Pose au sol, centre : le plant pousse vers le haut depuis une base fixe,
+    # comme il le ferait dans le paysage.
+    return cadre + t.pose(largeur / 2, hauteur - marge, k) + "</svg>"
+
+
+def apercu(plants: list, hauteur=520, graine=1, marge=70):
+    """
+    La vue d'ensemble, groupee par PARCELLE.
+
+    La compression ne vient pas d'une reduction d'echelle mais du regroupement :
+    la hierarchie du point 6 la donne gratuitement. Vingt-sept plants en huit
+    chapitres font huit massifs, et un massif se regarde d'un coup. Les plants
+    d'une meme parcelle se chevauchent — c'est le meme texte, ils forment un
+    relief — et les parcelles respirent entre elles.
+    """
+    rng = random.Random(graine)
+    parcelles: list = []
+    for p in plants:
+        if not p.get("famille"):
+            continue
+        cle = p.get("titre") or ""
+        if not parcelles or parcelles[-1][0] != cle:
+            parcelles.append((cle, []))
+        parcelles[-1][1].append(p)
+    if not parcelles:
+        return "", marge * 2
+
+    y_horizon = hauteur * HORIZON
+    haut_utile = hauteur * 0.44
+    poses, x = [], marge
+    for cle, groupe in parcelles:
+        # Dans un massif, les plants se serrent et se recouvrent.
+        serrage = 0.46 if len(groupe) > 1 else 1.0
+        largeur_massif = 0.0
+        for p in groupe:
+            t = depuis_plant(p, graine + p["rang"] * 977)
+            d = _profondeur(p)
+            enc = max(t.hauteur(), t.largeur() * 0.52)
+            k = (ECHELLE_FOND + (ECHELLE_AVANT - ECHELLE_FOND) * d) \
+                * haut_utile / enc
+            l = t.largeur() * k
+            y = y_horizon + (d - 0.5) * hauteur * 0.18 + rng.uniform(-5, 5)
+            poses.append((d, x + largeur_massif + l / 2, y, k, t))
+            largeur_massif += l * serrage
+        x += largeur_massif + haut_utile * 0.55      # respiration de parcelle
+
+    poses.sort(key=lambda q: q[0])
+    out = []
+    for d, cx, y, k, t in poses:
+        op = OPACITE_FOND + (1.0 - OPACITE_FOND) * d
+        out.append(f'<g opacity="{op:.2f}">{t.pose(cx, y, k)}</g>')
+    return "".join(out), x + marge
+
+
+def svg_apercu(plants: list, hauteur=520, graine=1) -> str:
+    interieur, largeur = apercu(plants, hauteur, graine)
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'viewBox="0 0 {largeur:.0f} {hauteur}" width="100%">'
+            f'<rect width="{largeur:.0f}" height="{hauteur}" fill="{FOND}"/>'
+            f'{interieur}</svg>')

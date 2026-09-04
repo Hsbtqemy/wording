@@ -292,6 +292,12 @@ class Paysage:
         return self.segments[-1]
 
     def _nouveau_plant(self, jour: int, heure: int, titre: str = "") -> Segment:
+        # Un plant ouvert par debordement (5 000 mots) appartient encore au
+        # chapitre en cours : il herite de la parcelle. Sans cet heritage, la
+        # hierarchie du point 6 — paysage, parcelles, plants — n'existe que
+        # pour les plants ouverts par un Titre 1, c'est-a-dire un sur trois.
+        if not titre and self.segments:
+            titre = self.segments[-1].titre
         s = Segment(rang=len(self.segments), jour=jour, heure=heure, titre=titre)
         self.segments.append(s)
         return s
