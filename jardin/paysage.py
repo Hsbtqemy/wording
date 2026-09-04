@@ -30,7 +30,7 @@ from dataclasses import dataclass, field, asdict
 
 from traits import (
     extraire, scores, en_mots, _sans_accent, NOMS,
-    MARGE_DOMINANCE,
+    MARGE_DOMINANCE, PALIER_INDICES, PALIER_DIVERGENCE,
 )
 
 VERSION_ETAT = 2
@@ -490,6 +490,13 @@ class Paysage:
                     "nuit": s.nuit,
                     "titre": s.titre,
                     "traits": dict(s.traits_courants),
+                    # De quoi dessiner un plant qui n'a pas encore de famille.
+                    "germe": None if s.verrouille else {
+                        "taille": min(1.0, s.mots / PALIER_DIVERGENCE),
+                        "inflexion": max(0.0, min(1.0,
+                            (s.mots - PALIER_INDICES)
+                            / max(PALIER_DIVERGENCE - PALIER_INDICES, 1))),
+                    },
                     "influences": s.influences(),
                 }
                 for s in self.segments

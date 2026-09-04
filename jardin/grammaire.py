@@ -552,6 +552,85 @@ def abstrait(t: Toile, extension, maturite, graine, teinte=None,
         prec = pts
 
 
+# --------------------------------------------------------------------------
+# Le germe — ce qui pousse avant qu'une famille soit connue
+# --------------------------------------------------------------------------
+# traits.py prevoit trois stades depuis le debut — germe, indices, divergence —
+# et rien n'en dessinait les deux premiers. C'est 16 % de CHAQUE cycle de
+# 5 000 mots, donc vingt-sept fois sur une these ; et la premiere de ces
+# vingt-sept fois, ce sont les 800 premiers mots ecrits avec le cadeau
+# installe. Un volet vide, ce jour-la, est le pire accueil possible.
+#
+# Ce qu'on dessine : la PRIMITIVE AVANT SON ASSEMBLAGE. Les quatre familles
+# sont quatre reponses a la meme question — que fait une chaine de segments
+# ensuite ? Elle bifurque, elle s'empile, elle ondule, elle se referme. Le
+# germe est la chaine avant la reponse ; il appartient donc aux quatre a la
+# fois, ce qui est exactement son etat.
+#
+# Au stade indices, la chaine PENCHE vers la famille pressentie sans s'y
+# engager. C'est ce que « provisoire » veut dire, et c'est honnete a une
+# condition : l'inflexion ne doit jamais produire un objet reconnaissable.
+# Si le germe ressemblait deja a un arbre et devenait une ville, l'organisme
+# se contredirait sous les yeux de la personne — ce que le point 5 interdit.
+# Une tendance peut se corriger ; une promesse, non.
+
+
+def germe(t: Toile, taille, inflexion=0.0, pressentie=None, graine=0,
+          teinte=None):
+    """
+    taille     0..1, les mots ecrits rapportes au palier de divergence
+    inflexion  0..1, nul au stade germe, croissant au stade indices
+    """
+    rng = random.Random(graine)
+    tt = teinte or Teinte.du_jour()
+    n = max(1, int(1 + taille * 9))
+    m = 0.10 + 0.30 * taille          # un germe reste maigre : rien n'a mûri
+    lg = SEGMENT * 0.60
+    x, y, a = 100.0, 200.0, -math.pi / 2
+    dos = []
+
+    for i in range(n):
+        pas = lg
+        if pressentie == "architecture":
+            # elle s'empile : la chaine s'equerre en marches. A inflexion
+            # nulle les traverses ont une longueur nulle, donc c'est encore
+            # une chaine droite — l'inflexion ne fait qu'ouvrir l'angle droit.
+            if i % 2:
+                a = 0.0 if (i // 2) % 2 == 0 else math.pi
+                pas = lg * inflexion * 0.62
+            else:
+                a = -math.pi / 2
+        elif pressentie == "creature":
+            # elle s'enchaine : la chaine ondule
+            a += inflexion * math.sin(i * 0.95) * 0.40
+        elif pressentie == "abstrait":
+            # elle se pave : la chaine s'incurve vers sa propre fermeture
+            a += inflexion * 0.30
+        a += rng.uniform(-0.04, 0.04)
+        if pas < 0.4:
+            continue
+        x2, y2 = x + math.cos(a) * pas, y + math.sin(a) * pas
+        t.trait(x, y, x2, y2, m)
+        dos.append((x2, y2, a))
+        x, y = x2, y2
+
+    if pressentie == "vegetal" and inflexion > 0.15 and len(dos) >= 3:
+        # elle se ramifie : une seule bifurcation, courte, en tete de chaine
+        bx, by, ba = dos[-2]
+        for sgn in (-1, 1):
+            aa = ba + sgn * (0.30 + inflexion * 0.30)
+            t.trait(bx, by, bx + math.cos(aa) * lg * (0.45 + inflexion * 0.5),
+                    by + math.sin(aa) * lg * (0.45 + inflexion * 0.5),
+                    m * 0.9)
+
+    # Un seul point de couleur en tete : le germe est deja date, et c'est le
+    # seul signe qui l'annonce vivant plutot qu'inachevé.
+    if dos:
+        hx, hy, ha = dos[-1]
+        t.trait(hx, hy, hx + math.cos(ha) * lg * 0.28,
+                hy + math.sin(ha) * lg * 0.28, m * 0.8, tt.ton(rng))
+
+
 FAMILLES = {
     "vegetal": ("Vegetal / ramifier", vegetal),
     "architecture": ("Architecture / empiler", architecture),
@@ -577,7 +656,15 @@ def depuis_plant(plant: dict, graine: int, **kw) -> Toile:
     traits = plant.get("traits") or {}
     teinte = Teinte(plant["dates"], plant["nuit"],
                     traits.get("diversite", 0.5))
-    return dessiner(plant["famille"] or "abstrait",
+    g = plant.get("germe")
+    if not plant.get("famille"):
+        # Pas encore de famille : on dessine le germe, qui penche vers la
+        # pressentie sans s'y engager.
+        t = Toile()
+        germe(t, (g or {}).get("taille", 0.1), (g or {}).get("inflexion", 0.0),
+              plant.get("pressentie"), graine, teinte)
+        return t
+    return dessiner(plant["famille"],
                     plant["extension"], plant["maturite"], graine, teinte,
                     traits, **kw)
 
@@ -703,6 +790,30 @@ def planche_dates():
     return SAUT.join(o) + '</g></svg>'
 
 
+def planche_germination():
+    """Ce que le volet montre avant qu'une famille soit connue."""
+    paliers = [(60, "60 MOTS"), (190, "190 MOTS"), (400, "400 MOTS"),
+               (620, "620 MOTS"), (800, "800 MOTS")]
+    CW, CH, MG, TOP = 175, 185, 200, 56
+    W, H = MG + CW * len(paliers) + 20, TOP + CH * 5 + 16
+    o = _entete(W, H)
+    for j, (_, lab) in enumerate(paliers):
+        o.append(f'<text x="{MG + j*CW + CW/2}" y="32" font-size="10.5" '
+                 f'text-anchor="middle" letter-spacing="1.4">{lab}</text>')
+    lignes = [(None, "aucune tendance")] +              [(c, f"penche vers {n}") for c, (n, _) in FAMILLES.items()]
+    for i, (cand, lab) in enumerate(lignes):
+        y0 = TOP + i * CH
+        o.append(f'<text x="18" y="{y0 + CH/2}" font-size="11.5" '
+                 f'fill="#2c3230">{lab}</text>')
+        for j, (mots, _) in enumerate(paliers):
+            t = Toile()
+            germe(t, min(1.0, mots / 800),
+                  max(0.0, min(1.0, (mots - 200) / 600)),
+                  cand, 31 + i * 7, Teinte.du_jour(110, 14, 0.7))
+            o.append(t.svg(MG + j * CW, y0, CW, CH))
+    return SAUT.join(o) + '</g></svg>'
+
+
 def verifier():
     """La couleur ne doit jamais toucher la structure (decision 9)."""
     print("Determinisme et regle de couleur :\n")
@@ -753,7 +864,8 @@ if __name__ == "__main__":
                     ("planche_saisons_v7", planche_saisons),
                     ("planche_feuillage", planche_feuillage),
                     ("planche_membres", planche_membres),
-                    ("planche_dates", planche_dates)):
+                    ("planche_dates", planche_dates),
+                    ("planche_germination", planche_germination)):
         open(f"{nom}.svg", "w", encoding="utf-8").write(fn())
         print(f"{nom}.svg ecrit")
     print()

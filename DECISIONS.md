@@ -157,6 +157,27 @@ paragraphe, indéfiniment.
 500 pages ≈ 137 500 mots ≈ 1 450 paragraphes ≈ 27 plants. Trois niveaux :
 paysage → parcelles (fichiers/chapitres) → plants.
 
+**Décidé :** le germe se dessine. `traits.py` prévoyait trois stades depuis le
+début — germe, indices, divergence — et rien n'en dessinait les deux premiers.
+
+Ce qu'on trace, c'est **la primitive avant son assemblage**. Les quatre familles
+sont quatre réponses à la même question : que fait une chaîne de segments
+ensuite ? Elle bifurque, elle s'empile, elle ondule, elle se referme. Le germe
+est la chaîne avant la réponse — il appartient donc aux quatre à la fois, ce qui
+est exactement son état. Au stade indices, elle **penche** vers la pressentie
+sans s'y engager.
+
+⚠️ L'inflexion ne doit **jamais produire un objet reconnaissable**. Si le germe
+ressemblait déjà à un arbre et devenait une ville, l'organisme se contredirait
+sous les yeux de la personne — ce que le point 5 interdit. Une tendance peut se
+corriger ; une promesse, non. Voir `planche_germination.png`.
+
+⚠️ La taille de référence d'un germe est **la plus grande des quatre familles**,
+pas celle de la pressentie. Les quatre n'ont pas le même encombrement natif :
+avec la pressentie, le germe se mettrait à **rétrécir** le jour où une tendance
+apparaît. Avec la plus grande, l'échelle ne peut que monter au verrouillage. La
+croissance reste monotone quoi qu'il arrive — c'est le point 1.
+
 ---
 
 ## 7. Le contenant
@@ -428,6 +449,31 @@ séparé les deux régimes sans le dire — « seul le plant en cours est vivant
 - **Vue d'ensemble** — le paysage entier, ouvert délibérément. Aucune exigence
   de retour : on n'écrit pas pendant qu'on la regarde.
 
+**Décidé :** il n'y a **qu'un seul rendu**. La vue de travail et la vue
+d'ensemble ne sont pas deux dessins mais deux **cadres** sur le même monde
+composé. Deux dessins du même objet finissent toujours par diverger ; deux
+cadres ne le peuvent pas. Le dézoom que tu fais toi-même devient alors
+littéralement un recul de caméra : le monde ne rétrécit pas.
+
+**Décidé :** le plant en cours n'est pas au centre du volet mais **aux deux
+tiers à droite**, de sorte que le précédent reste visible en train de sortir
+par la gauche.
+
+⚠️ Sans ce décalage, le volet est **vide pendant 800 mots** — soit 16 % de
+chaque cycle, vingt-sept fois sur une thèse, et la première de ces vingt-sept
+fois est celle des 800 premiers mots écrits avec le cadeau installé. Avec, on
+avance dans le paysage au lieu de repartir de zéro à chaque chapitre, et la
+naissance d'un plant devient un événement visible : le précédent s'en va. Voir
+`planche_volet.png`.
+
+⚠️ **L'échelle d'un plant se calcule sur sa taille finale, partout — volet et
+paysage.** Normaliser sur la taille du moment ramène tout plant à la même
+hauteur, donc **l'extension devient invisible** : un chapitre de 1 200 mots et
+un chapitre de 5 000 s'affichent identiques. Le cadre doit aussi contenir la
+taille finale en LARGEUR, sinon un plant plus large que haut — un arbre, une
+créature déployée — se fait rogner le jour où il arrive à maturité, c'est-à-dire
+au pire moment.
+
 **Décidé :** la vue d'ensemble compresse **en groupant, pas en réduisant**. La
 hiérarchie du point 6 le donne gratuitement : les plants d'une même parcelle se
 serrent et se recouvrent — c'est le même texte, ils font un relief — et les
@@ -519,9 +565,13 @@ le mécanisme n'exige rien de personne. Mais il ne remplace personne non plus.
     minimum passe à 4. Mais avec dix phrases dans le paquet, l'écart moyen
     plafonne à 10 nuits. La vraie réponse reste d'atteindre vingt phrases.
 11. ~~**Le paysage complet fait 13 000 px de large.**~~ **Réglé** — voir le
-    point 14, « deux vues, pas une échelle ». Reste à trancher une chose : ce
-    que le volet montre quand le plant en cours vient de naître et qu'il est
-    donc presque vide. Le plant précédent en fond ? La parcelle entière ?
+    point 14, « deux vues, pas une échelle », et le décalage aux deux tiers qui
+    règle le volet d'un plant qui vient de naître.
+12. **La transition germe → famille reste une coupure.** À 800 mots, une chaîne
+    penchée devient un arbre. L'échelle est monotone, mais la forme, non. Sur un
+    cadeau, c'est le seul instant où l'organisme change de nature sous les yeux
+    de la personne — et c'est peut-être bien ainsi : c'est une naissance, pas un
+    fondu. À regarder en vrai avant de trancher.
 
 ---
 

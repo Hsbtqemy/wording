@@ -38,7 +38,8 @@ from __future__ import annotations
 
 import random
 
-from grammaire import Toile, FOND, SAUT, depuis_plant, graine_du_document
+from grammaire import (Toile, FOND, SAUT, FAMILLES, depuis_plant,
+                       graine_du_document)
 
 HORIZON = 0.62          # part de la hauteur ou passe la ligne d'horizon
 # ⚠ Le fond s'ELOIGNE, il ne fane pas. Avec une echelle de 0,42 et une
@@ -68,17 +69,18 @@ def composer(plants: list, hauteur=560, graine=1, marge=90):
     rng = random.Random(graine)
     figures = []
 
-    # 1. On dessine chaque plant a sa taille propre.
+    # 1. On dessine chaque plant a sa taille propre. Un germe se dessine
+    #    aussi : il n'a pas de famille, mais il a deja quelque chose a montrer.
     for p in plants:
-        famille = p.get("famille")
-        if not famille:
-            continue                       # un germe ne se dessine pas encore
+        vide = not p.get("famille") and not (p.get("germe") or {}).get("taille")
+        if vide:
+            continue
         # depuis_plant est le seul point de contact entre l'etat et le
         # rendu : la teinte ET la physionomie viennent du texte de ce plant.
         figures.append((p, depuis_plant(p, graine + p["rang"] * 977)))
 
     if not figures:
-        return "", marge * 2
+        return [], marge * 2
 
     # 2. Echelle et position.
     y_horizon = hauteur * HORIZON
@@ -87,13 +89,26 @@ def composer(plants: list, hauteur=560, graine=1, marge=90):
     parcelle = None
     for p, t in figures:
         d = _profondeur(p)
-        # On normalise sur l'ENCOMBREMENT, pas sur la seule hauteur : une
+        # L'echelle se calcule sur la taille FINALE du plant, jamais sur sa
+        # taille du moment.
+        #
+        # Normaliser sur la taille courante ramenait tout plant a la meme
+        # hauteur : un plant a 800 mots et un plant a 5 000 apparaissaient
+        # identiques, et L'EXTENSION DEVENAIT INVISIBLE DANS LE PAYSAGE. On
+        # aurait montre vingt-sept objets de meme taille pour une these dont
+        # les chapitres n'ont rien a voir en volume. C'est exactement l'erreur
+        # du volet, un cran plus haut.
+        #
+        # On normalise sur l'ENCOMBREMENT et non sur la seule hauteur : une
         # creature deployee est basse et tres large, et la mettre a la hauteur
         # des autres lui donnait le tiers du paysage a elle seule.
-        encombrement = max(t.hauteur(), t.largeur() * 0.52)
+        gl, gh = gabarit(p, graine + p["rang"] * 977)
+        encombrement = max(gh, gl * 0.52)
         k = (ECHELLE_FOND + (ECHELLE_AVANT - ECHELLE_FOND) * d) \
             * haut_utile / encombrement
-        largeur = t.largeur() * k
+        # La place reservee est celle de la taille finale : un plant qui
+        # grandit ne doit pas pousser ses voisins.
+        largeur = gl * k
         titre = p.get("titre") or ""
         if parcelle is not None and titre and titre != parcelle:
             x += largeur * (ECART_PARCELLE - ECART)   # respiration de chapitre
@@ -104,23 +119,34 @@ def composer(plants: list, hauteur=560, graine=1, marge=90):
         x += largeur * ECART
 
     largeur_totale = x + marge
+    return poses, largeur_totale
 
-    # 3. Du fond vers l'avant : c'est l'occlusion qui fait un paysage.
-    poses.sort(key=lambda q: q[0])
+
+def rendre(poses, cadre, hauteur, largeur_svg="100%") -> str:
+    """
+    Rend le monde a travers un CADRE (x, y, largeur, hauteur) en coordonnees
+    du monde. C'est le seul rendu qui existe : la vue de travail et la vue
+    d'ensemble ne sont pas deux dessins, ce sont deux cadres sur le meme.
+    Deux dessins pourraient se contredire ; deux cadres, non.
+    """
+    vx, vy, vw, vh = cadre
+    # Du fond vers l'avant : c'est l'occlusion qui fait un paysage.
     out = []
-    for d, cx, y, k, t in poses:
+    for d, cx, y, k, t in sorted(poses, key=lambda q: q[0]):
         # Un voile atmospherique tres leger, juste de quoi separer les plans.
         opacite = OPACITE_FOND + (1.0 - OPACITE_FOND) * d
         out.append(f'<g opacity="{opacite:.2f}">{t.pose(cx, y, k)}</g>')
-    return "".join(out), largeur_totale
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'viewBox="{vx:.1f} {vy:.1f} {vw:.1f} {vh:.1f}" '
+            f'width="{largeur_svg}">'
+            f'<rect x="{vx:.1f}" y="{vy:.1f}" width="{vw:.1f}" '
+            f'height="{vh:.1f}" fill="{FOND}"/>'
+            f'{"".join(out)}</svg>')
 
 
 def svg(plants: list, hauteur=560, graine=1) -> str:
-    interieur, largeur = composer(plants, hauteur, graine)
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" '
-            f'viewBox="0 0 {largeur:.0f} {hauteur}" width="100%">'
-            f'<rect width="{largeur:.0f}" height="{hauteur}" fill="{FOND}"/>'
-            f'{interieur}</svg>')
+    poses, largeur = composer(plants, hauteur, graine)
+    return rendre(poses, (0, 0, largeur, hauteur), hauteur)
 
 
 # --------------------------------------------------------------------------
@@ -155,21 +181,6 @@ def _demonstration(mots=42000, graine=7):
             courant = suivant
         pays.quitter()
     return pays
-
-
-if __name__ == "__main__":
-    pays = _demonstration()
-    etat = pays.etat()
-    plants = etat["plants"]
-    print(f"{etat['mots']} mots, {len(plants)} plants")
-    for p in plants:
-        if p["famille"]:
-            print(f"  plant {p['rang']:>2} | {p['famille']:<13}"
-                  f" ext {p['extension']:.2f} mat {p['maturite']:.2f}"
-                  f" | {len(p['dates'])} dates"
-                  f"{' | NUIT' if p['nuit'] else ''}")
-    open("planche_paysage.svg", "w", encoding="utf-8").write(svg(plants))
-    print("\nplanche_paysage.svg ecrit")
 
 
 # --------------------------------------------------------------------------
@@ -216,29 +227,87 @@ def gabarit(plant: dict, graine: int):
     plein = dict(plant)
     plein["extension"] = 1.0
     plein["maturite"] = max(plant.get("maturite", 0.0), 0.85)
+    if not plein.get("famille"):
+        # Un germe n'a pas encore de famille, donc pas de taille finale
+        # connue. On prend LA PLUS GRANDE des quatre.
+        #
+        # Pas la pressentie : sa taille changerait le jour ou une tendance
+        # apparait, et comme les quatre familles n'ont pas le meme
+        # encombrement natif, le germe se mettrait a RETRECIR sous les yeux de
+        # la personne. Le point 1 interdit que quoi que ce soit recule.
+        #
+        # Avec la plus grande, le germe est dessine a la plus petite echelle
+        # possible : quand la famille se verrouille, l'echelle ne peut que
+        # monter. La croissance reste monotone quoi qu'il arrive.
+        plein["germe"] = None
+        grand = None
+        for famille in FAMILLES:
+            plein["famille"] = famille
+            t = depuis_plant(plein, graine)
+            enc = max(t.hauteur(), t.largeur() * 0.52)
+            if grand is None or enc > grand[0]:
+                grand = (enc, t.largeur(), t.hauteur())
+        return grand[1], grand[2]
     t = depuis_plant(plein, graine)
     return t.largeur(), t.hauteur()
 
 
-def vue_de_travail(plant: dict, graine: int, largeur=360, hauteur=440,
-                   marge=28) -> str:
+def vue_de_travail(plants: list, graine=1, largeur=360, hauteur=440,
+                   monde=560) -> str:
     """
-    Le plant en cours, seul. C'est ce que le volet montre pendant qu'on ecrit,
-    et son echelle ne change JAMAIS : elle est fixee par la taille finale du
-    plant, pas par sa taille du moment.
-    """
-    cadre = (f'<svg xmlns="http://www.w3.org/2000/svg" '
-             f'viewBox="0 0 {largeur} {hauteur}" width="100%">'
-             f'<rect width="{largeur}" height="{hauteur}" fill="{FOND}"/>')
-    if not plant.get("famille"):
-        return cadre + "</svg>"
+    Ce que le volet montre pendant qu'on ecrit.
 
-    gl, gh = gabarit(plant, graine)
-    k = min((largeur - 2 * marge) / gl, (hauteur - 2 * marge) / gh)
-    t = depuis_plant(plant, graine)
-    # Pose au sol, centre : le plant pousse vers le haut depuis une base fixe,
-    # comme il le ferait dans le paysage.
-    return cadre + t.pose(largeur / 2, hauteur - marge, k) + "</svg>"
+    Ce n'est PAS un autre dessin du paysage : c'est le meme monde, vu par un
+    cadre plus serre, pose sur le plant en cours. Deux dessins separes du meme
+    objet finissent toujours par se contredire — celui-ci ne le peut pas.
+
+    Trois consequences, et c'est pour elles qu'on l'a fait ainsi :
+
+      - le volet n'est JAMAIS vide. Le plant qui vient de naitre est presque
+        rien, mais le precedent est juste derriere, qui deborde du cadre. On
+        avance dans le paysage au lieu de repartir de zero vingt-sept fois.
+
+      - le cadre est dimensionne sur la taille FINALE du plant en cours, jamais
+        sur sa taille du moment. S'il remplissait toujours le volet, un plant
+        jeune et un plant acheve se ressembleraient et la croissance
+        deviendrait invisible : on aurait detruit le retour en voulant le
+        preserver.
+
+      - passer de cette vue a la vue d'ensemble est un dezoom qu'on FAIT, pas
+        un dezoom qu'on SUBIT. C'est toute la difference avec le dezoom
+        progressif : la camera recule, le monde ne retrecit pas.
+    """
+    poses, _ = composer(plants, monde, graine)
+    if not poses:
+        return (f'<svg xmlns="http://www.w3.org/2000/svg" '
+                f'viewBox="0 0 {largeur} {hauteur}" width="100%">'
+                f'<rect width="{largeur}" height="{hauteur}" '
+                f'fill="{FOND}"/></svg>')
+
+    # Le plant en cours est le dernier pose. On retrouve sa pose par son x.
+    vivants = [p for p in plants if p.get("famille") or p.get("germe")]
+    actif = vivants[-1]
+    d, cx, y, k, t = max(poses, key=lambda q: q[1])
+
+    # Taille FINALE de ce plant, dans les unites du monde. Le cadre doit la
+    # contenir ENTIEREMENT : un plant plus large que haut — une creature
+    # deployee, un arbre — se ferait sinon rogner sur les cotes le jour ou il
+    # arrive a maturite, c'est-a-dire au pire moment.
+    gl, gh = gabarit(actif, graine + actif["rang"] * 977)
+    vh = max(gh * k * 1.30, gl * k * 1.15 * hauteur / largeur, 1.0)
+    vw = vh * largeur / hauteur
+
+    # Le plant en cours n'est pas au centre mais aux deux tiers a droite.
+    #
+    # C'est la reponse a la seule chose que ce volet ne savait pas montrer :
+    # un plant qui vient de naitre n'est presque rien, et centre dans son
+    # cadre il donne un volet vide — vingt-sept fois sur une these, dont la
+    # premiere fois est celle des 800 premiers mots ecrits avec le cadeau.
+    # Decale, il laisse voir le plant precedent qui sort par la gauche. On
+    # avance dans le paysage au lieu de repartir de zero a chaque chapitre, et
+    # la naissance d'un plant devient un evenement visible : le precedent
+    # s'en va.
+    return rendre(poses, (cx - vw * 0.63, y - vh * 0.86, vw, vh), hauteur)
 
 
 def apercu(plants: list, hauteur=520, graine=1, marge=70):
@@ -261,7 +330,7 @@ def apercu(plants: list, hauteur=520, graine=1, marge=70):
             parcelles.append((cle, []))
         parcelles[-1][1].append(p)
     if not parcelles:
-        return "", marge * 2
+        return [], marge * 2
 
     y_horizon = hauteur * HORIZON
     haut_utile = hauteur * 0.44
@@ -273,26 +342,34 @@ def apercu(plants: list, hauteur=520, graine=1, marge=70):
         for p in groupe:
             t = depuis_plant(p, graine + p["rang"] * 977)
             d = _profondeur(p)
-            enc = max(t.hauteur(), t.largeur() * 0.52)
+            gl, gh = gabarit(p, graine + p["rang"] * 977)
+            enc = max(gh, gl * 0.52)
             k = (ECHELLE_FOND + (ECHELLE_AVANT - ECHELLE_FOND) * d) \
                 * haut_utile / enc
-            l = t.largeur() * k
+            l = gl * k
             y = y_horizon + (d - 0.5) * hauteur * 0.18 + rng.uniform(-5, 5)
             poses.append((d, x + largeur_massif + l / 2, y, k, t))
             largeur_massif += l * serrage
         x += largeur_massif + haut_utile * 0.55      # respiration de parcelle
 
-    poses.sort(key=lambda q: q[0])
-    out = []
-    for d, cx, y, k, t in poses:
-        op = OPACITE_FOND + (1.0 - OPACITE_FOND) * d
-        out.append(f'<g opacity="{op:.2f}">{t.pose(cx, y, k)}</g>')
-    return "".join(out), x + marge
+    return poses, x + marge
 
 
 def svg_apercu(plants: list, hauteur=520, graine=1) -> str:
-    interieur, largeur = apercu(plants, hauteur, graine)
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" '
-            f'viewBox="0 0 {largeur:.0f} {hauteur}" width="100%">'
-            f'<rect width="{largeur:.0f}" height="{hauteur}" fill="{FOND}"/>'
-            f'{interieur}</svg>')
+    poses, largeur = apercu(plants, hauteur, graine)
+    return rendre(poses, (0, 0, largeur, hauteur), hauteur)
+
+
+if __name__ == "__main__":
+    pays = _demonstration()
+    etat = pays.etat()
+    plants = etat["plants"]
+    print(f"{etat['mots']} mots, {len(plants)} plants")
+    for p in plants:
+        if p["famille"]:
+            print(f"  plant {p['rang']:>2} | {p['famille']:<13}"
+                  f" ext {p['extension']:.2f} mat {p['maturite']:.2f}"
+                  f" | {len(p['dates'])} dates"
+                  f"{' | NUIT' if p['nuit'] else ''}")
+    open("planche_paysage.svg", "w", encoding="utf-8").write(svg(plants))
+    print("\nplanche_paysage.svg ecrit")
