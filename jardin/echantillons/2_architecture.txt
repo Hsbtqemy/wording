@@ -1,0 +1,47 @@
+# Rapport d'audit technique
+
+## Contexte
+
+Le systeme actuel date de 2019. Il traite environ 4000 requetes par jour. La charge augmente de 12 pour cent par trimestre. L'infrastructure n'a pas evolue depuis la mise en service.
+
+## Constats
+
+Trois problemes principaux ressortent de l'analyse.
+
+- La base de donnees n'est pas indexee sur les colonnes de recherche.
+- Les sauvegardes sont manuelles et irregulieres.
+- Aucun environnement de test n'existe.
+
+Le premier point explique la lenteur observee. Les requetes de recherche parcourent la table entiere. Le temps de reponse depasse deux secondes aux heures de pointe.
+
+Le deuxieme point represente un risque majeur. La derniere sauvegarde verifiee remonte a huit mois. Une restauration n'a jamais ete testee.
+
+## Recommandations
+
+### Court terme
+
+1. Ajouter les index manquants sur les trois colonnes concernees.
+2. Automatiser les sauvegardes quotidiennes.
+3. Verifier la restauration sur une copie.
+
+Ces actions demandent deux jours de travail. Elles ne necessitent aucune interruption de service.
+
+### Moyen terme
+
+1. Monter un environnement de preproduction.
+2. Mettre en place une integration continue.
+3. Documenter les procedures de deploiement.
+
+Le budget estime est de quinze jours-homme. La priorite reste au court terme.
+
+## Couts
+
+Le chiffrage se decompose ainsi. La phase court terme mobilise un developpeur. La phase moyen terme mobilise deux personnes. Le materiel supplementaire est negligeable.
+
+## Calendrier
+
+Les corrections urgentes peuvent commencer immediatement. La preproduction demarre au trimestre suivant. La documentation suit la mise en place.
+
+## Conclusion
+
+Le systeme reste fonctionnel. Les risques identifies sont maitrisables. Les actions proposees sont proportionnees. Une revue est prevue dans six mois.

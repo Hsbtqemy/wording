@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.venv/
+# Instantané de l'état d'avant : l'arborescence le remplace.
+jardin-paysage.zip
