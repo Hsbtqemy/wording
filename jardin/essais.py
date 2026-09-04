@@ -57,20 +57,40 @@ def _():
     return "4 longueurs, ecart nul"
 
 
-@essai("traits / MATTR tient dans le budget de 100 ms sur une these")
+@essai("traits / MATTR est bien en O(n), pas en O(n x fenetre)")
 def _():
-    from traits import mattr
+    from traits import mattr, _sans_accent
+
+    def naif(mots, fenetre=200):
+        formes = [_sans_accent(m).lower() for m in mots]
+        total = 0.0
+        for i in range(len(formes) - fenetre + 1):
+            total += len(set(formes[i:i + fenetre])) / fenetre
+        return total / (len(formes) - fenetre + 1)
+
+    # On mesure un RAPPORT, pas des millisecondes. Un seuil absolu dans une
+    # batterie d'essais est un faux ami : la premiere version affichait 63 ms
+    # un jour et 116 ms le lendemain selon ce qui tournait a cote, et
+    # echouait donc sans qu'aucune ligne de code ait bouge. Ce qu'on affirme
+    # est de toute facon un rapport — O(n) au lieu de O(n x fenetre) — et un
+    # rapport se moque de la charge de la machine.
     rng = random.Random(1)
-    mots = [f"mot{rng.randrange(900)}" for _ in range(146000)]
-    essais_ms = []
-    for _ in range(3):
+    mots = [f"mot{rng.randrange(900)}" for _ in range(30000)]
+
+    def chrono(fn):
+        return min(_mesure(fn, mots) for _ in range(3))
+
+    def _mesure(fn, arg):
         t0 = time.perf_counter()
-        mattr(mots)
-        essais_ms.append((time.perf_counter() - t0) * 1000)
-    ms = min(essais_ms)          # le meilleur des trois : on mesure le code,
-                                 # pas la charge de la machine
-    assert ms < 100, f"{ms:.0f} ms"
-    return f"{ms:.0f} ms pour 146 000 mots"
+        fn(arg)
+        return time.perf_counter() - t0
+
+    lent, rapide = chrono(naif), chrono(mattr)
+    facteur = lent / max(rapide, 1e-9)
+    assert facteur > 4, f"seulement x{facteur:.1f} plus rapide que la version naive"
+    # Le budget de 100 ms par tick, lui, est verifie par banc.py essai 6 sur
+    # un tick reel — c'est la contrainte qui mord vraiment.
+    return f"x{facteur:.0f} plus rapide sur 30 000 mots ({rapide*1000:.0f} ms)"
 
 
 @essai("traits / le compteur de connecteurs ne sature pas avec la longueur")
@@ -85,7 +105,9 @@ def _():
     # Texte fabrique exprès : beaucoup de connecteurs, AUCUNE virgule. La
     # subordination vaut alors 0,7 x 0 + 0,3 x (composante connecteurs), donc
     # elle donne directement a lire ce qu'on veut mesurer.
-    CONN = "que qui dont parce puisque quoique alors tandis lorsque afin "            "malgre cependant toutefois neanmoins ainsi donc or car mais "            "comme si quand".split()
+    CONN = ("que qui dont parce puisque quoique alors tandis lorsque afin"
+            " malgre cependant toutefois neanmoins ainsi donc or car mais"
+            " comme si quand").split()
     MOTS = [f"terme{i}" for i in range(400)]
     rng = R.Random(3)
 
@@ -120,7 +142,9 @@ def _():
     # compteur des qu'on lui laisse les bornes actuelles — saturee, donc
     # constante, donc aveugle. Il faut aussi qu'elle SEPARE.
     MOTS = [f"terme{i}" for i in range(400)]
-    CONN = "que qui dont parce puisque quoique alors tandis lorsque afin "            "malgre cependant toutefois neanmoins ainsi donc or car mais "            "comme si quand".split()
+    CONN = ("que qui dont parce puisque quoique alors tandis lorsque afin"
+            " malgre cependant toutefois neanmoins ainsi donc or car mais"
+            " comme si quand").split()
 
     def texte(part, graine):
         rng = R.Random(graine)
@@ -137,7 +161,9 @@ def _():
 
     riche = extraire(texte(0.30, 1)).subordination
     pauvre = extraire(texte(0.01, 2)).subordination
-    assert riche - pauvre > 0.15,         f"un texte tres subordonne ({riche:.2f}) ne se distingue pas d'un texte"         f" qui ne l'est pas ({pauvre:.2f})"
+    assert riche - pauvre > 0.15, (
+        f"un texte tres subordonne ({riche:.2f}) ne se distingue pas"
+        f" d'un texte qui ne l'est pas ({pauvre:.2f})")
     return f"tres subordonne {riche:.2f} contre {pauvre:.2f}"
 
 
@@ -534,12 +560,26 @@ def _():
 
 @essai("composition / vue de travail et apercu passent par le meme rendu")
 def _():
+    import ast
     import composition
-    src = open(composition.__file__, encoding="utf-8").read()
-    # Un seul endroit construit le SVG : rendre().
-    assert src.count("<svg xmlns=") <= 2, \
-        "plus d'un chemin de rendu : les deux vues peuvent diverger"
-    return "un seul chemin de rendu"
+
+    # Verification STRUCTURELLE, pas textuelle. La premiere version comptait
+    # les "<svg xmlns=" dans le source et se declenchait des qu'une planche
+    # assemblait son propre cadre — un essai qui casse quand on ajoute une
+    # planche ne surveille pas ce qu'il pretend surveiller. Ce qui compte
+    # n'est pas combien de fois la chaine apparait, c'est que les deux vues
+    # passent par rendre().
+    arbre = ast.parse(open(composition.__file__, encoding="utf-8").read())
+    appels = {}
+    for noeud in ast.walk(arbre):
+        if isinstance(noeud, ast.FunctionDef):
+            appels[noeud.name] = {
+                n.func.id for n in ast.walk(noeud)
+                if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+    for vue in ("svg", "svg_apercu", "vue_de_travail"):
+        assert "rendre" in appels.get(vue, set()), \
+            f"{vue}() ne passe pas par rendre() : les vues peuvent diverger"
+    return "svg, svg_apercu et vue_de_travail passent tous par rendre()"
 
 
 @essai("composition / un paysage vierge ne fait pas planter le volet")

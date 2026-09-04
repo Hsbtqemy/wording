@@ -272,6 +272,13 @@ class Toile:
 # le total et le repartir, jamais l'unite locale.
 BUDGET_FEUILLAGE = 210
 
+# Interrupteur de comparaison, comme BUDGET_FEUILLAGE. A False, les membres
+# reprennent la longueur ABSOLUE de la v5 : une bete gracile et une bete
+# massive recoivent alors exactement les memes pattes (rapport 1,00 contre
+# 3,48). Sert uniquement aux planches d'avant/apres — le code de production
+# ne le touche pas.
+MEMBRES_PROPORTIONNELS = True
+
 # --------------------------------------------------------------------------
 # Ce que le texte dit de la FORME (et non de la couleur ni de la taille).
 #
@@ -494,7 +501,10 @@ def creature(t: Toile, extension, maturite, graine, teinte=None,
         for s, bord in ((-1, gauche), (1, droite)):
             ax, ay = bord[i]
             a1 = pa + s * (1.15 + 0.2 * math.sin(i))
-            p1 = largeur_corps * (0.8 + 3.2 * e["membres"]) * ep
+            if MEMBRES_PROPORTIONNELS:
+                p1 = largeur_corps * (0.8 + 3.2 * e["membres"]) * ep
+            else:
+                p1 = SEGMENT * (0.25 + 1.25 * e["membres"]) * ep
             bx, by = ax + math.cos(a1) * p1, ay + math.sin(a1) * p1
             t.trait(ax, ay, bx, by, m * 0.8)
             a2 = a1 + s * rng.uniform(0.55, 1.0)
@@ -761,24 +771,55 @@ def planche_feuillage():
 
 
 def planche_membres():
-    """Point ouvert 6 : les membres doivent rester proportionnes au corps."""
-    corps = [("gracile", 0.12), ("moyen", 0.5), ("massif", 1.0)]
-    membres = [0.0, 0.35, 0.7, 1.0]
-    CW, CH, MG, TOP = 190, 200, 150, 56
-    W, H = MG + CW * len(membres) + 20, TOP + CH * len(corps) + 16
-    o = _entete(W, H)
-    for j, mb in enumerate(membres):
-        o.append(f'<text x="{MG + j*CW + CW/2}" y="32" font-size="10.5" '
-                 f'text-anchor="middle" letter-spacing="1.4">MEMBRES {mb:.2f}</text>')
-    for i, (lab, cp) in enumerate(corps):
-        y0 = TOP + i * CH
-        o.append(f'<text x="20" y="{y0 + CH/2}" font-size="12" '
-                 f'fill="#2c3230">corps {lab}</text>')
-        for j, mb in enumerate(membres):
+    """
+    Point ouvert 6 : les membres doivent rester proportionnes au corps.
+
+    Deux pieges evites ici, tous deux deja rencontres ailleurs dans le projet.
+
+    1. La premiere version ne montrait que l'etat CORRIGE : elle prouvait que
+       le curseur marche, pas que la correction change quelque chose. On ne
+       peut pas juger un correctif sans voir ce qu'il corrige.
+
+    2. La deuxieme mettait chaque case a l'echelle independamment — donc une
+       bete plus grande etait reduite pour tenir, et la difference qu'on
+       voulait montrer se trouvait justement gommee. C'est le meme defaut que
+       celui trouve dans composer() : une echelle par element efface les
+       differences de taille. Ici toutes les figures partagent une echelle.
+    """
+    global MEMBRES_PROPORTIONNELS
+    corps = [("gracile", 0.10), ("moyen", 0.5), ("massif", 1.0)]
+    lignes = [("longueur absolue (v5)", False),
+              ("proportionnelle au corps", True)]
+    CW, CH, MG, TOP = 250, 240, 235, 62
+
+    figures = {}
+    for i, (_lab, mode) in enumerate(lignes):
+        for j, (_n, cp) in enumerate(corps):
+            garde, MEMBRES_PROPORTIONNELS = MEMBRES_PROPORTIONNELS, mode
             t = Toile()
             creature(t, 0.7, 0.8, 777, Teinte.du_jour(200, 14, 0.7),
-                     {"tete": 0.45, "corps": cp, "membres": mb})
-            o.append(t.svg(MG + j * CW, y0, CW, CH))
+                     etoffage={"tete": 0.4, "corps": cp, "membres": 1.0})
+            MEMBRES_PROPORTIONNELS = garde
+            figures[(i, j)] = t
+
+    # Une seule echelle pour les six.
+    encombrement = max(max(t.hauteur(), t.largeur() * 0.62)
+                       for t in figures.values())
+    k = (CH - 46) / encombrement
+
+    W, H = MG + CW * len(corps) + 20, TOP + CH * 2 + 16
+    o = _entete(W, H)
+    for j, (lab, _) in enumerate(corps):
+        o.append(f'<text x="{MG + j*CW + CW/2}" y="34" font-size="10.5" '
+                 f'text-anchor="middle" letter-spacing="1.4">'
+                 f'CORPS {lab.upper()}</text>')
+    for i, (lab, _mode) in enumerate(lignes):
+        y0 = TOP + i * CH
+        o.append(f'<text x="18" y="{y0 + CH/2}" font-size="11.5" '
+                 f'fill="#2c3230">{lab}</text>')
+        for j, _c in enumerate(corps):
+            t = figures[(i, j)]
+            o.append(t.pose(MG + j * CW + CW / 2, y0 + CH - 16, k))
     return SAUT.join(o) + '</g></svg>'
 
 

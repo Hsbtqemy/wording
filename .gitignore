@@ -3,3 +3,7 @@ __pycache__/
 .venv/
 # Instantané de l'état d'avant : l'arborescence le remplace.
 jardin-paysage.zip
+
+# Produit de compilation : page.py la regenere en quelques secondes, et son
+# contenu bouge a chaque mesure. La versionner ne ferait que du bruit.
+jardin/planches.html

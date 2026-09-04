@@ -360,6 +360,62 @@ def svg_apercu(plants: list, hauteur=520, graine=1) -> str:
     return rendre(poses, (0, 0, largeur, hauteur), hauteur)
 
 
+def planche_volet(mots=60000, graine=7, vol_l=330, vol_h=420):
+    """
+    Le volet, autour d'une naissance de plant.
+
+    On rejoue une redaction et on capture le volet a cinq instants de la vie
+    du troisieme plant : c'est le seul moment que la vue de travail ne savait
+    pas montrer.
+    """
+    import copy
+    from corpus import these
+    from paysage import Paysage
+
+    doc = these(mots_cibles=mots, chapitres=3, graine=graine)
+    pays = Paysage(identifiant="volet")
+    rng = random.Random(graine)
+    captures, cibles, i = [], None, 0
+
+    for texte, style, jour, heure in doc:
+        v = pays.absorber(texte, style=style, jour=jour, heure=heure,
+                          mots_par_intervalle=7)
+        if v == "ecriture":
+            for _ in range(int(rng.expovariate(1 / 2.2))):
+                pays.quitter()
+                suiv = texte.replace(".", ",", 1) if "." in texte else texte + " x"
+                pays.retoucher(texte, suiv, jour=jour, heure=heure)
+                texte = suiv
+            pays.quitter()
+        if len(pays.segments) >= 3 and cibles is None:
+            cibles = [0, 70, 260, 800, 2600]
+        if cibles and i < len(cibles) and pays.segments[-1].mots >= cibles[i]:
+            captures.append((pays.segments[-1].mots, pays.segments[-1].stade(),
+                             copy.deepcopy(pays.etat()["plants"])))
+            i += 1
+        if cibles and i >= len(cibles):
+            break
+
+    W = 30 + len(captures) * (vol_l + 26)
+    H = 90 + vol_h
+    o = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" '
+         f'width="100%"><rect width="{W}" height="{H}" fill="#f3f1ec"/>',
+         '<g font-family="Georgia, serif" fill="#6b6560">']
+    for j, (m, stade, plants) in enumerate(captures):
+        x = 30 + j * (vol_l + 26)
+        interieur = vue_de_travail(plants, largeur=vol_l, hauteur=vol_h)
+        interieur = interieur.replace(
+            '<svg xmlns="http://www.w3.org/2000/svg" ', '<svg ')
+        o.append(f'<text x="{x + vol_l/2}" y="34" font-size="10.5" '
+                 f'text-anchor="middle" letter-spacing="1.4">'
+                 f'{m} MOTS — {stade.upper()}</text>')
+        o.append(f'<svg x="{x}" y="52" width="{vol_l}" height="{vol_h}" '
+                 f'viewBox="0 0 {vol_l} {vol_h}">{interieur}</svg>')
+        o.append(f'<rect x="{x}" y="52" width="{vol_l}" height="{vol_h}" '
+                 f'fill="none" stroke="#d9d4ca"/>')
+    return SAUT.join(o) + "</g></svg>"
+
+
 if __name__ == "__main__":
     pays = _demonstration()
     etat = pays.etat()
