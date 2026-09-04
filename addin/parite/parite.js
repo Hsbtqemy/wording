@@ -276,7 +276,7 @@ for (let i = 0; i < paires; i++) {
 titre("empreintes");
 meme("empreintes distinctes du corpus", cahier.empreintes_corpus, empreintesCorpus.size);
 meme("taille du registre", cahier.empreintes, p.registre.size);
-console.log(`  ${cahier.textes_corpus} paragraphes hachés,`
+console.log(`  ${cahier.textes_corpus} paragraphes haches,`
   + ` ${empreintesCorpus.size} distincts des deux cotes`);
 
 // --------------------------------------------------------------------------
