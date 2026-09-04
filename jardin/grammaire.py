@@ -189,8 +189,19 @@ class Toile:
         # l'ensemble et fait bouger tout ce qui etait deja trace.
         self.cadre = None
 
-    def trait(self, x1, y1, x2, y2, m=0.0, col=None):
-        self.segments.append((x1, y1, x2, y2, m, col or TRAIT))
+    def trait(self, x1, y1, x2, y2, m=0.0, col=None, structure=False):
+        """
+        `structure` marque le squelette porteur — ce qui tient la forme.
+
+        La decision 9 dit que la couleur ne touche JAMAIS la structure, et
+        c'est cette seule regle qui preserve l'unite etablie a la decision 8.
+        Tant qu'elle n'etait qu'une intention dans les commentaires, on ne
+        pouvait la verifier qu'en comptant les traits a l'encre — et un
+        vegetal dont on colorait les branches passait quand meme, parce que
+        l'anastomose restait noire. Marquee dans la donnee, la regle devient
+        une invariante qu'un essai peut tenir.
+        """
+        self.segments.append((x1, y1, x2, y2, m, col or TRAIT, structure))
 
     def noeud(self, x, y, m, col=None):
         # Tardifs et petits : en v1 ils devenaient une rougeole qui ecrasait
@@ -216,7 +227,7 @@ class Toile:
         ox = x - (x0 + x1) / 2 * k
         oy = y_base - y1 * k
         out = [f'<g transform="translate({ox:.1f},{oy:.1f}) scale({k:.3f})">']
-        for a, b, c, d, m, col in self.segments:
+        for a, b, c, d, m, col, _r in self.segments:
             e = EPAISSEUR * (1 + 1.7 * m) / max(k, 0.35)
             out.append(f'<line x1="{a:.1f}" y1="{b:.1f}" x2="{c:.1f}" y2="{d:.1f}" '
                        f'stroke="{col}" stroke-width="{e:.2f}" stroke-linecap="round"/>')
@@ -240,7 +251,7 @@ class Toile:
         k = min(1.0, (cw - 26) / w, (ch - 26) / h)
         ox, oy = cx + cw / 2 - (x0 + w / 2) * k, cy + ch / 2 - (y0 + h / 2) * k
         out = [f'<g transform="translate({ox:.1f},{oy:.1f}) scale({k:.3f})">']
-        for a, b, c, d, m, col in self.segments:
+        for a, b, c, d, m, col, _r in self.segments:
             e = EPAISSEUR * (1 + 1.7 * m) / max(k, 0.35)
             out.append(f'<line x1="{a:.1f}" y1="{b:.1f}" x2="{c:.1f}" y2="{d:.1f}" '
                        f'stroke="{col}" stroke-width="{e:.2f}" stroke-linecap="round"/>')
@@ -314,7 +325,7 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
                         m * 0.55, tt.ton(rng))
             return
         x2, y2 = x + math.cos(angle) * lg, y + math.sin(angle) * lg
-        t.trait(x, y, x2, y2, m)                    # structure : jamais coloree
+        t.trait(x, y, x2, y2, m, structure=True)    # squelette
         t.noeud(x2, y2, m, tt.ton(rng))
         noeuds.append((x2, y2, lignee))
         ouv = ouverture * rng.uniform(0.85, 1.15)
@@ -341,7 +352,7 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
             if l1 == l2 or faits > 30 * m + 6:
                 continue
             if 6 < math.hypot(x2 - x1, y2 - y1) < seuil and rng.random() < 0.45:
-                t.trait(x1, y1, x2, y2, m * 0.55)
+                t.trait(x1, y1, x2, y2, m * 0.55, structure=True)
                 faits += 1
 
 
@@ -375,7 +386,7 @@ def architecture(t: Toile, extension, maturite, graine, teinte=None,
         g, d, top = cx - w / 2, cx + w / 2, base - h
         for seg in ((g, base, g, top), (d, base, d, top),
                     (g, top, d, top), (g, base, d, base)):
-            t.trait(*seg, m)                          # structure
+            t.trait(*seg, m, structure=True)          # squelette
         # La grandeur vient de la repetition d'une unite petite, pas de deux
         # ou trois refends.
         etages = max(2, int(h / (SEGMENT * (0.62 - 0.22 * m))))
@@ -447,7 +458,8 @@ def creature(t: Toile, extension, maturite, graine, teinte=None,
         droite.append((px + math.cos(pa + 1.57) * larg, py + math.sin(pa + 1.57) * larg))
     contour = gauche + droite[::-1]
     for i in range(len(contour)):
-        t.trait(*contour[i], *contour[(i + 1) % len(contour)], m)   # structure
+        t.trait(*contour[i], *contour[(i + 1) % len(contour)], m,
+                structure=True)                                     # squelette
     pas = max(1, int(3 - e["corps"] * 2))
     for i in range(0, len(spine), pas):
         t.trait(*gauche[i], *droite[i], m * 0.55, tt.ton(rng))
@@ -533,10 +545,10 @@ def abstrait(t: Toile, extension, maturite, graine, teinte=None,
             rr = r * jitter[k] * rentrant[k]
             pts.append((100 + math.cos(ang) * rr, 110 + math.sin(ang) * rr))
         for k in range(cotes):
-            t.trait(*pts[k], *pts[(k + 1) % cotes], m)     # structure
+            t.trait(*pts[k], *pts[(k + 1) % cotes], m, structure=True)
         if prec:
             for k in range(cotes):
-                t.trait(*prec[k], *pts[k], m * 0.8)        # structure
+                t.trait(*prec[k], *pts[k], m * 0.8, structure=True)
                 t.noeud(*pts[k], m, tt.ton(rng))
                 if m > 0.45:                               # etoffage : colore
                     mx = ((prec[k][0] + pts[k][0]) / 2, (prec[k][1] + pts[k][1]) / 2)
@@ -590,16 +602,21 @@ def germe(t: Toile, taille, inflexion=0.0, pressentie=None, graine=0,
     dos = []
 
     for i in range(n):
-        pas = lg
-        if pressentie == "architecture":
-            # elle s'empile : la chaine s'equerre en marches. A inflexion
-            # nulle les traverses ont une longueur nulle, donc c'est encore
-            # une chaine droite — l'inflexion ne fait qu'ouvrir l'angle droit.
-            if i % 2:
-                a = 0.0 if (i // 2) % 2 == 0 else math.pi
-                pas = lg * inflexion * 0.62
-            else:
-                a = -math.pi / 2
+        if pressentie == "architecture" and inflexion > 0:
+            # elle s'empile : une traverse s'insere entre deux montees, et
+            # sa longueur suit l'inflexion. La traverse est un trait EN PLUS,
+            # elle ne remplace pas une montee : sans ca, le germe
+            # d'architecture tracait deux fois moins de segments que les
+            # autres, et les cinq cas differaient DEJA a inflexion nulle —
+            # c'est-a-dire avant qu'aucune tendance ne soit censee paraitre.
+            traverse = lg * inflexion * 0.62
+            if i and traverse > 0.4:
+                sens = 0.0 if (i // 2) % 2 == 0 else math.pi
+                xt = x + math.cos(sens) * traverse
+                yt = y + math.sin(sens) * traverse
+                t.trait(x, y, xt, yt, m)
+                x, y = xt, yt
+            a = -math.pi / 2
         elif pressentie == "creature":
             # elle s'enchaine : la chaine ondule
             a += inflexion * math.sin(i * 0.95) * 0.40
@@ -607,9 +624,7 @@ def germe(t: Toile, taille, inflexion=0.0, pressentie=None, graine=0,
             # elle se pave : la chaine s'incurve vers sa propre fermeture
             a += inflexion * 0.30
         a += rng.uniform(-0.04, 0.04)
-        if pas < 0.4:
-            continue
-        x2, y2 = x + math.cos(a) * pas, y + math.sin(a) * pas
+        x2, y2 = x + math.cos(a) * lg, y + math.sin(a) * lg
         t.trait(x, y, x2, y2, m)
         dos.append((x2, y2, a))
         x, y = x2, y2

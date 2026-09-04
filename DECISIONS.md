@@ -588,7 +588,9 @@ le mécanisme n'exige rien de personne. Mais il ne remplace personne non plus.
 | `composition.py` | où se pose un plant : le paysage entier |
 | `phrases.py` | registres, routage par événement, paquet battu |
 | `corpus.py` | génération de texte à profil de traits imposé |
-| `banc.py` | test des décisions 2 à 6 et 11 |
+| `essais.py` | **toutes les vérifications, avec un code de sortie** |
+| `mutations.py` | la batterie sait-elle échouer ? |
+| `banc.py` | les six essais de décision, appelés par `essais.py` |
 | `stabilite.py` | test : la famille tient-elle au fil de la rédaction |
 
 **Historique.** Ces fichiers ont servi à trancher, et les planches qui les
