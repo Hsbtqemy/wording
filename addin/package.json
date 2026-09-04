@@ -1,0 +1,10 @@
+{
+  "name": "paysage",
+  "version": "0.1.0",
+  "description": "Paysage : un jardin qui pousse pendant qu'on ecrit. Portage JS de jardin/.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "parite": "python ../jardin/parite.py"
+  }
+}

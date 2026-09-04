@@ -7,3 +7,11 @@ jardin-paysage.zip
 # Produit de compilation : page.py la regenere en quelques secondes, et son
 # contenu bouge a chaque mesure. La versionner ne ferait que du bruit.
 jardin/planches.html
+
+# Cahier de parite : 1,2 Mo regeneres par jardin/parite.py en quelques
+# secondes, et qui changent des qu'on touche au corpus.
+addin/parite/cas.json
+node_modules/
+
+# Copie de securite ecrite par les batteries de mutations.
+*.intact

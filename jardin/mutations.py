@@ -75,9 +75,33 @@ MUTATIONS = [
 ]
 
 
+def _restaurer_les_restes(fichiers) -> None:
+    """
+    Une mutation laissee sur le disque est pire qu'un essai en echec.
+
+    Le `finally` rend le fichier d'origine quand l'essai echoue ou leve. Il ne
+    le rend pas si le processus est tue — une interruption, un delai depasse,
+    une fenetre fermee. Le fichier mute reste alors en place, et la fois
+    suivante TOUTE la batterie signale des regressions qui n'existent pas, dans
+    des fichiers que personne n'a touches.
+
+    On ecrit donc la copie a cote avant de muter, et on la relit au demarrage.
+    """
+    for f in fichiers:
+        cote = os.path.join(RACINE, f + ".intact")
+        if os.path.exists(cote):
+            src = io.open(cote, encoding="utf-8").read()
+            io.open(os.path.join(RACINE, f), "w", encoding="utf-8",
+                    newline="\n").write(src)
+            os.remove(cote)
+            print(f"  (reste d'une execution interrompue : {f} restaure)")
+
+
 def main() -> int:
+    fichiers = {m[0] for m in MUTATIONS}
+    _restaurer_les_restes(fichiers)
     sauvegardes = {f: io.open(os.path.join(RACINE, f), encoding="utf-8").read()
-                   for f in {m[0] for m in MUTATIONS}}
+                   for f in fichiers}
     print("=" * 78)
     print("MUTATIONS — la batterie sait-elle echouer ?")
     print("=" * 78)
@@ -89,6 +113,8 @@ def main() -> int:
             manquees.append((libelle, "motif introuvable — mutation obsolete"))
             print(f"  ????  {libelle}")
             continue
+        cote = chemin + ".intact"
+        io.open(cote, "w", encoding="utf-8", newline="\n").write(src)
         io.open(chemin, "w", encoding="utf-8", newline="\n").write(
             src.replace(vieux, neuf, 1))
         try:
@@ -96,6 +122,7 @@ def main() -> int:
                                capture_output=True, text=True)
         finally:
             io.open(chemin, "w", encoding="utf-8", newline="\n").write(src)
+            os.remove(cote)
         if r.returncode:
             attrapees += 1
             coupables = [l.strip()[6:].strip() for l in r.stdout.splitlines()

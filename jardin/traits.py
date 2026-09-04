@@ -109,10 +109,26 @@ def en_paragraphes(texte: str) -> list[str]:
     return paragraphes
 
 
+def _deplier(texte: str) -> str:
+    """Depose les accents. Sans memoire : a utiliser sur autre chose qu'un mot."""
+    return "".join(
+        c for c in unicodedata.normalize("NFD", texte)
+        if unicodedata.category(c) != "Mn"
+    )
+
+
 # Memoire de normalisation. Le vocabulaire d'un document est borne (~30 000
 # formes pour une these) alors que les appels se comptent en centaines de
 # milliers : sans ce cache, unicodedata.normalize represente l'essentiel du
 # temps d'extraction une fois MATTR passe en O(n). Se porte tel quel en JS.
+#
+# Le cache ne vaut que si la cle revient. Sur un MOT c'est le cas des centaines
+# de fois ; sur un PARAGRAPHE, jamais — chacun est normalise une fois et
+# n'existe qu'a un exemplaire. Faire passer les paragraphes par ici remplissait
+# le cache de 656 entrees pour 656 paragraphes — 766 Ko sur 40 000 mots, et
+# 2,8 Mo sur une these de 146 000 — et le cache cense tenir un vocabulaire
+# devenait une copie du document. Tout ce qui n'est pas un mot passe par
+# _deplier.
 _ACCENTS: dict[str, str] = {}
 
 
@@ -120,10 +136,7 @@ def _sans_accent(mot: str) -> str:
     connu = _ACCENTS.get(mot)
     if connu is not None:
         return connu
-    nu = "".join(
-        c for c in unicodedata.normalize("NFD", mot)
-        if unicodedata.category(c) != "Mn"
-    )
+    nu = _deplier(mot)
     _ACCENTS[mot] = nu
     return nu
 

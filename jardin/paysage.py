@@ -29,7 +29,7 @@ import re
 from dataclasses import dataclass, field, asdict
 
 from traits import (
-    extraire, scores, en_mots, _sans_accent, NOMS,
+    extraire, scores, en_mots, _sans_accent, _deplier, NOMS,
     MARGE_DOMINANCE, PALIER_INDICES, PALIER_DIVERGENCE,
 )
 
@@ -73,7 +73,10 @@ _BORDS = re.compile(r"^[\s\W_]+|[\s\W_]+$")
 
 
 def normaliser(paragraphe: str) -> str:
-    p = _sans_accent(paragraphe).lower().translate(_VARIANTES)
+    # _deplier et non _sans_accent : un paragraphe ne se represente jamais deux
+    # fois a l'identique, le mettre en cache ne fait que garder une copie du
+    # document en memoire (voir le commentaire du cache dans traits.py).
+    p = _deplier(paragraphe).lower().translate(_VARIANTES)
     return _ESPACES.sub(" ", _BORDS.sub("", p))
 
 
@@ -450,7 +453,12 @@ class Paysage:
         document existant decoupent deja le paysage en parcelles.
         """
         for item in paragraphes:
-            p, style = item if isinstance(item, tuple) else (item, "Normal")
+            # tuple OU liste : un couple reste un couple apres un aller-retour
+            # par du JSON, qui n'a que des tableaux. Le refuser faisait recevoir
+            # la liste comme une chaine, et « ['texte', 'Titre 1'] » n'a pas de
+            # methode strip.
+            couple = isinstance(item, (tuple, list))
+            p, style = item if couple else (item, "Normal")
             if not p.strip():
                 continue
             st = _sans_accent(style or "").lower().strip()
@@ -526,7 +534,12 @@ class Paysage:
             d = json.loads(brut)
         except (json.JSONDecodeError, TypeError):
             return cls()
-        if d.get("version") != VERSION_ETAT:
+        # isinstance et pas seulement .get : "[]" et "null" sont du JSON
+        # parfaitement valide, et une liste n'a pas de methode get. Un reglage
+        # tronque ou ecrase dans les Settings de Word faisait donc lever ici,
+        # au chargement, la ou il n'y a personne pour rattraper — le volet
+        # serait reste noir. Un paysage illisible repart vide, jamais en erreur.
+        if not isinstance(d, dict) or d.get("version") != VERSION_ETAT:
             return cls()
         p = cls(identifiant=d.get("identifiant", ""),
                 cle_dossier=d.get("cle_dossier", ""),

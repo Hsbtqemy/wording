@@ -386,6 +386,126 @@ l'installation soi-même.
 bornes de normalisation en une seconde avec `--demo`, puis on reporte les
 constantes. Les deux bases ne partagent que des nombres.
 
+### Ce qui est porté, et ce que le portage a trouvé
+
+**Fait.** `addin/src/traits.js` et `addin/src/paysage.js`. Aucune dépendance,
+aucune API Word, aucun DOM, aucun `localStorage` : ils prennent du texte et des
+événements, ils rendent des nombres et un état. Aller chercher le texte dans
+Word sera le travail du volet, et de lui seul.
+
+**Reste à porter :** la grammaire, la composition, le message, les phrases —
+puis la coquille Word elle-même (manifeste, volet, câblage des événements).
+
+**La parité se vérifie, elle ne se suppose pas.** `jardin/parite.py` fabrique un
+cahier de cas *avec les réponses du Python* ; `addin/parite/parite.js` le rejoue
+et compare. 5 918 comparaisons, dont le verdict de chaque appel d'une rédaction
+de 30 000 mots, pris un par un — un écart est situé au paragraphe près, et pas
+constaté à la fin sur un total qui ne dit pas où il s'est formé.
+
+Le cahier est reproductible à l'octet près — trois générations, la même
+empreinte. Une première version semait un générateur avec `hash(titre)`, et
+Python randomise le hachage des chaînes à chaque processus : le cahier changeait
+tout seul d'un lancement à l'autre. Un écart n'aurait pas été reproductible, et
+le fichier aurait bougé à chaque régénération sans que personne n'ait rien
+touché.
+
+Pas la même graine des deux côtés, comme le laissait entendre `corpus.py` :
+rejouer la graine demanderait de porter le Mersenne Twister de `random.Random`.
+On testerait alors le générateur, et le premier écart viendrait de là,
+c'est-à-dire de l'endroit où l'on n'apprend rien. Le cahier met la frontière au
+bon endroit : le corpus reste du Python, le JavaScript ne reçoit que du texte et
+des appels.
+
+**Une seule divergence assumée : l'empreinte.** Le Python prend
+`blake2s(digest_size=6)` ; le navigateur n'a pas de hachage synchrone, et
+attendre une promesse par paragraphe dans un tick de 100 ms n'est pas tenable.
+Le JavaScript prend donc MurmurHash3, deux graines, 48 bits gardés — la largeur
+du Python, donc les 17 Ko du point 3 et le même risque de collision. Ce n'est
+pas grave parce que les deux registres ne se relisent jamais : la seule
+propriété demandée est celle d'une table de hachage. La parité ne compare donc
+pas les clés, mais ce que le reste du système observe d'elles — le même document
+se découpe en le même nombre d'empreintes distinctes des deux côtés.
+
+**Les pièges du portage sont presque tous le même.** Les classes de caractères
+de JavaScript sont de l'ASCII là où celles de Python sont de l'Unicode : `\w`
+ne connaît pas les lettres accentuées, `\d` ne connaît pas les chiffres arabes,
+`.length` compte des unités UTF-16 quand `len()` compte des points de code.
+Aucune de ces erreurs ne fait planter quoi que ce soit — le texte se découpe un
+peu autrement, la famille bascule un peu plus tôt, et personne ne s'en aperçoit.
+`addin/parite/mutations.js` les réintroduit une par une : 13 sur 13 sont vues.
+
+Cinq choses sont sorties du portage. **Aucune des cinq n'était dans le
+JavaScript** : porter un programme, c'est le relire une fois de plus, et par
+un autre bout.
+
+**1. Un cache qui gardait une copie du document.** `normaliser()` passait chaque
+paragraphe par `_sans_accent`, dont la mémoire avait été dimensionnée pour un
+*vocabulaire*. Un cache ne vaut que si la clé revient : un mot revient des
+centaines de fois, un paragraphe jamais. Mesuré : 656 entrées pour 656
+paragraphes sur 40 000 mots, 766 Ko, dont pas une seule relue — et 2 372
+entrées pour 2,8 Mo sur une thèse de 146 000 mots. Corrigé des deux côtés :
+`_deplier` sans mémoire pour tout ce qui n'est pas un mot.
+
+**2. `round()` n'existe pas en JavaScript.** Python arrondit la valeur binaire
+*exacte* et tranche un demi exact vers le *pair*. Aucun outil de JavaScript ne
+fait les deux : `Math.round(x * 10ⁿ)` a l'erreur de sa propre multiplication et
+fait monter 0,00035 que le flottant place en dessous ; `toFixed` lit bien la
+valeur exacte mais tranche un demi vers le haut, et rend 0,4063 là où Python
+rend 0,4062 ; `Intl` avec `roundingMode: "halfEven"` tranche bien vers le pair
+mais part de l'écriture décimale *courte*, et remonte 0,00035 à 0,0004.
+
+La première version écrite ici prenait `toFixed` en supposant qu'un demi exact
+n'arriverait jamais sur une somme de poids en centièmes. C'était vrai des
+scores — 4 divergences sur 346 389 tirages — et faux de la **marge**, qui est un
+*écart* entre deux scores : les quatre valeurs concernées sont minuscules, et
+minuscule est exactement la taille d'une marge quand deux familles se tiennent,
+c'est-à-dire au moment où le point 5 refuse de classer.
+
+Un demi exact se reconnaît pourtant sans approximation : `x × 10ⁿ` vaut un demi
+pile si et seulement si `x × 2ⁿ⁺¹` est un entier impair, et la multiplication
+par une puissance de deux est exacte. Six lignes, vérifiées sur 316 393 valeurs
+dont tous les rationnels dyadiques jusqu'au 1/16384 : aucun écart.
+
+**3. 616 appels, et pas une frappe.** Le cahier rejouait une rédaction entière
+avec ses retouches, et il avait l'air complet. Il ne l'était pas : les retouches
+visaient l'avant-dernier paragraphe écrit, jamais celui où le curseur se
+trouvait. Chaque retouche repassait donc par la reprise, et sur 616 appels le
+verdict `frappe` n'apparaissait **pas une seule fois** — le cahier ne visitait
+jamais le seul chemin pour lequel le curseur du point 2 a été écrit.
+
+C'est la même panne que la planche des membres : une vérification qui a l'air
+d'en faire beaucoup, et qui ne passe pas par le mécanisme qu'elle est censée
+surveiller. En comptant vraiment ce que le cahier traversait, il manquait aussi
+les verdicts `ignoree` et `inchangee`, tout plant écrit la nuit, et **tout plant
+au stade germe** — donc le bloc `germe {taille, inflexion}` de `etat()`, qui est
+exactement ce qui dessine une plante sans famille encore lisible, n'était jamais
+comparé autrement que sous la forme `null`. `cas_journal()` refuse désormais de
+fabriquer un cahier qui n'emprunte pas les neuf verdicts et ne laisse pas
+derrière lui un plant de chaque stade, un plant de nuit et une greffe en attente.
+
+**4. Les tables littérales n'étaient comparées par personne.** Dix-neuf
+abréviations, vingt-huit connecteurs, quatre puces, les styles de titre, les
+variantes typographiques. Le cahier de textes n'en visite que deux ou trois ; les
+autres pouvaient être fausses depuis toujours. C'est la dérive la plus probable
+d'un projet à deux langages et la plus silencieuse — on ajoute un mot d'un seul
+côté, rien ne casse, le texte se lit juste un peu différemment. Les deux modules
+exportent maintenant un `TABLES` **dérivé** des constantes, jamais recopié : une
+table recopiée serait un second endroit où se tromper.
+
+**5. `depuis()` plantait sur `[]`.** `"[]"` et `"null"` sont du JSON
+parfaitement valide, et une liste n'a pas de méthode `get` : un réglage tronqué
+ou écrasé dans les Settings de Word levait au chargement, là où il n'y a
+personne pour rattraper — le volet serait resté noir. Le JavaScript, lui,
+passait : le portage était sur ce point plus robuste que sa propre
+spécification. Corrigé du bon côté, celui du Python.
+
+Et un détail qui n'en est pas un : `rattacher()` acceptait un couple
+`(texte, style)` sous forme de tuple, pas de liste. JSON n'a que des tableaux,
+donc le couple ne survivait pas à un aller-retour — et le premier geste du vrai
+add-in, rattacher une thèse déjà écrite, est précisément celui qui passe une
+liste de couples. Les deux implémentations n'avaient pas la même signature sans
+que rien ne le dise.
+
 ---
 
 ## 14. La composition du paysage
@@ -589,9 +709,20 @@ le mécanisme n'exige rien de personne. Mais il ne remplace personne non plus.
 | `phrases.py` | registres, routage par événement, paquet battu |
 | `corpus.py` | génération de texte à profil de traits imposé |
 | `essais.py` | **toutes les vérifications, avec un code de sortie** |
+| `parite.py` | fabrique le cahier de cas et lance la vérification JavaScript |
 | `mutations.py` | la batterie sait-elle échouer ? |
 | `banc.py` | les six essais de décision, appelés par `essais.py` |
 | `stabilite.py` | test : la famille tient-elle au fil de la rédaction |
+
+**Le livrable**, sous `addin/`. Le Python reste la spécification : quand les
+deux divergent, c'est le JavaScript qui a un bug.
+
+| Fichier | Rôle |
+|---|---|
+| `src/traits.js` | portage de `traits.py` |
+| `src/paysage.js` | portage de `paysage.py` |
+| `parite/parite.js` | rejoue le cahier et compare — **code de sortie** |
+| `parite/mutations.js` | le vérificateur sait-il échouer ? |
 
 **Historique.** Ces fichiers ont servi à trancher, et les planches qui les
 accompagnent sont les preuves. Ils ne sont plus le code de référence : ce qu'ils
