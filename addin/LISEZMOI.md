@@ -36,9 +36,25 @@ qu'ouvrir ne porte rien — c'est délibéré, il ne doit pas ressortir « modif
 
 ## Charger le manifeste dans Word
 
-Rien à modifier dans `manifest.xml` : les URL y sont déjà.
+Rien à modifier dans `manifest.xml` : les URL y sont déjà. Et où qu'on le
+dépose, **le code vient toujours de GitHub Pages** — le manifeste ne fait que
+dire à Word où aller le chercher. C'est un fichier XML de 5,6 Ko, rien de plus.
 
-**Mac** — déposer `manifest.xml` dans :
+### Le plus rapide, pour un premier coup d'œil : Word sur le web
+
+Aucun partage, aucun catalogue, aucune manipulation système. Ouvrir le document
+depuis OneDrive, puis *Insertion → Compléments → Mes compléments →
+**Charger mon complément*** et désigner `manifest.xml`.
+
+Ça suffit à voir si le volet s'ouvre et si la forme se dessine. Mais **le vrai
+essai reste le bureau** : c'est là qu'on écrit, et les quatre points de la
+section suivante portent tous sur des comportements de frappe. Si la version du
+web ne suffit pas, le volet le dira lui-même — il vérifie WordApi 1.6 et
+explique ce qui manque au lieu de rester noir.
+
+### Mac
+
+Déposer `manifest.xml` dans :
 
 ```
 ~/Library/Containers/com.microsoft.Word/Data/Documents/wef
@@ -46,11 +62,29 @@ Rien à modifier dans `manifest.xml` : les URL y sont déjà.
 
 puis redémarrer Word. Le bouton apparaît dans l'onglet Accueil.
 
-**Windows** — mettre `manifest.xml` dans un dossier, le partager, puis dans
-Word : *Fichier → Options → Centre de gestion de la confidentialité →
-Paramètres → Catalogues d'add-ins*, ajouter le chemin du dossier partagé et
-cocher « Afficher dans le menu ». Redémarrer Word ; l'add-in est sous
-*Insertion → Mes compléments → Dossier partagé*.
+### Windows
+
+⚠️ **Word n'accepte pas un chemin local** dans un catalogue de confiance :
+`C:\Paysage` est refusé sans explication. Il lui faut un **chemin réseau UNC** —
+`\\NOM-DU-PC\Paysage` — même quand le dossier est sur sa propre machine.
+« Partager le dossier » ne veut dire rien d'autre que : créer un partage
+Windows, ce qui fait apparaître ce chemin-là.
+
+1. Un dossier, disons `C:\Paysage`, avec `manifest.xml` dedans.
+2. Clic droit → **Propriétés** → onglet **Partage** → **Partage avancé…** →
+   cocher **Partager ce dossier** → OK. La fenêtre affiche alors le **chemin
+   réseau** : `\\NOM-DU-PC\Paysage`. C'est celui-là qu'il faut, pas `C:\Paysage`.
+3. Word → *Fichier → Options → Centre de gestion de la confidentialité →
+   Paramètres du Centre de gestion de la confidentialité → **Catalogues de
+   compléments approuvés***.
+4. Coller `\\NOM-DU-PC\Paysage` dans **URL du catalogue**, cliquer **Ajouter le
+   catalogue**, puis cocher **Afficher dans le menu**. OK.
+5. Redémarrer Word, puis *Insertion → Compléments → Mes compléments → onglet
+   **Dossier partagé*** → Paysage.
+
+Le dossier partagé n'héberge que le manifeste : Word y cherche des fichiers XML,
+et rien d'autre. Il doit rester joignable au démarrage de Word — sur sa propre
+machine, c'est acquis.
 
 ---
 
@@ -96,8 +130,21 @@ dire que le paysage n'a pas été retrouvé.
   exprès — une contrainte non satisfaite rendrait l'add-in *invisible*, sans un
   mot, ce qui est le pire accueil possible.
 - **Document jamais enregistré** : `Office.context.document.url` est vide tant
-  que le fichier n'a pas de chemin, donc le paysage ne peut pas être rattaché à
-  un dossier. Enregistrer le document une fois suffit.
+  que le fichier n'a pas de chemin, donc la clé du dossier l'est aussi, et
+  **tous les documents non enregistrés partagent un même paysage**.
+
+  ⚠️ Conséquence à connaître : depuis la décision 16, l'identité du paysage est
+  gravée dans le `.docx` à la première copie. Un nouveau chapitre commencé
+  *avant* d'être enregistré garde donc son paysage à lui, et ne rejoint plus
+  celui de la thèse une fois rangé dans le bon dossier. **Enregistrer le
+  document d'abord, écrire ensuite.**
+
+  C'est aussi une chose à regarder le premier jour, et aucun essai ne la couvre :
+  personne ne sait encore ce que le vrai Word renvoie pour un document neuf —
+  vide, `Document1`, ou un chemin temporaire. Les trois appellent des réponses
+  différentes. Pour le voir : ouvrir un document neuf dans le dossier de la
+  thèse, volet ouvert, et regarder si le paysage déjà poussé apparaît ou si la
+  forme repart de zéro.
 - **Le paysage vit dans le `localStorage` du navigateur intégré à Word**, et
   chaque document en garde une copie (décision 16). Vider les données de site ne
   le perd donc plus : il revient du `.docx` à l'ouverture suivante, et la console
