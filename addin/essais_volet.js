@@ -78,8 +78,17 @@ function monter_hote({ version16 = true, url = "C:/These/chapitre1.docx",
     },
     context: {
       requirements: {
-        isSetSupported: (nom, v) => nom === "WordApi" && (version16 || v !== "1.6"),
+        // Les jeux d'API sont EMBOITES : un hote qui ne sait pas faire 1.6 ne
+        // sait pas davantage faire 1.7. Le simulateur repondait « oui » a tout
+        // sauf a 1.6 exactement, ce qu'aucun Word ne fait — et le sondage de
+        // version aurait mesure ce mensonge plutot que l'hote.
+        isSetSupported: (nom, v) => {
+          if (nom !== "WordApi") return false;
+          const [maj, min] = String(v).split(".").map(Number);
+          return maj * 100 + (min || 0) <= (version16 ? 109 : 105);
+        },
       },
+      diagnostics: { host: "Word", platform: "PC", version: "16.0.14334" },
       document: {
         url,
         settings: {
@@ -254,9 +263,19 @@ suite.push(["un Word trop ancien dit ce qui manque au lieu de rester noir",
   async () => {
     const etat = monter_hote({ version16: false, paragraphes: [{ texte: PHRASE }] });
     await demarrer(etat);
-    vrai(etat.elements.mot.textContent.length > 20,
-         "le volet doit expliquer, pas se taire");
+    const mot = etat.elements.mot.textContent;
+    vrai(mot.length > 20, "le volet doit expliquer, pas se taire");
     vrai(!etat.tic, "et ne rien armer");
+    // ECHAFAUDAGE : sur un Office LTSC, gele a sa version de sortie, savoir
+    // QUE ca manque ne sert a rien — il faut savoir jusqu'ou l'hote va.
+    vrai(mot.includes("WordApi 1.5"),
+         `le volet doit nommer le niveau trouve, obtenu : ${mot}`);
+    vrai(mot.includes("16.0.14334"),
+         "et la version de l'hote, qui dit s'il peut seulement bouger");
+    // Prive d'evenements, le seul repli est de relire. Ce que ca coute decide
+    // si le repli tient : le budget de la decision 12 est de 100 ms par tic.
+    vrai(/1 paragraphes \/ \d+ k signes relus en \d+ ms/.test(mot),
+         `le volet doit mesurer une relecture complete, obtenu : ${mot}`);
   }]);
 
 suite.push(["ouvrir un document ne le marque pas comme modifie", async () => {

@@ -40,7 +40,10 @@
     display: flex; align-items: center; justify-content: space-between;
     gap: 10px; padding: 8px 12px 12px;
   }
-  #mot { color: var(--pale); font-size: 12px; font-style: italic; }
+  /* pre-line : le volet est etroit, et un message a deux temps doit pouvoir
+     respirer. Sans ca les retours a la ligne se replient en espaces. */
+  #mot { color: var(--pale); font-size: 12px; font-style: italic;
+         white-space: pre-line; }
   /* Un bouton discret : il ne demande rien, il ouvre. */
   button {
     font: inherit; font-size: 12px; color: var(--pale);

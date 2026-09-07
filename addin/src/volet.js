@@ -184,6 +184,62 @@ function dire(texte) {
   if (hote) hote.textContent = texte || "";
 }
 
+/**
+ * Ce que cet hote sait faire, en clair.
+ *
+ * ECHAFAUDAGE, et il porte une date. Le refus « il manque une version de Word »
+ * ne disait pas CE QUI manque, et sur une machine qui ne peut pas etre mise a
+ * jour — un Office LTSC est gele a sa version de sortie pour cinq ans — c'est
+ * la seule question qui compte. Ces lignes disparaissent le jour ou le volet
+ * saura se passer des evenements de paragraphe.
+ *
+ * On monte jusqu'a 1.8 sans s'arreter au premier refus : les jeux d'API sont
+ * emboites, mais rien n'oblige un hote a le rester, et supposer l'emboitement
+ * ici reviendrait a mesurer sa propre hypothese.
+ */
+async function signalement() {
+  const morceaux = [];
+  try {
+    let haut = "aucun";
+    for (const v of ["1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8"]) {
+      if (Office.context.requirements.isSetSupported("WordApi", v)) haut = v;
+    }
+    morceaux.push(`WordApi ${haut}`);
+  } catch {
+    morceaux.push("WordApi indeterminable");
+  }
+  try {
+    const d = Office.context.diagnostics;
+    if (d) morceaux.push(`${d.host} ${d.platform} ${d.version}`);
+  } catch { /* diagnostics n'est pas partout : son absence n'est pas une panne */ }
+
+  // Le second chiffre, et il decide autant que le premier. Prive d'evenements,
+  // le seul repli est que le tic RELISE le document au lieu d'etre prevenu —
+  // ce qui ne tient que si un aller-retour Office.js entre dans le budget de
+  // 100 ms de la decision 12. Ca ne se devine pas : ca se mesure ici, sur un
+  // vrai chapitre, sur la machine qui recevra le cadeau.
+  //
+  // On TOUCHE le texte de chaque paragraphe, on ne compte pas les objets : le
+  // cout est dans le passage du texte par le pont, et un compteur qui ne lit
+  // rien mesurerait un aller-retour vide.
+  try {
+    const t0 = Date.now();
+    const { n, signes } = await Word.run(async (ctx) => {
+      const paras = ctx.document.body.paragraphs;
+      paras.load("items/text,items/style");
+      await ctx.sync();
+      let total = 0;
+      for (const p of paras.items) total += p.text.length;
+      return { n: paras.items.length, signes: total };
+    });
+    morceaux.push(`${n} paragraphes / ${Math.round(signes / 1000)} k signes`
+                + ` relus en ${Date.now() - t0} ms`);
+  } catch {
+    morceaux.push("relecture complete impossible");
+  }
+  return morceaux.join(" · ");
+}
+
 // --------------------------------------------------------------------------
 // Le tic (decision 12)
 // --------------------------------------------------------------------------
@@ -261,7 +317,8 @@ Office.onReady(async (info) => {
   // satisfaite dans le manifeste rend l'add-in invisible, sans un mot.
   if (!Office.context.requirements.isSetSupported("WordApi", "1.6")) {
     dire("Il manque une version de Word un peu plus recente pour que le "
-       + "paysage suive l'ecriture. Tout le reste est deja la.");
+       + "paysage suive l'ecriture. Tout le reste est deja la."
+       + `\n\n${await signalement()}`);
     return;
   }
 
