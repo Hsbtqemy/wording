@@ -1011,6 +1011,84 @@ exactement ce que cette décision règle.
     découle — copie rare, jamais pour rien, et le réglage d'identité qui attend
     la première pousse au lieu de partir à l'ouverture.
 
+14. **L'unité du paysage n'est pas celle de tout le monde.** Le premier vrai
+    document ouvert avec le volet faisait trente-cinq pages — et **un seul
+    paragraphe**. Mesuré : `0 CR · 1119 VT · 0 LF · 1 objets`. Aucune marque de
+    paragraphe, mille cent dix-neuf sauts de ligne (Maj+Entrée), soit soixante-six
+    signes par ligne. Word a raison, il n'y a bien qu'un paragraphe ; c'est
+    l'auteur qui allait à la ligne sans en créer un, ce qu'on fait naturellement
+    pour éviter l'espacement entre paragraphes.
+
+    ⚠️ **Le paysage y verrait une empreinte pour 74 000 signes.** Aucune
+    extension, jamais ; chaque frappe lue comme une reprise du document entier.
+    La plante ne pousserait pas d'un millimètre, et rien ne le signalerait — la
+    pire des pannes selon le point 3, celle qui ne dit pas son nom.
+
+    Ce n'est pas un défaut du portage. C'est un décalage entre l'unité du projet
+    — le paragraphe au sens de Word — et une façon d'écrire parfaitement
+    légitime. Aucune batterie ne pouvait le trouver : il a fallu un vrai texte
+    sur une vraie machine.
+
+    **Direction pressentie :** compter les *lignes*, pas les paragraphes.
+    L'unité qui compte est celle que la personne fabrique en écrivant, pas celle
+    que Word enregistre. Quelqu'un qui va à la ligne a produit quelque chose,
+    qu'il ait appuyé sur Entrée ou sur Maj+Entrée, et la forme doit pousser
+    pareil — sinon le cadeau récompense une habitude de traitement de texte.
+
+    ⚠️ Découper au bon endroit ne suffit pas. Si les sous-lignes sont
+    identifiées par leur **rang**, insérer une ligne au milieu décale toutes les
+    suivantes : le miroir les voit toutes changer, et une insertion se lit comme
+    une pluie de retouches. C'est **l'invariant cardinal retourné** — de
+    l'extension prise pour de la maturité. L'identification doit passer par le
+    contenu, donc par un rapprochement des deux états, jamais par l'indice.
+
+15. **Un Office LTSC ne verra jamais les événements de paragraphe.** La machine
+    cible est un Office LTSC Professionnel Plus 2021, version 2108 — gelé à sa
+    version de sortie pour cinq ans, correctifs de sécurité seulement.
+    `isSetSupported("WordApi", "1.6")` répond `false` et le fera toujours. La
+    personne à qui le cadeau est destiné a la même. Ce n'est pas un canal en
+    retard : c'est la conception qui ne passe pas sur la machine cible.
+
+    Mesuré sur cette machine, et plus rien n'est supposé :
+
+    | Ce qui a été mesuré | Valeur | Ce qu'elle décide |
+    |---|---|---|
+    | Jeu d'API | `WordApi 1.3` | `body.paragraphs`, `getSelection`, `getFirstOrNullObject` présents ; ni événements ni `uniqueLocalId` |
+    | Aller-retour à vide | ~6 ms | le plancher d'un `Word.run` |
+    | 19 paragraphes, texte + style | ~45 ms | ~1,7 ms par paragraphe |
+    | 74 000 signes, 1 paragraphe | 17–21 ms | **le coût est dans les objets, pas dans le texte ni les styles** |
+    | Paragraphe sous le curseur | ~14 ms | 14 % du budget du point 12 |
+    | Frappe vue sans événements | 33 puis 43 changements | **`DocumentSelectionChanged` suffit** |
+
+    Donc : relire tout le document *objet par objet* coûterait ~2,4 s sur une
+    thèse, vingt-cinq fois le budget d'un tic — mort. Mais `body.text` rend le
+    corps entier en **une chaîne**, sans un seul objet intermédiaire, et reste
+    plat quelle que soit la taille.
+
+    **Direction pressentie :** un *guet*. Le tic prend un instantané de
+    `body.text`, le découpe sur `\r` **et** sur `\u000B`, et le compare au
+    précédent. Deux propriétés le recommandent au-delà du dépannage :
+
+    - il règle le point 14 par construction, puisqu'il retrouve les lignes que
+      la personne a écrites quelle que soit la touche employée ;
+    - c'est de la **logique pure sur des tableaux de chaînes**, donc
+      spécifiable en Python et **couverte par la parité** — ce que `pont.js`
+      n'a jamais pu être, faute de Python en face. Le remplacement serait mieux
+      vérifié que ce qu'il remplace.
+
+    `pont.js` n'a pas à changer : sur ses vingt usages d'identifiant, tous sont
+    des clés opaques ou un `===`. Il n'en lit jamais la forme, et `lire()` lui
+    est injecté. Le guet fournirait donc ses propres identifiants, tirés du
+    rapprochement, et résoudrait `lire()` depuis son propre instantané — sans
+    aucun aller-retour vers Word.
+
+    ⚠️ Reste à trancher si les deux chemins **cohabitent**. Le guet marche sur
+    tous les Word ; les événements seulement sur certains. Ce n'est donc pas
+    deux versions pour deux publics, mais un chemin universel plus une
+    optimisation — et dans un cadeau, la complexité facultative est ce qu'il
+    faut refuser. Deux chemins voudraient aussi dire que chaque mutation devrait
+    être attrapée sur les deux, sinon la moitié du code n'est pas éprouvée.
+
 ---
 
 ## Fichiers
