@@ -89,6 +89,33 @@ const MUTATIONS = [
    '    this._actif = e;\n    this._mode = "reprise";\n    plant.relire();\n    return "ecriture";',
    "decision 2 : le curseur ouvre en reprise, la premiere frappe devient une reprise"],
 
+  // Les quatre raccourcis qu'on prend naturellement en portant un Mersenne
+  // Twister. Aucun ne fait planter quoi que ce soit : le generateur rend
+  // toujours des nombres d'allure honnete, simplement PAS LES MEMES — et deux
+  // tirages plus loin la branche est ailleurs, sans que rien n'ait l'air faux.
+  ["alea.js",
+   "    this._init_par_tableau(cle);",
+   "    this._init_genrand(graine);",
+   "le semis passe par init_genrand : la graine ne donne plus la meme suite"],
+
+  ["alea.js",
+   "    let r = this.getrandbits(k);\n    while (r >= n) r = this.getrandbits(k);\n    return r;",
+   "    return this.getrandbits(k) % n;",
+   "randrange prend un modulo au lieu du rejet : il consomme un mot de moins"],
+
+  ["alea.js",
+   "    const a = this._mot() >>> 5;\n    const b = this._mot() >>> 6;",
+   "    const a = this._mot() >>> 6;\n    const b = this._mot() >>> 5;",
+   "random() intervertit les deux decalages : 53 bits, mais pas les memes"],
+
+  ["alea.js",
+   "    y = (y ^ ((y << 7) & 0x9d2c5680)) >>> 0;",
+   "    y = (y ^ ((y << 7) & 0x9d2c5600)) >>> 0;",
+   // Le bit 7, pas le bit 0 : (y << 7) a toujours ses sept bits de poids
+   // faible a zero, donc une mutation du bit 0 du masque ne mord sur rien
+   // et ECHAPPE sans que le cahier ait le moindre tort.
+   "un bit de travers dans le masque de trempe du Mersenne Twister"],
+
   // Les deux suivantes existent pour prouver que les sections « tables » et
   // « relectures » gagnent leur place. Sans elles, une table pourrait deriver
   // d'un seul cote sans que rien ne bouge : sur dix-neuf abreviations, le

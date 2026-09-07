@@ -22,6 +22,7 @@ import {
 import {
   Paysage, empreinte, normaliser, TABLES as TABLES_PAYSAGE,
 } from "../src/paysage.js";
+import { Alea } from "../src/alea.js";
 
 const TOLERANCE = 1e-9;
 
@@ -116,6 +117,50 @@ if (!chemin) {
   process.exit(2);
 }
 const cahier = JSON.parse(readFileSync(chemin, "utf-8"));
+
+// --------------------------------------------------------------------------
+// 0. Le generateur
+// --------------------------------------------------------------------------
+// Il passe en premier parce que tout ce qui se dessine en depend. random,
+// uniform et randrange doivent tomber au BIT pres — ce sont des fonctions
+// deterministes de deux entiers de 32 bits, il n'y a rien a arrondir.
+// expovariate seul passe par un logarithme, dont ni Python ni JavaScript ne
+// garantissent le dernier bit.
+titre("generateur de nombres");
+{
+  let ecartMax = 0;
+  let tirages = 0;
+  for (const c of cahier.alea.cas) {
+    const r = new Alea(c.graine);
+    for (const [nom, args, attendu] of c.suite) {
+      let obtenu;
+      if (nom === "random") obtenu = r.random();
+      else if (nom === "uniform") obtenu = r.uniform(args[0], args[1]);
+      else if (nom === "randrange") obtenu = r.randrange(args[0]);
+      else obtenu = r.expovariate(args[0]);
+      tirages += 1;
+      ecartMax = Math.max(ecartMax, Math.abs(obtenu - attendu));
+      if (nom === "expovariate") {
+        meme(`alea(${c.graine}).${nom}`, attendu, obtenu);
+      } else if (obtenu !== attendu) {
+        comparaisons += 1;
+        ecart(`alea(${c.graine}).${nom} (pas identique au bit)`, attendu, obtenu);
+      } else {
+        comparaisons += 1;
+      }
+    }
+  }
+  // Le tri par cle aleatoire de grammaire.py : un tri stable des deux cotes ne
+  // suffit pas, il faut aussi les memes cles.
+  for (const t of cahier.alea.tris) {
+    const r = new Alea(t.graine);
+    const cles = Array.from({ length: t.n }, () => r.random());
+    const ordre = Array.from({ length: t.n }, (_, k) => k).sort((a, b) => cles[a] - cles[b]);
+    meme(`tri par cle aleatoire, graine ${t.graine}`, t.ordre, ordre);
+  }
+  console.log(`  ${cahier.alea.cas.length} graines, ${tirages} tirages,`
+    + ` ecart maximal ${ecartMax.toExponential(2)} (logarithme)`);
+}
 
 // --------------------------------------------------------------------------
 // 1. Les tables litterales

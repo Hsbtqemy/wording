@@ -11,15 +11,25 @@ node dessus. Le JavaScript rejoue exactement les memes appels et compare.
     python parite.py            fabrique, lance node, rend un code de sortie
     python parite.py --cas      fabrique seulement (addin/parite/cas.json)
 
-Pourquoi un cahier plutot que la meme graine des deux cotes, comme le laissait
-entendre corpus.py : rejouer la graine demanderait de porter le Mersenne
-Twister de random.Random en JavaScript. On testerait alors le generateur, pas
-le portage — et le premier ecart viendrait du generateur, la ou on ne peut rien
-en apprendre. Le cahier deplace la frontiere au bon endroit : le corpus reste
-du Python, et le JavaScript ne recoit que du texte et des appels.
+Le corpus, lui, reste du Python : le cahier porte le TEXTE que corpus.py a
+fabrique, pas la graine qui l'a fabrique. Rejouer la graine cote JavaScript ne
+verifierait que le generateur, et le premier ecart viendrait de la — c'est-a-
+dire de l'endroit ou l'on n'apprend rien sur le portage.
+
+Le generateur, lui, EST porte (addin/src/alea.js), et c'est une autre question.
+Dans corpus.py il fabrique des donnees d'essai, qu'on peut simplement ecrire
+dans le cahier. Dans grammaire, composition et message il est DANS LE LIVRABLE :
+l'add-in tire au sort au moment de dessiner, et la decision 8 demande meme
+document, meme graine, meme figure. Sans un generateur identique, rien de ce qui
+se dessine ne serait comparable.
 
 Ce qui est compare :
 
+  generateur      random, uniform, randrange au BIT pres ; expovariate a un
+                  logarithme pres
+  tables          les listes litterales des deux cotes — abreviations,
+                  connecteurs, puces, styles, variantes typographiques
+  arrondi         round(x, n) tel que Python le fait, demis exacts compris
   normalisation   la meme chaine normalisee. C'est la que se voient les ecarts
                   d'Unicode : \\w ASCII contre \\w Unicode, NFD, casse.
   decoupage       mots, phrases, paragraphes, titre-ou-pas
@@ -27,6 +37,8 @@ Ce qui est compare :
   scores          les quatre familles, et la revelation qui en sort
   journal         chaque verdict de absorber / retoucher, appel par appel
   plants          l'etat final de chaque plant
+  etat            ce que le volet lira, et ce qu'il rangera
+  relectures      ce qu'un etat illisible doit rendre : un paysage vide
   empreintes      le meme nombre d'empreintes DISTINCTES — les deux fonctions
                   de hachage different (voir empreinte() cote JS), seule leur
                   capacite a separer le document est comparable
@@ -154,8 +166,7 @@ def cas_traits(rng) -> list[dict]:
                 "comptes": {"mots": r.traits.mots, "phrases": r.traits.phrases,
                             "paragraphes": r.traits.paragraphes},
                 "mattr": traits.mattr(traits.en_mots(texte)),
-                "mattr": traits.mattr(traits.en_mots(texte)),
-            "scores": r.scores,
+                "scores": r.scores,
                 "revelation": {"stade": r.stade, "famille": r.famille,
                                "provisoire": r.provisoire, "par_refus": r.par_refus,
                                "marge": r.marge, "secondaire": r.secondaire},
@@ -397,6 +408,51 @@ def cas_journal() -> tuple[list, list, int]:
     return journal, plants, p
 
 
+def cas_alea() -> dict:
+    """
+    Le generateur de Python, tirage par tirage.
+
+    La decision 8 demande : meme document, meme graine, meme figure. La
+    grammaire, la composition et le message tirent trente-six nombres au sort ;
+    si les deux langages ne tirent pas la MEME suite, plus rien de ce qui se
+    dessine n'est comparable, et les quinze cents lignes de geometrie qui
+    restent a porter deviennent invisibles au verificateur.
+
+    Les graines vont jusqu'aux bornes ou le semis change de forme : 0 (cle
+    [0]), 2**32 et au-dela (cle a deux mots), 2**53 - 1 (le dernier entier
+    sur). C'est la que la simplification habituelle — appeler init_genrand avec
+    la graine au lieu de init_by_array — cesse de donner la meme suite.
+    """
+    graines = [0, 1, 2, 3, 7, 11, 42, 977, 1234, 65535, 65536,
+               2 ** 31 - 1, 2 ** 31, 2 ** 32 - 1, 2 ** 32, 2 ** 32 + 1,
+               123456789012, 2 ** 53 - 1]
+    cas = []
+    for g in graines:
+        r = random.Random(g)
+        suite = []
+        for i in range(60):
+            t = i % 4
+            if t == 0:
+                suite.append(["random", [], r.random()])
+            elif t == 1:
+                suite.append(["uniform", [-0.16, 0.16], r.uniform(-0.16, 0.16)])
+            elif t == 2:
+                n = 1 + (i * 7) % 97
+                suite.append(["randrange", [n], r.randrange(n)])
+            else:
+                suite.append(["expovariate", [1.4], r.expovariate(1.4)])
+        cas.append({"graine": g, "suite": suite})
+
+    # grammaire.py trie les tours d'une ville par cle aleatoire. Un tri stable
+    # des deux cotes ne suffit pas : il faut aussi les MEMES cles.
+    tris = []
+    for g in (3, 19, 512):
+        r = random.Random(g)
+        tris.append({"graine": g, "n": 9,
+                     "ordre": sorted(range(9), key=lambda k: r.random())})
+    return {"cas": cas, "tris": tris}
+
+
 def cas_tables() -> dict:
     """
     Les tables litterales des deux cotes.
@@ -490,6 +546,7 @@ def fabriquer() -> dict:
     journal, plants, p = cas_journal()
     textes = [e[1] for e in journal if e[0] == "absorber"]
     return {
+        "alea": cas_alea(),
         "tables": cas_tables(),
         "relectures": cas_relectures(),
         "arrondis": cas_arrondis(),

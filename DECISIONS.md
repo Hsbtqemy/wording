@@ -393,12 +393,15 @@ aucune API Word, aucun DOM, aucun `localStorage` : ils prennent du texte et des
 événements, ils rendent des nombres et un état. Aller chercher le texte dans
 Word sera le travail du volet, et de lui seul.
 
+`addin/src/alea.js` — le générateur de Python, refait à l'identique. Voir
+plus bas pourquoi.
+
 **Reste à porter :** la grammaire, la composition, le message, les phrases —
 puis la coquille Word elle-même (manifeste, volet, câblage des événements).
 
 **La parité se vérifie, elle ne se suppose pas.** `jardin/parite.py` fabrique un
 cahier de cas *avec les réponses du Python* ; `addin/parite/parite.js` le rejoue
-et compare. 5 918 comparaisons, dont le verdict de chaque appel d'une rédaction
+et compare. 7 271 comparaisons, dont le verdict de chaque appel d'une rédaction
 de 30 000 mots, pris un par un — un écart est situé au paragraphe près, et pas
 constaté à la fin sur un total qui ne dit pas où il s'est formé.
 
@@ -416,6 +419,50 @@ c'est-à-dire de l'endroit où l'on n'apprend rien. Le cahier met la frontière 
 bon endroit : le corpus reste du Python, le JavaScript ne reçoit que du texte et
 des appels.
 
+### Le générateur se porte, le corpus non
+
+La décision 8 demande : même document, même graine, même figure. La grammaire,
+la composition et le message tirent trente-six nombres au sort — pour incliner
+une branche, décaler un toit, faire trembler une lettre. Si les deux langages ne
+tirent pas la **même suite**, plus rien de ce qui se dessine n'est comparable, et
+les quinze cents lignes de géométrie qui restent à porter deviennent invisibles
+au vérificateur. On ne pourrait plus que les croire.
+
+C'est l'inverse du choix fait pour `corpus.py`, et la distinction est nette :
+
+|  | rôle du hasard | ce qu'on porte |
+|---|---|---|
+| `corpus.py` | fabrique des **données d'essai** | le texte produit, écrit dans le cahier |
+| `grammaire`, `composition`, `message` | est **dans le livrable** | le générateur lui-même |
+
+L'add-in tire au sort au moment de dessiner. Il lui faut donc un générateur
+déterministe de toute façon ; la seule question était de savoir s'il devait être
+*le même*. MT19937 est exactement spécifié, et le projet n'utilise que quatre
+méthodes — `random`, `uniform`, `randrange`, `expovariate`. Ni `gauss`, ni
+`choice`, ni `shuffle` : les compter avant d'écrire a évité de porter ce dont
+personne n'a besoin. Cent trente lignes.
+
+**Mesuré :** 1 080 tirages sur 18 graines, dont les bornes où le semis change de
+forme — 0, 2³², 2⁵³−1. `random`, `uniform` et `randrange` tombent **au bit
+près** ; ce ne sont que des fonctions déterministes de deux entiers de 32 bits,
+il n'y a rien à arrondir. Seul `expovariate` dévie d'un ulp, par le logarithme.
+Et le tri par clé aléatoire de `grammaire.py` retrouve le même ordre — un tri
+stable des deux côtés n'y suffisait pas, il fallait aussi les mêmes clés.
+
+Les quatre raccourcis qu'on prend naturellement sont dans les mutations :
+semer par `init_genrand` au lieu de `init_by_array`, prendre un modulo au lieu
+du rejet dans `randrange` (il consomme un mot de moins, donc tout décale deux
+tirages plus loin), intervertir les deux décalages de `random()`. Aucun ne fait
+planter quoi que ce soit — le générateur rend toujours des nombres d'allure
+honnête, simplement pas les mêmes.
+
+Une cinquième mutation a **échappé**, et c'était la mutation qui avait tort :
+changer le bit 0 du masque de trempe ne peut rien changer, puisque `y << 7` a
+toujours ses sept bits de poids faible à zéro. Vérifié plutôt que raisonné —
+0 cas sur 4 999 pour le bit 0, 2 500 pour le bit 7. Une mutation sans effet n'est
+pas un trou dans le cahier ; c'est un mauvais test, et le dire est la seule
+manière de ne pas maquiller un 16/17 en 17/17.
+
 **Une seule divergence assumée : l'empreinte.** Le Python prend
 `blake2s(digest_size=6)` ; le navigateur n'a pas de hachage synchrone, et
 attendre une promesse par paragraphe dans un tick de 100 ms n'est pas tenable.
@@ -432,7 +479,7 @@ ne connaît pas les lettres accentuées, `\d` ne connaît pas les chiffres arabe
 `.length` compte des unités UTF-16 quand `len()` compte des points de code.
 Aucune de ces erreurs ne fait planter quoi que ce soit — le texte se découpe un
 peu autrement, la famille bascule un peu plus tôt, et personne ne s'en aperçoit.
-`addin/parite/mutations.js` les réintroduit une par une : 13 sur 13 sont vues.
+`addin/parite/mutations.js` les réintroduit une par une : 17 sur 17 sont vues.
 
 Cinq choses sont sorties du portage. **Aucune des cinq n'était dans le
 JavaScript** : porter un programme, c'est le relire une fois de plus, et par
@@ -719,6 +766,7 @@ deux divergent, c'est le JavaScript qui a un bug.
 
 | Fichier | Rôle |
 |---|---|
+| `src/alea.js` | le générateur de Python, refait à l'identique |
 | `src/traits.js` | portage de `traits.py` |
 | `src/paysage.js` | portage de `paysage.py` |
 | `parite/parite.js` | rejoue le cahier et compare — **code de sortie** |
