@@ -4,7 +4,7 @@ Un add-in Word qui fait pousser un paysage SVG pendant qu'on écrit une thèse.
 C'est un cadeau, pas un outil de productivité : rien ne doit ressembler à une
 barre de progression, à un score, ni à un rappel.
 
-**`DECISIONS.md` est la colonne du projet.** Quinze décisions, chacune payée par
+**`DECISIONS.md` est la colonne du projet.** Seize décisions, chacune payée par
 une panne réelle. Avant de toucher une constante, lire son entrée — le nombre
 qui a l'air arbitraire ne l'est pas, et le changer casse quelque chose qui a
 coûté cher. Toute décision de conception se consigne là, avec ce qui l'a
@@ -52,7 +52,7 @@ adossé à une bibliothèque meurt le jour où elle casse. Cible ≈ 30–40 Ko.
 
 ## Vérifier
 
-Les quatre suites, **dans une seule commande**, jamais en parallèle :
+Les six suites, **dans une seule commande**, jamais en parallèle :
 
 ```bash
 python jardin/essais.py && python jardin/mutations.py \
@@ -64,12 +64,13 @@ PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
 Attendu : `30 passes, 0 en echec` · `8/8` · `aucun ecart` · `23 passes` ·
-`12 passes` · `47/47`.
+`20 passes` · `53/53`.
 
 Les deux batteries JavaScript éprouvent ce qu'**aucune parité ne peut couvrir**,
 faute de Python en face : `essais.js` le **pont** (la décision 2, contre un Word
-simulé), `essais_volet.js` le **câblage Office.js** (contre un hôte simulé).
-Elles y ont déjà trouvé trois défauts qui auraient été livrés.
+simulé), `essais_volet.js` le **câblage Office.js et les deux magasins** (la
+décision 16, contre un hôte simulé). Elles y ont déjà trouvé quatre défauts qui
+auraient été livrés.
 
 ⚠️ Aucune des deux ne prouve que le vrai Word se comporte comme le faux. C'est
 le risque irréductible, et il ne se lève qu'en déposant le manifeste dans Word —
@@ -82,10 +83,15 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **3 min 46**. Assez long pour donner
+Durée mesurée de l'enchaînement complet : **3 min 12**. Assez long pour donner
 envie de paralléliser, ce qu'il ne faut surtout pas faire — `mutations` relance
-`essais` huit fois, et `mutations.js` relance la parité ou les essais du pont
-quarante-deux fois.
+`essais` huit fois, et `mutations.js` relance la parité ou l'une des deux
+batteries à hôte simulé cinquante-trois fois.
+
+⚠️ Et ne rien **modifier** dans `jardin/*.py` ni `addin/**/*.js` pendant qu'une
+suite de mutations tourne. Elle garde en mémoire la version lue au démarrage et
+la réécrit après chaque mutation : une modification faite entre-temps disparaît
+sans un mot, et la suite se termine en vert.
 
 `addin/parite/cas.json` et `jardin/planches.html` sont des produits de
 compilation, ignorés par git et régénérés en quelques secondes.

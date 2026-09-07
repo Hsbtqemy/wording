@@ -31,11 +31,12 @@ const CAS = join(ICI, "cas.json");
 
 // [fichier, motif, remplacement, ce que la regression retablit, verificateur]
 //
-// Le verificateur vaut "parite" par defaut. Deux parties du portage n'ont pas
-// de Python en face et se verifient autrement :
+// Le verificateur vaut "parite" par defaut. Ce qui n'a pas de Python en face se
+// verifie autrement :
 //
 //   "essais"  le pont, contre un Word simule (addin/essais.js)
-//   "volet"   le cablage Office.js, contre un hote simule (essais_volet.js)
+//   "volet"   le cablage Office.js ET les deux magasins de la decision 16,
+//             contre un hote simule (essais_volet.js)
 //
 // Ce sont justement les parties qu'aucune parite ne couvre, donc celles ou une
 // mutation qui echappe couterait le plus cher.
@@ -314,12 +315,6 @@ const MUTATIONS = [
    "volet"],
 
   ["volet.js",
-   "    id = index[dossier] || tirer_identifiant();",
-   "    id = tirer_identifiant();",
-   "decision 11 : chaque document ouvre son paysage, le dossier ne compte plus",
-   "volet"],
-
-  ["volet.js",
    "    pont.rattacher(await scanner());\n    ranger();",
    "    pont.rattacher(await scanner());",
    "le capital de depart n'est pas range : rouvrir le fichier le perd",
@@ -329,6 +324,58 @@ const MUTATIONS = [
    "  const coupe = url.lastIndexOf(\"/\");\n  return coupe > 0 ? url.slice(0, coupe) : url;",
    "  return url;",
    "la cle du dossier devient le chemin du FICHIER : plus aucun partage",
+   "volet"],
+
+  // ------------------------------------------------------------------ magasin
+  // La copie du paysage dans le .docx (decision 16). Aucune de ces regressions
+  // ne fait planter quoi que ce soit : elles laissent le volet dessiner
+  // exactement comme avant, et ne se voient que le jour ou le localStorage a
+  // disparu — c'est-a-dire le jour ou il est trop tard.
+  ["magasin.js",
+   "    const id = connu || index[dossier] || tirer_identifiant();",
+   "    const id = connu || tirer_identifiant();",
+   "decision 11 : chaque document ouvre son paysage, le dossier ne compte plus",
+   "volet"],
+
+  ["magasin.js",
+   "  if (n_fichier > n_dossier) {",
+   "  if (n_dossier > n_fichier) {",
+   "l'arbitrage part a l'envers : la copie la plus pauvre ecrase l'autre",
+   "volet"],
+
+  ["magasin.js",
+   "    if (n <= this.copiees) return false;",
+   "    if (n < this.copiees) return false;",
+   "le document est reecrit pour reposer exactement la meme chose",
+   "volet"],
+
+  ["magasin.js",
+   "    if (this.derniere !== null && t - this.derniere < ATTENTE_COPIE) return false;",
+   "    if (this.derniere !== null && t - this.derniere < 0) return false;",
+   "plus d'etranglement : le .docx est marque modifie a chaque tic",
+   "volet"],
+
+  ["magasin.js",
+   "    if (this.refuse) return false;",
+   "    if (false) return false;",
+   "on redemande a un document qui a deja dit non, toutes les cinq minutes",
+   "volet"],
+
+  ["volet.js",
+   "      await magasin.copier(paysage);\n",
+   "",
+   "plus de copie de secours : le paysage remeurt avec le localStorage",
+   "volet"],
+
+  // C'etait le code d'avant la decision 16, et il salissait les documents :
+  // ouvrir un fichier suffisait a le faire ressortir « modifie ».
+  ["volet.js",
+   "  if (id !== connu) Office.context.document.settings.set(REGLAGE_ID, id);",
+   "  if (id !== connu) {\n"
+   + "    Office.context.document.settings.set(REGLAGE_ID, id);\n"
+   + "    Office.context.document.settings.saveAsync();\n  }",
+   "le reglage est enregistre des l'ouverture : Word demande d'enregistrer un"
+   + " document ou personne n'a tape",
    "volet"],
 ];
 

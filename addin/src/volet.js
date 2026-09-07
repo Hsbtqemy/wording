@@ -5,40 +5,70 @@
  * des evenements, paysage.js pour l'etat, composition.js pour le dessin. Ici on
  * ne fait que brancher, et c'est voulu : ce fichier ne peut etre eprouve ni par
  * la parite ni par les essais du pont, donc moins il decide, mieux c'est.
+ * magasin.js a ete detache pour la meme raison — l'arbitrage entre les deux
+ * copies du paysage est une decision, et une decision doit pouvoir s'eprouver
+ * sans hote.
  *
  * Ce qu'il porte quand meme, et qui n'est nulle part ailleurs :
  *
- *   - le rattachement du document a SON paysage (decision 11) ;
+ *   - la cle du DOSSIER, tiree de l'URL du document (decision 11) ;
+ *   - les deux magasins branches sur l'hote (decision 16) ;
  *   - la degradation quand WordApi 1.6 manque ;
  *   - le tic de deux secondes (decision 12).
  */
 
-import { Paysage } from "./paysage.js";
 import { Pont, INTERVALLE } from "./pont.js";
+import { Magasin, CLE_ETAT, REGLAGE_ID } from "./magasin.js";
 import { graine_du_document } from "./grammaire.js";
 import { vue_de_travail } from "./composition.js";
 
-const CLE_INDEX = "paysage:index";        // dossier -> identifiant
-const CLE_ETAT = "paysage:etat:";         // + identifiant
-const REGLAGE = "paysage.identifiant";
-
 let paysage = null;
 let pont = null;
+let magasin = null;
 let graine = 1;
 let dialogue = null;
 let aEcrire = false;
 
 // --------------------------------------------------------------------------
+// Les deux magasins (decision 16)
+// --------------------------------------------------------------------------
+// Tout ce qui arbitre entre eux est dans magasin.js ; ici on ne fait que les
+// brancher sur l'hote, chacun reduit a lire et ecrire.
+const DOSSIER = {
+  lire: (cle) => localStorage.getItem(cle),
+  ecrire: (cle, valeur) => localStorage.setItem(cle, valeur),
+};
+
+/**
+ * Le fichier.
+ *
+ * set() ne fait que garder le reglage en memoire pour la session ; c'est
+ * saveAsync qui l'ecrit dans le .docx — et qui marque le document comme
+ * modifie. Voir Magasin.copier : c'est pour ca qu'il n'est appele que quand le
+ * paysage a pousse, jamais a l'ouverture.
+ */
+const FICHIER = {
+  lire: (nom) => Office.context.document.settings.get(nom),
+  ecrire: (nom, valeur) => new Promise((tenu, rompu) => {
+    Office.context.document.settings.set(nom, valeur);
+    Office.context.document.settings.saveAsync((res) => {
+      if (res && res.status === Office.AsyncResultStatus.Succeeded) tenu();
+      else rompu((res && res.error) || new Error("saveAsync a refuse"));
+    });
+  }),
+};
+
+// --------------------------------------------------------------------------
 // Le perimetre (decision 11)
 // --------------------------------------------------------------------------
 /**
- * Le paysage appartient au DOSSIER, pas au fichier.
+ * Le paysage appartient au DOSSIER, pas au fichier — d'ou cette cle.
  *
- * L'identifiant est tire une fois et recopie dans les Settings de chaque
- * document du dossier. C'est LUI qui fait autorite, pas le nom du dossier :
- * deux theses rangees dans deux dossiers nommes « Chapitres » partageraient
- * sinon le meme paysage. Le dossier ne sert qu'a rattacher un document neuf a
- * un paysage existant.
+ * Elle ne fait pourtant pas autorite : c'est l'identifiant range dans les
+ * Settings du document qui la fait, sans quoi deux theses posees dans deux
+ * dossiers nommes « Chapitres » partageraient le meme paysage. Le dossier ne
+ * sert qu'a rattacher un document NEUF a un paysage existant. Cet ordre-la est
+ * dans Magasin.identifiant, avec le reste de ce qui decide.
  */
 function cle_du_dossier() {
   const url = (Office.context.document.url || "").replace(/\\/g, "/");
@@ -46,47 +76,19 @@ function cle_du_dossier() {
   return coupe > 0 ? url.slice(0, coupe) : url;
 }
 
-function lire_index() {
-  try {
-    return JSON.parse(localStorage.getItem(CLE_INDEX) || "{}") || {};
-  } catch {
-    return {};
-  }
-}
-
-function tirer_identifiant() {
-  // Pas de crypto.randomUUID partout ; deux nombres aleatoires suffisent, la
-  // valeur n'a besoin que d'etre unique sur cette machine.
-  return `p${Date.now().toString(36)}${Math.floor(Math.random() * 1e9).toString(36)}`;
-}
-
 function identifiant_du_document() {
   const dossier = cle_du_dossier();
-  let id = Office.context.document.settings.get(REGLAGE);
-  if (!id) {
-    // Ce document ne connait pas encore son paysage. S'il y en a un pour ce
-    // dossier, il le rejoint ; sinon on en ouvre un.
-    const index = lire_index();
-    id = index[dossier] || tirer_identifiant();
-    Office.context.document.settings.set(REGLAGE, id);
-    Office.context.document.settings.saveAsync();
-  }
-  const index = lire_index();
-  index[dossier] = id;
-  try {
-    localStorage.setItem(CLE_INDEX, JSON.stringify(index));
-  } catch { /* le stockage peut etre plein ou refuse : ce n'est pas fatal */ }
+  const connu = Office.context.document.settings.get(REGLAGE_ID);
+  const id = magasin.identifiant(dossier, connu);
+  // set() sans saveAsync : le reglage vit dans la session et partira avec la
+  // premiere copie, quand le paysage aura pousse. Enregistrer ici marquerait
+  // comme modifie un document que la personne n'a fait qu'ouvrir.
+  if (id !== connu) Office.context.document.settings.set(REGLAGE_ID, id);
   return { id, dossier };
 }
 
 function ranger() {
-  if (!paysage) return;
-  try {
-    localStorage.setItem(CLE_ETAT + paysage.identifiant, paysage.serialiser());
-  } catch {
-    // Rien a faire de mieux : un paysage qu'on ne peut pas ranger continue de
-    // vivre dans la session. Mieux vaut ca qu'une exception dans un tic.
-  }
+  if (paysage) magasin.ranger(paysage);
 }
 
 // --------------------------------------------------------------------------
@@ -202,6 +204,9 @@ async function tic() {
     }
     if (aEcrire) {
       ranger();
+      // Et la copie dans le document, qui se retient elle-meme : au plus une
+      // toutes les cinq minutes, et jamais si rien n'a pousse.
+      await magasin.copier(paysage);
       aEcrire = false;
     }
   } catch (e) {
@@ -260,8 +265,15 @@ Office.onReady(async (info) => {
     return;
   }
 
+  magasin = new Magasin(DOSSIER, FICHIER);
   const { id, dossier } = identifiant_du_document();
-  paysage = Paysage.depuis(localStorage.getItem(CLE_ETAT + id));
+  const choix = magasin.charger(id);
+  paysage = choix.paysage;
+  if (choix.source === "fichier") {
+    // Le seul cas qui merite une trace : le dossier ne l'avait plus. C'est
+    // exactement ce que la copie du point 16 existe pour rattraper.
+    console.info(`paysage : rendu par le document, ${choix.n_fichier} empreintes`);
+  }
   paysage.identifiant = id;
   paysage.cle_dossier = dossier;
   graine = graine_du_document(id);

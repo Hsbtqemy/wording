@@ -321,7 +321,9 @@ thèse est presque finie.
 `document.url` renvoie tantôt un chemin local tantôt une URL OneDrive, et bascule
 selon la synchronisation. Ne jamais utiliser la chaîne brute. Préfixer par
 `Office.context.partitionKey` quand il est défini (undefined sur Windows).
-Copie miroir dans les Settings de chaque document comme sauvegarde.
+Copie miroir dans les Settings de chaque document comme sauvegarde — c'est la
+décision 16, et elle a fini par valoir plus que la sauvegarde : c'est elle qui
+détache le paysage de l'hébergeur.
 
 ⚠️ **Un add-in Word ne peut pas lire un dossier.** Il est document-scoped. Le
 dossier est une *clé*, jamais un *scanner*. Un fichier n'est connu qu'une fois
@@ -574,8 +576,8 @@ ne connaît pas les lettres accentuées, `\d` ne connaît pas les chiffres arabe
 `.length` compte des unités UTF-16 quand `len()` compte des points de code.
 Aucune de ces erreurs ne fait planter quoi que ce soit — le texte se découpe un
 peu autrement, la famille bascule un peu plus tôt, et personne ne s'en aperçoit.
-`addin/parite/mutations.js` les réintroduit une par une : 47 sur 47 sont vues.
-Douze d'entre elles ne passent pas par la parité mais par les deux batteries à
+`addin/parite/mutations.js` les réintroduit une par une : 53 sur 53 sont vues.
+Seize d'entre elles ne passent pas par la parité mais par les deux batteries à
 hôte simulé — c'est la part du portage qu'aucun Python ne couvre, donc celle où
 une mutation qui échappe coûterait le plus cher.
 
@@ -847,6 +849,98 @@ le mécanisme n'exige rien de personne. Mais il ne remplace personne non plus.
 
 ---
 
+## 16. Deux magasins, et lequel gagne
+
+**Décidé :** le paysage vit dans le `localStorage`, et **chaque document en garde
+une copie dans son `.docx`**.
+
+Le point 11 met le paysage au niveau du **dossier**, ce qu'aucun fichier ne peut
+porter : il faut donc un magasin au-dessus des fichiers, et `localStorage` est le
+seul disponible. Mais il est indexé par **origine**. Tant que le volet est servi
+par GitHub Pages, le jardin dépend de cette adresse : en changer, passer à un
+domaine propre, ou simplement vider les données de site, le perdrait. Pour un
+cadeau censé durer le temps d'une thèse, c'était la mauvaise dépendance — et la
+dernière qui restait à un tiers.
+
+`Office.context.document.settings` est rangé **dans le `.docx` lui-même**. Il
+voyage donc avec le fichier : sauvegarde, clé USB, machine neuve, autre
+hébergeur. Mesuré : une thèse de 143 000 mots fait **78 Ko** d'état sérialisé
+(37 de registre, 41 de segments). Dans un document Word, ce n'est rien.
+
+### La règle d'arbitrage : le plus d'empreintes gagne
+
+À l'ouverture on lit les deux, et on garde **celui qui en a le plus**.
+
+C'est la décision 1 qui rend la règle sûre : rien ne recule jamais, le registre
+ne fait que grandir — y compris quand on reprend un paragraphe, puisqu'un texte
+retouché est un texte de plus. La comparaison est donc **monotone**, et ne peut
+pas se tromper de sens.
+
+Ni horodatage, ni numéro de révision : les deux mentent dès qu'une horloge est
+fausse ou qu'un fichier est restauré depuis une sauvegarde. Et une copie
+illisible, tronquée, ou d'une autre version repart vide — c'est `depuis()` qui le
+garantit, et la panne n°5 du portage l'a payé — donc à zéro empreinte : **elle
+perd toute seule**, sans qu'on ait à la valider en plus.
+
+À égalité, le dossier garde la main : c'est le magasin de travail, et basculer
+pour un contenu identique ne rapporterait rien.
+
+⚠️ **Ce que la règle ne couvre pas : deux branches qui divergent.** Elle suppose
+une histoire linéaire, où une copie est simplement en retard sur l'autre. Si la
+même thèse est écrite en parallèle sur deux machines, les deux registres
+grandissent séparément et la plus fournie écrase l'autre. Une fusion serait
+possible pour les empreintes, pas pour les segments : ils ont un ordre et des
+dates, et un plant ne se recoud pas. La branche la plus courte est donc perdue —
+c'est assumé, sans serveur il n'y a pas de troisième version pour trancher. Le
+cas visé est l'autre, et c'est le fréquent : une machine à la fois, et un magasin
+qui disparaît sous les pieds.
+
+### Quand on écrit, et pourquoi si rarement
+
+⚠️ **`saveAsync` marque le document comme modifié.** C'est ce qui a dicté toute
+la politique d'écriture, et c'est ce que la construction a appris.
+
+Le dossier s'écrit **à chaque tic** : synchrone, gratuit, sans effet sur le
+fichier. Le document, lui, ne se réécrit que si le paysage a **réellement**
+poussé, et au plus **une fois toutes les cinq minutes**.
+
+- *Rien n'a poussé.* Un tic peut rendre des verdicts sans une empreinte de plus :
+  le paragraphe vide que Word crée à chaque `Entrée`, un texte déjà connu retapé,
+  une annulation. On ne repose pas la même chose.
+- *C'est trop tôt.* Sans étranglement, 78 Ko repartiraient dans le document
+  toutes les deux secondes — mille huit cents fois par heure, chacune relançant
+  la synchronisation de qui le stocke en ligne. Ce qu'on risque à attendre :
+  cinq minutes de pousse, et seulement si le `localStorage` disparaît entre-temps,
+  puisque la copie n'est relue que là.
+- *Le document a refusé.* On n'insiste pas. Une limite ne bougera pas d'ici la
+  fin de la session, et redemander toutes les cinq minutes ne ferait que remplir
+  la console. Le volet ne dit rien : un cadeau ne prévient pas qu'il a mal dormi.
+
+**Et le réglage d'identité attend le même moment.** Il était jusqu'ici enregistré
+dès l'ouverture — donc ouvrir un document, regarder le volet et refermer
+suffisait à faire apparaître « voulez-vous enregistrer les modifications ? » sur
+un fichier où personne n'avait tapé une lettre. Il est maintenant posé en mémoire
+à l'ouverture et écrit par la **première copie**, c'est-à-dire quand le paysage a
+poussé — donc quand la personne a tapé, et que le document est déjà modifié de
+son fait. Le cadeau ne salit rien.
+
+### Où ça se vérifie
+
+`magasin.js` ne connaît pas Office.js, pas plus que `pont.js` : les deux magasins
+sont **injectés**, chacun réduit à `lire`/`ecrire`. L'arbitrage — la seule chose
+qui décide, ici — s'éprouve donc sans hôte du tout ; le reste contre l'Office.js
+simulé : la copie qui part à la première pousse, le `localStorage` effacé d'où le
+paysage revient entier, les deux étranglements, un document qui refuse, une copie
+tronquée qui ne casse pas l'ouverture.
+
+Le simulateur a dû devenir plus honnête pour ça. Il tenait **un seul sac** de
+réglages là où Word en a deux — `set()` garde en mémoire, `saveAsync` écrit dans
+le fichier — et il ignorait le rappel de `saveAsync`, donc un refus du document
+était indiscernable d'une réussite. Les deux raccourcis rendaient invisible
+exactement ce que cette décision règle.
+
+---
+
 ## Points ouverts
 
 1. **Le creux des phrases — le mécanisme est prêt, les phrases sont à écrire.**
@@ -907,20 +1001,15 @@ le mécanisme n'exige rien de personne. Mais il ne remplace personne non plus.
 
 ---
 
-**13. Sortir le paysage du `localStorage`.** Il est indexé par origine, donc lié
-à l'hébergeur. `Office.context.document.settings` est rangé **dans le .docx
-lui-même** et voyage avec le fichier — copie, sauvegarde, autre machine, autre
-hébergeur. Mesuré : une thèse de 143 000 mots fait 78 Ko d'état sérialisé (37 de
-registre, 41 de segments), ce qui n'est rien dans un document Word.
+13. ~~**Sortir le paysage du `localStorage`.**~~ **Réglé** — voir la décision 16.
+    Chaque document garde une copie de l'état dans son `.docx` ; à l'ouverture,
+    c'est celle qui a le plus d'empreintes qui fait autorité. L'origine qui
+    change, la machine neuve et les données de site vidées sont couvertes.
 
-Le `localStorage` resterait le magasin de travail, parce qu'il est au niveau du
-*dossier* — ce que le point 11 demande, et qu'un fichier ne peut pas être. Mais
-chaque document en garderait une copie. À l'ouverture : si le `localStorage` est
-vide et que le document porte une copie, on restaure ; si les deux existent, on
-prend celui qui a le plus d'empreintes. Le point 1 dit que rien ne recule jamais,
-donc la règle est monotone et ne peut pas se tromper.
-
-Couvre l'origine qui change, la machine neuve, et les données de site vidées.
+    La construction a trouvé une chose que le point ne disait pas : `saveAsync`
+    **marque le document comme modifié**. Toute la politique d'écriture en
+    découle — copie rare, jamais pour rien, et le réglage d'identité qui attend
+    la première pousse au lieu de partir à l'ouverture.
 
 ---
 
@@ -951,7 +1040,8 @@ deux divergent, c'est le JavaScript qui a un bug.
 | `src/alea.js` | le générateur de Python, refait à l'identique |
 | `src/blake2s.js` | BLAKE2s, pour la graine du document |
 | `src/composition.js` | portage de `composition.py`, sans les planches |
-| `src/pont.js` | le pont vers Word — la seule part sans Python en face |
+| `src/pont.js` | le pont vers Word — sans Python en face |
+| `src/magasin.js` | les deux copies du paysage, et laquelle gagne (point 16) |
 | `essais.js` | **le pont, contre un Word simulé, avec un code de sortie** |
 | `essais_volet.js` | **le câblage Office.js, contre un hôte simulé** |
 | `src/volet.js` | le seul fichier qui parle à Office.js |

@@ -12,12 +12,11 @@
   exige que le volet vienne d'une URL, et Pages est gratuit tant que le depot
   est public.
 
-  ⚠️ CETTE ADRESSE EST AUSSI L'IDENTITE DU MAGASIN. Le paysage vit dans le
-  localStorage, qui est indexe par ORIGINE : changer d'hebergeur, ou passer a un
-  domaine propre, perdrait le jardin. C'est la seule dependance qui reste a un
-  tiers, et le point ouvert 13 dit comment on compte s'en defaire — une copie de
-  l'etat dans les Settings du document, qui sont ranges dans le .docx lui-meme
-  et voyagent donc avec le fichier.
+  Cette adresse est aussi l'identite du magasin : le paysage vit dans le
+  localStorage, qui est indexe par ORIGINE. La decision 16 fait que ce n'est plus
+  une dependance — chaque document garde une copie de son paysage dans les
+  Settings, qui sont ranges dans le .docx lui-meme et voyagent avec le fichier.
+  Changer d'hebergeur, ou de machine, ne perd donc plus le jardin.
 
   ⚠️ AUCUNE contrainte <Requirements> n'est declaree, alors que le code a besoin
   de WordApi 1.6 pour les evenements de paragraphe. C'est deliberé : une

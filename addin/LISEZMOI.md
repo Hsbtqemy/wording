@@ -24,10 +24,15 @@ Chaque `git push` sur `main` republie le site, avec une minute de délai et un
 cache de dix minutes : après une modification, Word peut encore servir l'ancien
 fichier un moment.
 
-⚠️ **Cette adresse est aussi l'identité du magasin.** Le paysage vit dans le
-`localStorage`, qui est indexé par *origine*. Changer d'hébergeur — ou passer à
-un domaine propre — perdrait le jardin. C'est la seule dépendance qui reste à un
-tiers ; le point ouvert 13 dit comment on compte s'en défaire.
+Cette adresse est aussi l'identité du magasin : le paysage vit dans le
+`localStorage`, qui est indexé par *origine*. **Ce n'est plus une dépendance** —
+chaque document garde une copie de son paysage dans le `.docx` lui-même
+(décision 16). Changer d'hébergeur, changer de machine, vider les données de
+site : le paysage revient du fichier à l'ouverture suivante.
+
+⚠️ Il ne revient que d'un document où l'on a **écrit avec le volet ouvert** : la
+copie part quand le paysage pousse, pas avant. Un document qu'on n'a fait
+qu'ouvrir ne porte rien — c'est délibéré, il ne doit pas ressortir « modifié ».
 
 ## Charger le manifeste dans Word
 
@@ -53,7 +58,7 @@ cocher « Afficher dans le menu ». Redémarrer Word ; l'add-in est sous
 
 Le portage est vérifié par 164 000 comparaisons contre le Python, et le câblage
 par deux batteries contre un Word simulé. **Rien de tout cela ne prouve que le
-vrai Word se comporte comme le faux.** Trois choses valent d'être regardées
+vrai Word se comporte comme le faux.** Quatre choses valent d'être regardées
 tout de suite :
 
 **Le curseur.** Taper trois paragraphes d'affilée, sans revenir en arrière. Les
@@ -67,6 +72,11 @@ commencent par les mêmes mots.
 
 **Le collage.** Coller un chapitre entier. Rien ne doit pousser — la forme
 attend qu'on retravaille le texte collé.
+
+**Le document qu'on n'a fait qu'ouvrir.** Ouvrir un chapitre, regarder le volet,
+fermer sans rien taper. Word ne doit **pas** demander d'enregistrer les
+modifications. Le paysage n'écrit dans le fichier qu'une fois qu'il a poussé, et
+c'est la décision 16 qui l'exige : un cadeau ne salit pas les fichiers.
 
 Et une chose qu'aucun essai ne peut trancher, **le point ouvert 12** : la
 transition du germe vers une famille est une coupure. À 800 mots, une chaîne
@@ -88,7 +98,8 @@ dire que le paysage n'a pas été retrouvé.
 - **Document jamais enregistré** : `Office.context.document.url` est vide tant
   que le fichier n'a pas de chemin, donc le paysage ne peut pas être rattaché à
   un dossier. Enregistrer le document une fois suffit.
-- **Le paysage vit dans le `localStorage` du navigateur intégré à Word.** Vider
-  les données de site le perd. C'est un choix de la décision 13 : aucun serveur,
-  donc aucun compte à créer et rien à payer — mais aussi rien à récupérer
-  ailleurs.
+- **Le paysage vit dans le `localStorage` du navigateur intégré à Word**, et
+  chaque document en garde une copie (décision 16). Vider les données de site ne
+  le perd donc plus : il revient du `.docx` à l'ouverture suivante, et la console
+  le dit — « rendu par le document, N empreintes ». Un volet vide sur un document
+  où l'on a déjà écrit veut dire que ni l'un ni l'autre n'a été retrouvé.
