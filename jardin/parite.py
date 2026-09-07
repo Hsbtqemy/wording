@@ -781,6 +781,132 @@ def cas_rattachement() -> dict:
     return {"entree": entree, "jour": 40, "heure": 10, "etat": p.etat()}
 
 
+def cas_guet() -> dict:
+    """
+    Le guet, releve par releve, avec ses reponses.
+
+    Le premier morceau du cablage Word que la parite puisse couvrir : le
+    rapprochement de deux instantanes est de la logique pure sur des tableaux de
+    chaines, donc il a un Python en face. pont.js ne l'a jamais eu.
+
+    On rejoue une session d'ecriture, et on enregistre a chaque releve les faits
+    rendus, LES IDENTIFIANTS, et le compte de paragraphes. Les identifiants
+    comptent autant que les faits : c'est leur stabilite qui empeche une
+    insertion de se lire comme une pluie de retouches.
+
+    ⚠️ Le cahier REFUSE de se construire s'il ne traverse pas les quatre genres
+    de faits. Un cahier qui a l'air complet et ne passe jamais par le mecanisme
+    surveille a deja coute cher a ce projet — sur 616 appels, le verdict frappe
+    n'apparaissait pas une fois.
+    """
+    from guet import Guet, SEPARATEUR_PARAGRAPHE, SEPARATEURS_LIGNE
+
+    cr, vt = SEPARATEUR_PARAGRAPHE, SEPARATEURS_LIGNE[0]
+    rng = random.Random(77)
+    familles = list(corpus.PROFILS)
+    phrases = [corpus.paragraphe(rng, familles[i % len(familles)])[0]
+               for i in range(12)]
+
+    def corps(paragraphes: list) -> str:
+        """Des paragraphes, chacun fait de lignes : les deux niveaux de Word."""
+        return cr.join(vt.join(lignes) for lignes in paragraphes)
+
+    # ⚠️ DEUX LIGNES QUI SONT DES NOMS DE PROPRIETE HERITEE. En JavaScript,
+    # un index construit sur un objet nu trouverait une entree pour
+    # « __proto__ » ou « constructor » sans que personne ne l'y ait mise, et
+    # apparierait des lignes qui n'existent pas. Python n'a pas ce piege, donc
+    # le cahier doit le tendre lui-meme, sinon la parite ne peut pas le voir.
+    depart = [["Chapitre premier"],
+              [phrases[0], "__proto__", phrases[1], "constructor"],
+              [phrases[2], "", "", phrases[9]]]
+    etapes = []
+
+    # 1. On tape au bout d'une ligne, par morceaux, comme on ecrit vraiment.
+    a = [list(p) for p in depart]
+    a[1][1] = phrases[1][:40]
+    etapes.append([list(p) for p in a])
+    a[1][1] = phrases[1][:80]
+    etapes.append([list(p) for p in a])
+    a[1][1] = phrases[1]
+    etapes.append([list(p) for p in a])
+
+    # 2. Entree : une ligne vide nait sous le curseur, puis se remplit.
+    a[1].append("")
+    etapes.append([list(p) for p in a])
+    a[1][2] = phrases[3][:30]
+    etapes.append([list(p) for p in a])
+    a[1][2] = phrases[3]
+    etapes.append([list(p) for p in a])
+
+    # 3. Une ligne inseree AU MILIEU : le cas qui tient l'invariant.
+    a[1].insert(1, phrases[4])
+    etapes.append([list(p) for p in a])
+
+    # 4. Un deplacement : gratuit (point 3), donc aucun fait.
+    a[1][1], a[1][2] = a[1][2], a[1][1]
+    etapes.append([list(p) for p in a])
+
+    # 5. Une suppression.
+    del a[1][2]
+    etapes.append([list(p) for p in a])
+
+    # 6. Un collage de trois lignes d'un bloc.
+    a[2].extend([phrases[5], phrases[6], phrases[7]])
+    etapes.append([list(p) for p in a])
+
+    # 6bis. On modifie de part et d'autre des deux lignes vides, dans le meme
+    #       releve. Le rognage ne peut plus les emporter, elles restent dans la
+    #       fenetre, et l'ordre d'appariement des lignes egales devient visible :
+    #       pop(0) et pop() ne rendent alors pas les memes identifiants.
+    a[2][0] = phrases[2] + " Une precision ajoutee au bout."
+    a[2][3] = phrases[9] + " Et une autre, a l'autre bout."
+    etapes.append([list(p) for p in a])
+
+    # 7. Un paragraphe NEUF : la table des styles s'allonge, et le compte de
+    #    paragraphes doit le dire.
+    a.append([phrases[8]])
+    etapes.append([list(p) for p in a])
+
+    # 8. Le calme, assez longtemps pour que la visite se ferme.
+    for _ in range(5):
+        etapes.append([list(p) for p in a])
+
+    # 9. Tout effacer : chaque ligne disparait.
+    etapes.append([[""]])
+
+    g = Guet(silence=3)
+    def styles_de(paras):
+        # Le dernier paragraphe est une citation : sans un style DIFFERENT plus
+        # loin que le premier, indexer par ligne ou par paragraphe donnerait le
+        # meme resultat, et la mutation qui les confond echapperait.
+        return ["Titre 1"] + ["Normal"] * (len(paras) - 2) + ["Citation"]
+    releves = []
+    depart_corps = corps(depart)
+    amorce = g.amorcer(depart_corps, styles_de(depart))
+    # Pris ICI et pas apres la boucle : a la fin le document est vide, donc
+    # g.ids l'est aussi, et le cahier promettait une liste vide la ou le
+    # portage rend les quatre identifiants de l'amorce. La parite l'a dit tout
+    # de suite — c'est le cahier qui avait tort, pas le code.
+    ids_depart = list(g.ids)
+    for paras in etapes:
+        texte = corps(paras)
+        styles = styles_de(paras)
+        faits = g.relever(texte, styles)
+        releves.append({"texte": texte, "styles": styles, "faits": faits,
+                        "ids": list(g.ids), "paragraphes": g.paragraphes,
+                        "visitee": g.visitee, "calme": g.calme})
+
+    genres = {f["type"] for r in releves for f in r["faits"]}
+    attendus = {"nee", "retouchee", "disparue", "visite_finie"}
+    if genres != attendus:
+        raise SystemExit(
+            "cahier du guet incomplet : %s manquent" % (attendus - genres))
+
+    return {"silence": 3, "depart": depart_corps,
+            "styles_depart": styles_de(depart), "amorce": amorce,
+            "ids_depart": ids_depart, "releves": releves}
+
+
 # --------------------------------------------------------------------------
 def fabriquer() -> dict:
     import random
@@ -810,6 +936,7 @@ def fabriquer() -> dict:
         "etat": p.etat(),
         "serialise": p.serialiser(),
         "rattachement": cas_rattachement(),
+        "guet": cas_guet(),
         # Le nombre d'empreintes distinctes sur le corpus entier. Les deux
         # fonctions de hachage sont differentes ; ce chiffre est la seule chose
         # qu'on puisse honnetement leur demander d'avoir en commun.

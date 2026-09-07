@@ -23,6 +23,7 @@ import {
   Paysage, empreinte, normaliser, TABLES as TABLES_PAYSAGE,
 } from "../src/paysage.js";
 import { Alea } from "../src/alea.js";
+import { Guet } from "../src/guet.js";
 import {
   palette, Teinte, Toile, dessiner, germe, creature, depuis_plant,
   graine_du_document, TABLES as TABLES_GRAMMAIRE,
@@ -555,6 +556,35 @@ titre("paysage");
   }
   console.log(`  ${Object.keys(cahier.composition.vues).length} vues,`
     + ` ${cahier.composition.gabarits.length} gabarits`);
+}
+
+// --------------------------------------------------------------------------
+// Le guet
+// --------------------------------------------------------------------------
+// LE PREMIER MORCEAU DU CABLAGE WORD QUE LA PARITE PUISSE COUVRIR. pont.js et
+// volet.js n'ont jamais eu de Python en face ; le rapprochement de deux
+// instantanes, lui, est de la logique pure sur des tableaux de chaines.
+//
+// On compare les faits ET LES IDENTIFIANTS a chaque releve. Les identifiants
+// comptent autant : c'est leur stabilite qui empeche une insertion de se lire
+// comme une pluie de retouches, donc de l'extension prise pour de la maturite.
+titre("guet");
+{
+  const c = cahier.guet;
+  const g = new Guet(c.silence);
+  memeProfond("guet : amorce", c.amorce, g.amorcer(c.depart, c.styles_depart));
+  memeProfond("guet : identifiants de l'amorce", c.ids_depart, g.ids);
+  let genres = 0;
+  for (let n = 0; n < c.releves.length; n++) {
+    const r = c.releves[n];
+    memeProfond(`guet : releve ${n} faits`, r.faits, g.relever(r.texte, r.styles));
+    memeProfond(`guet : releve ${n} identifiants`, r.ids, g.ids);
+    meme(`guet : releve ${n} paragraphes`, r.paragraphes, g.paragraphes);
+    meme(`guet : releve ${n} visitee`, r.visitee, g.visitee);
+    meme(`guet : releve ${n} calme`, r.calme, g.calme);
+    genres += r.faits.length;
+  }
+  console.log(`  ${c.releves.length} releves, ${genres} faits`);
 }
 
 // --------------------------------------------------------------------------

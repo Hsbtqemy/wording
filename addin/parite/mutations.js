@@ -385,6 +385,64 @@ const MUTATIONS = [
    "le reglage est enregistre des l'ouverture : Word demande d'enregistrer un"
    + " document ou personne n'a tape",
    "volet"],
+
+  // ------------------------------------------------------------------- guet
+  // Le guet est le premier morceau du cablage Word couvert par la PARITE : le
+  // rapprochement de deux instantanes a un Python en face. Ces mutations se
+  // verifient donc contre le cahier, pas contre un hote simule.
+  ["guet.js",
+   'export const SEPARATEURS_LIGNE = ["\\u000B", "\\n"];',
+   'export const SEPARATEURS_LIGNE = ["\\n"];',
+   "point 14 : le saut de ligne cesse de separer, 35 pages font une seule ligne"],
+
+  ["guet.js",
+   "    while (libres && libres.length) {",
+   "    while (false) {",
+   "les lignes egales ne se reconnaissent plus : un deplacement devient deux"
+   + " retouches, donc de la maturite inventee"],
+
+  ["guet.js",
+   "      const i = libres.shift();",
+   "      const i = libres.pop();",
+   "pop() pour pop(0) : parmi des lignes identiques, c'est la derniere qui est"
+   + " appariee, et les identifiants divergent de la specification"],
+
+  ["guet.js",
+   "  return texte.split(SEPARATEUR_PARAGRAPHE).length;",
+   "  return texte.split(SEPARATEURS_LIGNE[0]).length;",
+   "la peremption des styles se compte en LIGNES : la table ne se rafraichit"
+   + " plus quand un paragraphe apparait"],
+
+  ["guet.js",
+   "  const rang = appartenance[k];\n"
+   + "  return rang < styles.length ? styles[rang] : \"Normal\";",
+   "  return \"Normal\";",
+   "plus aucun style ne remonte : une citation compte comme de l'ecriture"
+   + " (point 3) et un Titre 1 n'ouvre plus de plant (point 6)"],
+
+  ["guet.js",
+   "      lignes.push(m);\n      appartenance.push(rang);",
+   "      lignes.push(m);\n      appartenance.push(lignes.length - 1);",
+   "le style est indexe par LIGNE et non par paragraphe : deux lignes d'un meme"
+   + " paragraphe recoivent deux styles differents"],
+
+  ["guet.js",
+   "  const disparues = restants_a.slice(restants_b.length);",
+   "  const disparues = [];",
+   "une ligne supprimee ne disparait plus : le miroir garde un fantome"],
+
+  ["guet.js",
+   "        ids[j] = this.ids[i];\n        faits.push({ type: \"retouchee\"",
+   "        ids[j] = this._neuf();\n        faits.push({ type: \"retouchee\"",
+   "une ligne retouchee change d'identifiant : chaque frappe devient une ligne"
+   + " neuve"],
+
+  ["guet.js",
+   "      if (this.calme >= this.silence) {",
+   "      if (this.calme >= 1) {",
+   "la visite se ferme au premier releve calme : une pause pour reflechir"
+   + " devient une reprise, et l'extension s'effondre"],
+
 ];
 
 if (!existsSync(CAS)) {
@@ -413,6 +471,28 @@ const sauvegardes = Object.fromEntries(
   fichiers.map((f) => [f, readFileSync(join(SRC, f), "utf-8")]),
 );
 
+// Les motifs d'abord, avant de toucher un seul fichier.
+//
+// Un motif perime se signalait « obsolete » en cours de route, apres avoir
+// laisse tourner la verification complete pour toutes les mutations d'avant —
+// des minutes pour apprendre qu'une ligne avait bouge. Pire, « obsolete » a
+// l'air d'un probleme de maintenance et non d'une mutation qui ne teste rien.
+// C'est arrive trois fois dans la meme journee, dans les deux langages : le
+// motif contenait un echappement que le langage interpretait a l'execution,
+// donc il cherchait un vrai caractere de controle la ou la source porte ses
+// quatre caracteres. Le controle est instantane, il vient en premier.
+const perimes = MUTATIONS.filter(([f, vieux]) => !sauvegardes[f].includes(vieux));
+if (perimes.length) {
+  console.log("=".repeat(78));
+  console.log("MOTIFS PERIMES — rien n'a ete mute");
+  console.log("=".repeat(78));
+  for (const [fichier, , , libelle] of perimes) {
+    console.log(`  ${fichier} : ${libelle}`);
+  }
+  console.log(`\n${perimes.length} motif(s) ne mordent plus sur la source.`);
+  process.exit(2);
+}
+
 const barre = "=".repeat(78);
 console.log(barre);
 console.log("MUTATIONS DU PORTAGE — le verificateur sait-il echouer ?");
@@ -424,11 +504,8 @@ const manquees = [];
 for (const [fichier, vieux, neuf, libelle, verificateur] of MUTATIONS) {
   const chemin = join(SRC, fichier);
   const src = sauvegardes[fichier];
-  if (!src.includes(vieux)) {
-    manquees.push([libelle, "motif introuvable — mutation obsolete"]);
-    console.log(`  ????  ${libelle}`);
-    continue;
-  }
+  // Plus besoin de tester le motif ici : le controle prealable a deja rendu
+  // la main si l'un d'eux ne mordait plus.
   const cote = chemin + ".intact";
   writeFileSync(cote, src, "utf-8");
   writeFileSync(chemin, src.replace(vieux, neuf), "utf-8");
