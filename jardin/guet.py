@@ -34,6 +34,45 @@ retrouve ce qu'elle a ecrit quelle que soit la touche employee.
 # panne a ete faite deux fois avant d'etre ecrite ici.
 SEPARATEURS = ("\r", "\x0b", "\n")
 
+# Combien de releves sans un changement avant qu'une visite soit close.
+#
+# LE CURSEUR EST MORT AVEC CE DOCUMENT. Sous les evenements, quitter() partait
+# quand la selection changeait de paragraphe. Le guet ne peut plus le savoir :
+# sur un document ou tout tient en un paragraphe, getSelection().paragraphs rend
+# les trente-cinq pages, et aucune ligne ne s'en deduit.
+#
+# Il faut donc fermer la visite autrement. Deux choses avant de choisir un
+# nombre, et elles reduisent beaucoup l'enjeu :
+#
+#   - CHANGER DE LIGNE FERME DEJA LA VISITE, sans rien ajouter. _actif n'a
+#     qu'une case : ecrire ailleurs la deplace, et revenir tombe forcement dans
+#     la branche « reprise ». Le guet n'a rien a faire pour ca ;
+#   - TRIPOTER NE POUSSE PAS, meme dans une visite ouverte. La branche frappe
+#     compte max(0, mots(nouveau) - mots(ancien)) : reecrire quarante fois la
+#     meme phrase sans l'allonger ajoute zero.
+#
+# Ce que ce silence protege n'est donc pas l'extension, c'est LA MATURITE. Sans
+# lui, revenir sur une ligne une semaine plus tard reste la meme visite,
+# plant.reprises ne monte jamais, et l'element cesse de murir — l'autre axe
+# meurt sans rien dire.
+#
+# Trop court, une pause pour reflechir devient une reprise, chaque continuation
+# cesse de compter en extension, et la forme ne pousse plus ; trop long, plus
+# rien ne murit. Cette constante arbitre l'equilibre des deux axes du projet et
+# ne se choisit pas au gout.
+#
+# LA BORNE BASSE EST MESUREE, sur la machine cible et sur du vrai texte. Le
+# guet a compte 27 changements sur 47 releves en ecriture active (57 %), et 33
+# sur 139 en frappe distraite (24 %). Les trous de deux a quatre releves sont
+# donc ordinaires, et une suite de soixante releves calmes ne peut pas arriver
+# pendant qu'on ecrit. Le decoupage abusif est exclu.
+#
+# ⚠️ LA BORNE HAUTE, ELLE, RESTE UN JUGEMENT. Soixante releves font deux
+# minutes : assez pour traverser une pause de reflexion, pas pour traverser un
+# cafe. C'est defendable, ce n'est pas mesure — a confirmer au banc, en
+# regardant comment les deux axes repondent quand on fait varier ce nombre.
+SILENCE = 60
+
 
 def decouper(texte):
     """Le texte du corps, rendu en lignes.
@@ -159,10 +198,15 @@ class Guet:
     stable tant que la ligne existe — ce dont le rapprochement se charge.
     """
 
-    def __init__(self):
+    def __init__(self, silence=SILENCE):
         self.lignes = []        # le dernier instantane
         self.ids = []           # un identifiant par ligne, meme longueur
         self._suivant = 0
+        # La visite en cours : la derniere ligne qui a bouge, et depuis combien
+        # de releves elle ne bouge plus. Voir SILENCE.
+        self.silence = silence
+        self.visitee = None
+        self.calme = 0
 
     def _neuf(self):
         self._suivant += 1
@@ -216,4 +260,21 @@ class Guet:
 
         self.lignes = nouvelles
         self.ids = ids
+
+        # La visite. Elle se ferme d'elle-meme quand on ecrit ailleurs — _actif
+        # n'a qu'une case — donc il ne reste ici qu'a fermer celle qu'on a
+        # ABANDONNEE sans rien toucher d'autre. Sans ca, plant.reprises ne
+        # monterait plus jamais et l'element cesserait de murir.
+        remuees = [f["id"] for f in faits if f["type"] != "disparue"]
+        if remuees:
+            self.visitee = remuees[-1]
+            self.calme = 0
+        elif self.visitee is not None:
+            self.calme += 1
+            if self.calme >= self.silence:
+                faits.append({"type": "visite_finie", "id": self.visitee,
+                              "texte": None, "ancien": None})
+                self.visitee = None
+                self.calme = 0
+
         return faits
