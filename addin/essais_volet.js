@@ -297,6 +297,11 @@ suite.push(["un Word trop ancien dit ce qui manque au lieu de rester noir",
     // un diff sur des instantanes complets, ou une continuite devinee.
     vrai(/corps en un bloc : 1 lignes en \d+ \d+ \d+ \d+ ms/.test(mot),
          `le volet doit mesurer body.text, obtenu : ${mot}`);
+    vrai(/tout sans le style : \d+ \d+ \d+ ms/.test(mot),
+         `et separer le cout du style, obtenu : ${mot}`);
+    // Sans numero de sonde, une lecture rapportee est indechiffrable : on a
+    // deja pris pour neuve une mesure produite par du code remplace depuis.
+    vrai(/sonde \d+/.test(mot), `la sonde doit se nommer, obtenu : ${mot}`);
   }]);
 
 suite.push(["ouvrir un document ne le marque pas comme modifie", async () => {

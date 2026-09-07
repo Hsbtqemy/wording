@@ -198,7 +198,11 @@ function dire(texte) {
  * ici reviendrait a mesurer sa propre hypothese.
  */
 async function signalement() {
-  const morceaux = [];
+  // ⚠️ A INCREMENTER A CHAQUE CHANGEMENT DE SONDE. Word garde longtemps sa
+  // copie des fichiers du volet, et une lecture rapportee sans ce numero est
+  // indechiffrable : on a deja pris pour neuve une mesure produite par du code
+  // remplace depuis. Un chiffre faux serait pire que pas de chiffre.
+  const morceaux = ["sonde 4"];
   try {
     let haut = "aucun";
     for (const v of ["1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8"]) {
@@ -307,6 +311,32 @@ async function signalement() {
     morceaux.push(`corps en un bloc : ${lignes} lignes en ${t.join(" ")} ms`);
   } catch {
     morceaux.push("corps en un bloc illisible");
+  }
+
+  // La troisieme hypothese, laissee passer jusqu'ici : les 45 ms chargeaient
+  // « items/text,items/style ». Or resoudre un style coute souvent bien plus
+  // cher que lire du texte — Word doit remonter la chaine des styles pour
+  // chacun. Le guet a besoin du style (decision 6 : un Titre 1 ouvre un plant),
+  // mais s'il ne coute presque rien sans lui, on saura que c'est LUI qu'il faut
+  // aller chercher autrement, et pas le texte.
+  try {
+    const t = [];
+    for (let i = 0; i < 3; i++) {
+      const t0 = Date.now();
+      // eslint-disable-next-line no-await-in-loop
+      await Word.run(async (ctx) => {
+        const paras = ctx.document.body.paragraphs;
+        paras.load("items/text");
+        await ctx.sync();
+        let total = 0;
+        for (const p of paras.items) total += p.text.length;
+        return total;
+      });
+      t.push(Date.now() - t0);
+    }
+    morceaux.push(`tout sans le style : ${t.join(" ")} ms`);
+  } catch {
+    morceaux.push("lecture sans style impossible");
   }
   return morceaux.join(" · ");
 }
