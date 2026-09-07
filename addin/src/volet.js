@@ -279,6 +279,60 @@ async function signalement() {
   return morceaux.join(" · ");
 }
 
+/**
+ * ECHAFAUDAGE, et le plus important des trois.
+ *
+ * Prive d'evenements de paragraphe, le seul repli possible est un GUET : le tic
+ * regarde le paragraphe sous le curseur au lieu d'etre prevenu. Tout cela
+ * repose sur DocumentSelectionChanged — de l'API commune, donc presente ici.
+ * Mais « presente » ne dit pas « se declenche quand on tape ». Si l'evenement
+ * ne partait qu'au clic, la decision 2 tomberait, et on ne le decouvrirait
+ * qu'apres avoir tout construit.
+ *
+ * Alors on compte, en clair, dans le volet — les trois nombres qui decident :
+ *
+ *   signaux      combien de fois la selection s'est annoncee
+ *   releves      combien de fois on a pu lire le paragraphe sous le curseur
+ *   vus          combien de ces releves ont vu le texte CHANGER
+ *
+ * `vus` est celui qui compte. S'il monte pendant qu'on tape, le guet marche et
+ * la frappe est visible sans aucun evenement de paragraphe. S'il reste a zero,
+ * il n'y a pas de repli de ce cote-la et il faut chercher ailleurs.
+ *
+ * Rien ici ne touche au paysage : ce chemin ne fait pousser rien du tout.
+ */
+function guetter(phrase, sonde) {
+  let signaux = 0;
+  let releves = 0;
+  let vus = 0;
+  let precedent = null;
+  const montrer = () => dire(`${phrase}\n\n${sonde}\n\nguet : ${signaux} signaux`
+    + ` · ${releves} releves · ${vus} changements vus`);
+  montrer();
+
+  try {
+    Office.context.document.addHandlerAsync(
+      Office.EventType.DocumentSelectionChanged,
+      () => { signaux += 1; montrer(); },
+    );
+  } catch { /* si meme ca manque, le compteur reste a zero et le dit */ }
+
+  setInterval(async () => {
+    try {
+      const texte = await Word.run(async (ctx) => {
+        const p = ctx.document.getSelection().paragraphs.getFirstOrNullObject();
+        p.load("text");
+        await ctx.sync();
+        return p.isNullObject ? null : p.text;
+      });
+      releves += 1;
+      if (precedent !== null && texte !== precedent) vus += 1;
+      precedent = texte;
+      montrer();
+    } catch { /* un releve manque n'arrete pas le guet */ }
+  }, INTERVALLE);
+}
+
 // --------------------------------------------------------------------------
 // Le tic (decision 12)
 // --------------------------------------------------------------------------
@@ -355,9 +409,11 @@ Office.onReady(async (info) => {
   // On verifie la version ICI et pas dans le manifeste : une contrainte non
   // satisfaite dans le manifeste rend l'add-in invisible, sans un mot.
   if (!Office.context.requirements.isSetSupported("WordApi", "1.6")) {
-    dire("Il manque une version de Word un peu plus recente pour que le "
-       + "paysage suive l'ecriture. Tout le reste est deja la."
-       + `\n\n${await signalement()}`);
+    const phrase = "Il manque une version de Word un peu plus recente pour que "
+      + "le paysage suive l'ecriture. Tout le reste est deja la.";
+    const sonde = await signalement();
+    dire(`${phrase}\n\n${sonde}`);
+    guetter(phrase, sonde);
     return;
   }
 

@@ -326,6 +326,14 @@ const MUTATIONS = [
    "la cle du dossier devient le chemin du FICHIER : plus aucun partage",
    "volet"],
 
+  // ECHAFAUDAGE, a retirer avec le guet. Un instrument qui compte faux est pire
+  // que pas d'instrument : on batirait la decision 17 sur une lecture inventee.
+  ["volet.js",
+   "      if (precedent !== null && texte !== precedent) vus += 1;",
+   "      if (precedent !== null && texte === precedent) vus += 1;",
+   "le guet compte les releves qui n'ont RIEN vu : la frappe parait invisible",
+   "volet"],
+
   // ------------------------------------------------------------------ magasin
   // La copie du paysage dans le .docx (decision 16). Aucune de ces regressions
   // ne fait planter quoi que ce soit : elles laissent le volet dessiner

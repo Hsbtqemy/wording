@@ -265,7 +265,11 @@ suite.push(["un Word trop ancien dit ce qui manque au lieu de rester noir",
     await demarrer(etat);
     const mot = etat.elements.mot.textContent;
     vrai(mot.length > 20, "le volet doit expliquer, pas se taire");
-    vrai(!etat.tic, "et ne rien armer");
+    // L'invariant n'est plus « ne rien armer » depuis que le guet mesure : il
+    // arme bien un releve. Il est, et il l'a toujours ete, que rien ne pousse.
+    vrai(!etat.elements.paysage.innerHTML.includes("<svg"),
+         "aucun paysage ne doit etre dessine");
+    egal(etat.stockage.size, 0, "ni quoi que ce soit range");
     // ECHAFAUDAGE : sur un Office LTSC, gele a sa version de sortie, savoir
     // QUE ca manque ne sert a rien — il faut savoir jusqu'ou l'hote va.
     vrai(mot.includes("WordApi 1.5"),
@@ -299,6 +303,32 @@ suite.push(["ouvrir un document ne le marque pas comme modifie", async () => {
   egal(etat.persistes["paysage.identifiant"], undefined,
        "et rien n'est encore ecrit dans le fichier");
 }]);
+
+// Le risque le plus lourd du repli : tout le guet repose sur
+// DocumentSelectionChanged, qui est present sur un Word de 2021 — mais present
+// ne dit pas qu'il se declenche a la frappe. Ce que le volet compte, cet essai
+// verifie qu'il le compte juste.
+suite.push(["prive d'evenements, le volet compte ce que le curseur laisse voir",
+  async () => {
+    const etat = monter_hote({ version16: false, paragraphes: [{ texte: PHRASE }] });
+    await demarrer(etat);
+    vrai(/guet : 0 signaux · 0 releves · 0 changements vus/
+      .test(etat.elements.mot.textContent),
+         `le guet doit partir de zero, obtenu : ${etat.elements.mot.textContent}`);
+
+    const p = etat.paras[0];
+    etat.selection = p.id;
+    await etat.ecouteurs.documentSelectionChanged();
+    await etat.tic();                       // premier releve : rien a comparer
+    p.text = `${PHRASE} Et un mot de plus.`;
+    await etat.tic();                       // celui-la doit VOIR la frappe
+
+    const mot = etat.elements.mot.textContent;
+    vrai(/guet : 1 signaux · 2 releves · 1 changements vus/.test(mot),
+         `le guet doit voir la frappe sans aucun evenement, obtenu : ${mot}`);
+    vrai(!etat.elements.paysage.innerHTML.includes("<svg"),
+         "et ne toujours rien faire pousser");
+  }]);
 
 // Decision 11 : le paysage appartient au DOSSIER. Un second document du meme
 // dossier rejoint le paysage du premier ; un document d'ailleurs en ouvre un
