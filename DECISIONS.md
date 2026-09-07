@@ -397,13 +397,22 @@ Word sera le travail du volet, et de lui seul.
 `addin/src/blake2s.js` — pour la graine du document, qui ne peut pas diverger.
 `addin/src/grammaire.js` — la couleur, la primitive, les quatre familles, le
 germe. Les planches restent en Python : elles sont le banc d'essai.
+`addin/src/composition.js` — où se pose un plant, et les deux vues.
 
-**Reste à porter :** la composition, le message, les phrases — puis la
-coquille Word elle-même (manifeste, volet, câblage des événements).
+**Le dessin est complet.** Le JavaScript sait rendre un paysage entier, la vue
+de travail et l'aperçu. Les huit mutations de la composition ne sont pas des
+coquilles : chacune est une erreur qu'une décision interdit nommément — la
+profondeur qui passe à l'extension (2), le gabarit qui revient sur la taille
+courante (14), le germe qui prend la plus petite famille et rétrécit donc au
+verrou (1), le fond qui fane au lieu de s'éloigner (1). Chacune produit un
+paysage parfaitement présentable, et faux.
+
+**Reste à porter :** le message et les phrases — puis la coquille Word
+elle-même (manifeste, volet, câblage des événements).
 
 **La parité se vérifie, elle ne se suppose pas.** `jardin/parite.py` fabrique un
 cahier de cas *avec les réponses du Python* ; `addin/parite/parite.js` le rejoue
-et compare. 163 754 comparaisons, dont le verdict de chaque appel d'une rédaction
+et compare. 163 904 comparaisons, dont le verdict de chaque appel d'une rédaction
 de 30 000 mots, pris un par un — un écart est situé au paragraphe près, et pas
 constaté à la fin sur un total qui ne dit pas où il s'est formé.
 
@@ -494,7 +503,7 @@ ne connaît pas les lettres accentuées, `\d` ne connaît pas les chiffres arabe
 `.length` compte des unités UTF-16 quand `len()` compte des points de code.
 Aucune de ces erreurs ne fait planter quoi que ce soit — le texte se découpe un
 peu autrement, la famille bascule un peu plus tôt, et personne ne s'en aperçoit.
-`addin/parite/mutations.js` les réintroduit une par une : 27 sur 27 sont vues.
+`addin/parite/mutations.js` les réintroduit une par une : 35 sur 35 sont vues.
 
 Cinq choses sont sorties du portage. **Aucune des cinq n'était dans le
 JavaScript** : porter un programme, c'est le relire une fois de plus, et par
@@ -818,6 +827,7 @@ deux divergent, c'est le JavaScript qui a un bug.
 |---|---|
 | `src/alea.js` | le générateur de Python, refait à l'identique |
 | `src/blake2s.js` | BLAKE2s, pour la graine du document |
+| `src/composition.js` | portage de `composition.py`, sans les planches |
 | `src/grammaire.js` | portage de `grammaire.py`, sans les planches |
 | `src/traits.js` | portage de `traits.py` |
 | `src/paysage.js` | portage de `paysage.py` |

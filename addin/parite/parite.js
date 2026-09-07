@@ -27,6 +27,10 @@ import {
   palette, Teinte, Toile, dessiner, germe, creature, depuis_plant,
   graine_du_document, TABLES as TABLES_GRAMMAIRE,
 } from "../src/grammaire.js";
+import {
+  composer, svg as svg_paysage, vue_de_travail, svg_apercu, gabarit,
+  TABLES as TABLES_COMPOSITION,
+} from "../src/composition.js";
 
 const TOLERANCE = 1e-9;
 
@@ -221,6 +225,7 @@ titre("tables litterales");
 memeProfond("traits", cahier.tables.traits, TABLES_TRAITS);
 memeProfond("paysage", cahier.tables.paysage, TABLES_PAYSAGE);
 memeProfond("grammaire", cahier.tables.grammaire, TABLES_GRAMMAIRE);
+memeProfond("composition", cahier.tables.composition, TABLES_COMPOSITION);
 console.log(`  ${Object.keys(cahier.tables.traits).length}`
   + ` + ${Object.keys(cahier.tables.paysage).length}`
   + ` + ${Object.keys(cahier.tables.grammaire).length} tables`);
@@ -510,6 +515,36 @@ titre("depuis_plant");
     meme(`plant ${c.rang} svg`, c.svg, t.svg(0, 0, 200, 200));
   }
   console.log(`  ${cahier.depuis_plant.length} plants rendus`);
+}
+
+// --------------------------------------------------------------------------
+// 14. Le paysage
+// --------------------------------------------------------------------------
+// Les poses AVANT le SVG, comme les segments avant le SVG d'une figure : une
+// pose est une profondeur, un x, un y et une echelle, et c'est la composition
+// elle-meme. Le gabarit est compare a part, parce que c'est lui qui porte la
+// decision — un plant sans famille prend la taille de la PLUS GRANDE des quatre
+// familles, pour que l'echelle ne puisse que monter quand le verrou tombe.
+titre("paysage");
+{
+  const plants = cahier.etat.plants;
+  const parRang = {};
+  for (const p of plants) parRang[p.rang] = p;
+  for (const g of cahier.composition.gabarits) {
+    memeProfond(`gabarit du plant ${g.rang}`, [g.largeur, g.hauteur],
+                gabarit(parRang[g.rang], g.graine));
+  }
+  for (const [nom, v] of Object.entries(cahier.composition.vues)) {
+    const sp = v.plants.map((r) => parRang[r]);
+    const [poses, largeur] = composer(sp, 560, 1);
+    meme(`${nom} : largeur totale`, v.largeur, largeur);
+    memeProfond(`${nom} : poses`, v.poses, poses.map(([d, cx, y, k]) => [d, cx, y, k]));
+    meme(`${nom} : svg`, v.svg, svg_paysage(sp, 560, 1));
+    meme(`${nom} : vue de travail`, v.vue_de_travail, vue_de_travail(sp, 1));
+    meme(`${nom} : apercu`, v.apercu, svg_apercu(sp, 520, 1));
+  }
+  console.log(`  ${Object.keys(cahier.composition.vues).length} vues,`
+    + ` ${cahier.composition.gabarits.length} gabarits`);
 }
 
 // --------------------------------------------------------------------------

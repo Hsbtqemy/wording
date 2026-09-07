@@ -198,6 +198,50 @@ const MUTATIONS = [
    "  return parseInt(blake2s_hex(nom, 4), 16);",
    "  return parseInt(blake2s_hex(nom, 4).slice(0, 6), 16);",
    "la graine du document perd un octet : meme document, autre figure"],
+
+  // -------------------------------------------------------------- composition
+  // Ici les mutations ne sont pas des coquilles : ce sont les erreurs que les
+  // decisions interdisent nommement. Chacune produit un paysage parfaitement
+  // presentable, et faux.
+  ["composition.js",
+   "  return Math.max(0.0, Math.min(1.0, plant.maturite || 0.0));",
+   "  return Math.max(0.0, Math.min(1.0, plant.extension || 0.0));",
+   "decision 2 : la profondeur passe a l'extension, les deux axes fusionnent"],
+
+  ["composition.js",
+   "  plein.extension = 1.0;",
+   "  plein.extension = plant.extension || 0.0;",
+   "decision 14 : le gabarit revient sur la taille courante, l'extension disparait"],
+
+  ["composition.js",
+   "      if (grand === null || enc > grand[0]) grand = [enc, t.largeur(), t.hauteur()];",
+   "      if (grand === null || enc < grand[0]) grand = [enc, t.largeur(), t.hauteur()];",
+   "decision 1 : le germe prend la plus PETITE famille, donc il retrecit au verrou"],
+
+  ["composition.js",
+   "  const tries = poses.slice().sort((a, b) => a[0] - b[0]);",
+   "  const tries = poses.slice().sort((a, b) => b[0] - a[0]);",
+   "l'ordre de dessin s'inverse : l'occlusion se fait de l'avant vers le fond"],
+
+  ["composition.js",
+   "  return rendre(poses, [cx - vw * 0.63, y - vh * 0.86, vw, vh], hauteur);",
+   "  return rendre(poses, [cx - vw * 0.5, y - vh * 0.86, vw, vh], hauteur);",
+   "le volet recentre le plant en cours : un plant qui nait redonne un volet vide"],
+
+  ["composition.js",
+   "    const serrage = groupe.length > 1 ? 0.46 : 1.0;",
+   "    const serrage = 1.0;",
+   "les plants d'une meme parcelle ne se recouvrent plus : le massif se defait"],
+
+  ["composition.js",
+   "    if (parcelle !== null && titre && titre !== parcelle) {",
+   "    if (parcelle !== null && titre && titre === parcelle) {",
+   "la respiration de chapitre se pose entre les mauvais plants"],
+
+  ["composition.js",
+   "    const opacite = OPACITE_FOND + (1.0 - OPACITE_FOND) * d;",
+   "    const opacite = OPACITE_FOND * d;",
+   "decision 1 : le fond fane au lieu de s'eloigner, un plant jamais repris s'efface"],
 ];
 
 if (!existsSync(CAS)) {

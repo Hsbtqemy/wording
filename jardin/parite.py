@@ -53,6 +53,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import composition
 import corpus
 import grammaire
 import traits
@@ -409,6 +410,55 @@ def cas_journal() -> tuple[list, list, int]:
     return journal, plants, p
 
 
+def cas_composition(plants) -> dict:
+    """
+    Le paysage entier, et les deux vues.
+
+    On rejoue les plants REELS du journal, plus des sous-ensembles qui exercent
+    les cas ou composer() a le choix : un seul plant, aucun plant vivant, deux
+    plants du meme chapitre, deux chapitres differents (la respiration de
+    parcelle), et le paysage complet.
+
+    Le gabarit est compare a part parce que c'est lui qui porte la decision : un
+    plant sans famille prend la taille de LA PLUS GRANDE des quatre familles,
+    pour que l'echelle ne puisse que monter quand le verrou tombe.
+    """
+    sous = {
+        "vide": [],
+        "un": plants[:1],
+        "germe seul": [p for p in plants if p["stade"] == "germe"][:1],
+        "deux du meme chapitre": [p for p in plants[:2]],
+        "tout": plants,
+    }
+    # Deux plants de titres differents : la respiration de parcelle.
+    titres = {}
+    for p in plants:
+        titres.setdefault(p["titre"], p)
+    sous["deux chapitres"] = list(titres.values())[:2]
+
+    vues = {}
+    for nom, sp in sous.items():
+        poses, largeur = composition.composer(sp, 560, 1)
+        vues[nom] = {
+            "plants": [p["rang"] for p in sp],
+            "largeur": largeur,
+            # Les poses sans la Toile : profondeur, x, y, echelle. C'est la
+            # composition elle-meme, avant tout rendu.
+            "poses": [[d, cx, y, k] for d, cx, y, k, _t in poses],
+            "svg": composition.svg(sp, 560, 1),
+            "vue_de_travail": composition.vue_de_travail(sp, 1),
+            "apercu": composition.svg_apercu(sp, 520, 1),
+        }
+
+    gabarits = []
+    for p in plants:
+        g = 1 + p["rang"] * 977
+        gl, gh = composition.gabarit(p, g)
+        gabarits.append({"rang": p["rang"], "graine": g,
+                         "largeur": gl, "hauteur": gh})
+    return {"vues": vues, "gabarits": gabarits}
+
+
 def cas_couleur() -> dict:
     """
     La palette, exhaustivement.
@@ -648,6 +698,14 @@ def cas_tables() -> dict:
             "BUDGET_FEUILLAGE": grammaire.BUDGET_FEUILLAGE,
             "TRAITS_NEUTRES": dict(grammaire.TRAITS_NEUTRES),
         },
+        "composition": {
+            "HORIZON": composition.HORIZON,
+            "ECHELLE_FOND": composition.ECHELLE_FOND,
+            "ECHELLE_AVANT": composition.ECHELLE_AVANT,
+            "OPACITE_FOND": composition.OPACITE_FOND,
+            "ECART": composition.ECART,
+            "ECART_PARCELLE": composition.ECART_PARCELLE,
+        },
         "paysage": {
             "STYLES_TITRE": sorted(paysage_mod.STYLES_TITRE),
             "STYLES_IGNORES": sorted(paysage_mod.STYLES_IGNORES),
@@ -724,6 +782,7 @@ def fabriquer() -> dict:
         "graines": cas_graines(),
         "figures": cas_figures(),
         "depuis_plant": cas_depuis_plant(p.etat()["plants"]),
+        "composition": cas_composition(p.etat()["plants"]),
         "tables": cas_tables(),
         "relectures": cas_relectures(),
         "arrondis": cas_arrondis(),

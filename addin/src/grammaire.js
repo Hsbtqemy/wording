@@ -192,7 +192,7 @@ export function graine_du_document(nom) {
  * que toFixed appele sur le zero negatif rend « 0.0 ». Un caractere d'ecart sur
  * un SVG de trente mille, et les deux figures ne sont plus comparables.
  */
-function fixe(x, n) {
+export function fixe(x, n) {
   const v = arrondi(x, n);
   if (v === 0 && (x < 0 || Object.is(x, -0))) return "-" + (0).toFixed(n);
   return v.toFixed(n);
