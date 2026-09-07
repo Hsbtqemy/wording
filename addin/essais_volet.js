@@ -302,6 +302,11 @@ suite.push(["un Word trop ancien dit ce qui manque au lieu de rester noir",
     // Sans numero de sonde, une lecture rapportee est indechiffrable : on a
     // deja pris pour neuve une mesure produite par du code remplace depuis.
     vrai(/sonde \d+/.test(mot), `la sonde doit se nommer, obtenu : ${mot}`);
+    // Trente-cinq pages et UN SEUL paragraphe : un document reel s'est annonce
+    // comme ca. Sauts de ligne au lieu de marques de paragraphe, ou body.paragraphs
+    // qui se comporte autrement ? Compter les separateurs tranche.
+    vrai(/separateurs : \d+ CR . \d+ VT . \d+ LF . 1 objets/.test(mot),
+         `le volet doit compter les separateurs, obtenu : ${mot}`);
   }]);
 
 suite.push(["ouvrir un document ne le marque pas comme modifie", async () => {

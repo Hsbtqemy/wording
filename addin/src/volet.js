@@ -202,7 +202,7 @@ async function signalement() {
   // copie des fichiers du volet, et une lecture rapportee sans ce numero est
   // indechiffrable : on a deja pris pour neuve une mesure produite par du code
   // remplace depuis. Un chiffre faux serait pire que pas de chiffre.
-  const morceaux = ["sonde 4"];
+  const morceaux = ["sonde 5"];
   try {
     let haut = "aucun";
     for (const v of ["1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8"]) {
@@ -337,6 +337,44 @@ async function signalement() {
     morceaux.push(`tout sans le style : ${t.join(" ")} ms`);
   } catch {
     morceaux.push("lecture sans style impossible");
+  }
+
+  // ⚠️ TRENTE-CINQ PAGES ET UN SEUL PARAGRAPHE.
+  //
+  // Un document de 74 000 signes s'est annonce avec paragraphs.items.length
+  // valant 1 et un body.text sans le moindre retour chariot. Les deux methodes
+  // concordent, donc ce n'est pas une erreur de mesure. Deux explications, aux
+  // consequences tres inegales :
+  //
+  //   - le document est fait de SAUTS DE LIGNE (Maj+Entree, U+000B) au lieu de
+  //     marques de paragraphe — frequent quand on convertit un PDF ou qu'on
+  //     colle depuis ailleurs. Word n'y voit alors qu'un paragraphe, et TOUT LE
+  //     PAYSAGE EST BATI SUR LE PARAGRAPHE : une these de cette forme donnerait
+  //     une empreinte unique, jamais d'extension, et chaque frappe serait une
+  //     reprise du document entier. Rien dans le projet ne prevoit ce cas ;
+  //   - ou body.paragraphs se comporte autrement sur cet hote, ce qui serait
+  //     bien plus grave, et remettrait en cause jusqu'au scan d'ouverture.
+  //
+  // Compter les separateurs tranche sans rien supposer.
+  try {
+    const c = await Word.run(async (ctx) => {
+      const corps = ctx.document.body;
+      corps.load("text");
+      const paras = corps.paragraphs;
+      paras.load("items/text");
+      await ctx.sync();
+      const t = corps.text;
+      const compte = (ch) => t.split(ch).length - 1;
+      // \u000B ecrit en clair, jamais le caractere lui-meme : une
+      // tabulation verticale dans une source est invisible, et elle ne
+      // survit pas au premier copier-coller.
+      return { cr: compte("\r"), vt: compte("\u000B"), lf: compte("\n"),
+               objets: paras.items.length };
+    });
+    morceaux.push(`separateurs : ${c.cr} CR · ${c.vt} VT · ${c.lf} LF`
+                + ` · ${c.objets} objets`);
+  } catch {
+    morceaux.push("separateurs illisibles");
   }
   return morceaux.join(" · ");
 }
