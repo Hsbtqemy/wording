@@ -79,9 +79,35 @@ MUTATIONS = [
     # que ce soit : elles decalent des identifiants, et le paysage pousse de
     # travers sans que rien ne le dise.
     ("guet.py",
-     r'SEPARATEURS = ("\r", "\x0b", "\n")',
-     r'SEPARATEURS = ("\r", "\n")',
+     r'SEPARATEURS_LIGNE = ("\x0b", "\n")',
+     r'SEPARATEURS_LIGNE = ()',
      "point 14 : le saut de ligne cesse de separer, 35 pages font un paragraphe"),
+
+    # Le style appartient au PARAGRAPHE, la ligne en herite. Confondre
+    # les deux indices est la faute naturelle a cet endroit.
+    ("guet.py",
+     "            appartenance.append(rang)",
+     "            appartenance.append(len(lignes) - 1)",
+     "le style est indexe par LIGNE et non par paragraphe : deux lignes"
+     " d'un meme paragraphe recoivent deux styles differents"),
+
+    ("guet.py",
+     "    rang = appartenance[k]\n"
+     '    return styles[rang] if rang < len(styles) else "Normal"',
+     '    return "Normal"',
+     "plus aucun style ne remonte : une citation compte comme de"
+     " l'ecriture (point 3) et un Titre 1 n'ouvre plus de plant (point 6)"),
+
+    ("guet.py",
+     "    if not styles or k >= len(appartenance):",
+     "    if False:",
+     "une table absente fait lever dans un tic, au lieu de rendre Normal"),
+
+    ("guet.py",
+     "    return texte.count(SEPARATEUR_PARAGRAPHE) + 1 if texte else 0",
+     "    return texte.count(SEPARATEURS_LIGNE[0]) + 1 if texte else 0",
+     "la peremption des styles se compte en LIGNES : la table ne se"
+     " rafraichit plus quand un paragraphe apparait"),
 
     ("guet.py",
      """    deplacees = {}                       # j -> i
@@ -100,18 +126,18 @@ MUTATIONS = [
      " deux retouches, donc de la maturite inventee"),
 
     ("guet.py",
-     "        self.lignes = decouper(texte)\n"
+     "        self.lignes, appartenance = decouper_marque(texte)\n"
      "        self.ids = [self._neuf() for _ in self.lignes]",
-     "        self.lignes = []\n"
+     "        self.lignes, appartenance = [], []\n"
      "        self.ids = []",
      "decision 11 : le capital de depart est declare NE, une these entiere"
      " pousse d'un coup a l'ouverture"),
 
     ("guet.py",
-     '                faits.append({"type": "retouchee", "id": self.ids[i],\n'
-     '                              "texte": nouvelles[j], "ancien": self.lignes[i]})',
-     '                faits.append({"type": "retouchee", "id": self.ids[i],\n'
-     '                              "texte": nouvelles[j], "ancien": None})',
+     '                              "texte": nouvelles[j], "ancien": self.lignes[i],\n'
+     '                              "style": _style(styles, appartenance, j)})',
+     '                              "texte": nouvelles[j], "ancien": None,\n'
+     '                              "style": _style(styles, appartenance, j)})',
      "la retouche perd son ancien texte : paysage.retoucher ne peut plus"
      " distinguer une reprise d'une premiere redaction"),
 
@@ -168,6 +194,25 @@ def main() -> int:
     _restaurer_les_restes(fichiers)
     sauvegardes = {f: io.open(os.path.join(RACINE, f), encoding="utf-8").read()
                    for f in fichiers}
+    # Les motifs d'abord, avant de toucher un seul fichier.
+    #
+    # Un motif perime se signalait « obsolete » en cours de route, apres avoir
+    # laisse tourner la batterie complete pour toutes les mutations d'avant —
+    # plusieurs minutes pour apprendre qu'une ligne du fichier avait bouge. Pire,
+    # « obsolete » a l'air d'un probleme de maintenance et non d'une mutation qui
+    # ne mord pas : c'est arrive deux fois de suite, et deux fois le diagnostic a
+    # coute un passage entier. Le controle est instantane, il doit venir avant.
+    perimes = [(f, lib) for f, vieux, _n, lib in MUTATIONS
+               if vieux not in sauvegardes[f]]
+    if perimes:
+        print("=" * 78)
+        print("MOTIFS PERIMES — rien n'a ete mute")
+        print("=" * 78)
+        for fichier, libelle in perimes:
+            print(f"  {fichier} : {libelle}")
+        print(f"\n{len(perimes)} motif(s) ne mordent plus sur la source.")
+        return 2
+
     print("=" * 78)
     print("MUTATIONS — la batterie sait-elle echouer ?")
     print("=" * 78)
@@ -175,10 +220,8 @@ def main() -> int:
     for fichier, vieux, neuf, libelle in MUTATIONS:
         chemin = os.path.join(RACINE, fichier)
         src = sauvegardes[fichier]
-        if vieux not in src:
-            manquees.append((libelle, "motif introuvable — mutation obsolete"))
-            print(f"  ????  {libelle}")
-            continue
+        # Plus besoin de tester le motif ici : le controle prealable a deja
+        # rendu la main si l'un d'eux ne mordait plus.
         cote = chemin + ".intact"
         io.open(cote, "w", encoding="utf-8", newline="\n").write(src)
         io.open(chemin, "w", encoding="utf-8", newline="\n").write(

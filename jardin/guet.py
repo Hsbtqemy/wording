@@ -32,7 +32,14 @@ retrouve ce qu'elle a ecrit quelle que soit la touche employee.
 # toutes lettres et jamais en clair : un caractere de controle dans une source
 # est invisible en relecture, et ne survit pas au premier copier-coller — la
 # panne a ete faite deux fois avant d'etre ecrite ici.
-SEPARATEURS = ("\r", "\x0b", "\n")
+#
+# LES DEUX NIVEAUX SONT DISTINGUES, et ce n'est pas de la coquetterie : le style
+# appartient au PARAGRAPHE. Decouper d'abord sur le retour chariot donne les
+# paragraphes de Word, donc l'echelle a laquelle les styles se lisent ; decouper
+# ensuite chaque paragraphe donne les lignes de la personne, qui est l'unite du
+# paysage (point 14). Une ligne herite du style de son paragraphe, exactement.
+SEPARATEUR_PARAGRAPHE = "\r"
+SEPARATEURS_LIGNE = ("\x0b", "\n")
 
 # Combien de releves sans un changement avant qu'une visite soit close.
 #
@@ -74,22 +81,47 @@ SEPARATEURS = ("\r", "\x0b", "\n")
 SILENCE = 60
 
 
-def decouper(texte):
-    """Le texte du corps, rendu en lignes.
+def decouper_marque(texte):
+    """Les lignes du corps, et le paragraphe d'ou chacune vient.
 
-    Toutes les separations valent : celle qui vient d'Entree comme celle qui
-    vient de Maj+Entree. C'est le point 14 — le paysage compte ce que la
-    personne fabrique, pas ce que Word enregistre.
+    Rend (lignes, appartenance), de meme longueur : appartenance[k] est
+    l'indice du paragraphe Word qui contient la ligne k. C'est ce qui permet de
+    donner un style a une ligne sans le demander a Word ligne par ligne.
+
+    Toutes les separations valent pour l'unite du paysage : celle qui vient
+    d'Entree comme celle qui vient de Maj+Entree (point 14).
     """
     if not texte:
-        return []
-    lignes = [texte]
-    for s in SEPARATEURS:
-        suivantes = []
-        for morceau in lignes:
-            suivantes.extend(morceau.split(s))
-        lignes = suivantes
-    return lignes
+        return [], []
+    lignes, appartenance = [], []
+    for rang, paragraphe in enumerate(texte.split(SEPARATEUR_PARAGRAPHE)):
+        morceaux = [paragraphe]
+        for s in SEPARATEURS_LIGNE:
+            suivants = []
+            for m in morceaux:
+                suivants.extend(m.split(s))
+            morceaux = suivants
+        for m in morceaux:
+            lignes.append(m)
+            appartenance.append(rang)
+    return lignes, appartenance
+
+
+def decouper(texte):
+    """Les seules lignes, quand l'appartenance n'interesse pas l'appelant."""
+    return decouper_marque(texte)[0]
+
+
+def compter_paragraphes(texte):
+    """Combien de paragraphes Word voit dans ce corps.
+
+    Sert a savoir quand la table des styles est PERIMEE, et ce compte-la est
+    gratuit : il se lit dans la chaine qu'on vient deja de recevoir. Taper dans
+    un paragraphe ne le change pas ; en ajouter ou en retirer un, si. La lecture
+    couteuse des styles — un objet Office.js par paragraphe, ~1,7 ms piece — ne
+    part donc que quand la structure bouge, jamais pendant qu'on ecrit.
+    """
+    return texte.count(SEPARATEUR_PARAGRAPHE) + 1 if texte else 0
 
 
 def rapprocher(anciennes, nouvelles):
@@ -190,6 +222,19 @@ def rapprocher(anciennes, nouvelles):
     return mouvements
 
 
+def _style(styles, appartenance, k):
+    """Le style de la ligne k, pris sur son paragraphe.
+
+    Tolerant par construction : une table absente, trop courte, ou decalee d'un
+    releve rend « Normal » plutot que de lever. Le style se rafraichit au releve
+    suivant, alors qu'une exception dans un tic arreterait tout.
+    """
+    if not styles or k >= len(appartenance):
+        return "Normal"
+    rang = appartenance[k]
+    return styles[rang] if rang < len(styles) else "Normal"
+
+
 class Guet:
     """Tient l'instantane precedent et les identifiants qui vont avec.
 
@@ -209,12 +254,15 @@ class Guet:
         self.silence = silence
         self.visitee = None
         self.calme = 0
+        # Le nombre de paragraphes du dernier releve : l'appelant s'en sert pour
+        # savoir s'il doit aller rechercher les styles.
+        self.paragraphes = 0
 
     def _neuf(self):
         self._suivant += 1
         return "g%d" % self._suivant
 
-    def amorcer(self, texte):
+    def amorcer(self, texte, styles=None):
         """Le premier instantane, qui ne fait RIEN pousser.
 
         Decision 11 : ce qui est deja la est un capital de depart, pas une
@@ -223,24 +271,33 @@ class Guet:
         contresens que le paysage puisse commettre, et exactement ce que
         rattacher() existe pour eviter.
 
-        Rend les lignes, pour que l'appelant les donne a rattacher().
+        Rend des couples (texte, style), qui est exactement ce que
+        paysage.rattacher() attend.
         """
-        self.lignes = decouper(texte)
+        self.lignes, appartenance = decouper_marque(texte)
         self.ids = [self._neuf() for _ in self.lignes]
-        return list(self.lignes)
+        self.paragraphes = compter_paragraphes(texte)
+        return [(l, _style(styles, appartenance, k))
+                for k, l in enumerate(self.lignes)]
 
-    def relever(self, texte):
+    def relever(self, texte, styles=None):
         """Compare le corps a ce qu'on avait vu, et rend ce qui a bouge.
 
         Rend une liste de faits, prets pour le pont :
 
             {"type": "nee" | "retouchee" | "disparue",
-             "id": ..., "texte": ..., "ancien": ...}
+             "id": ..., "texte": ..., "ancien": ..., "style": ...}
+
+        `styles` est la table des styles par PARAGRAPHE, ou None. Une ligne
+        herite du style du paragraphe qui la contient ; sans table, tout vaut
+        « Normal ». Sans elle, une citation compterait comme de l'ecriture
+        (point 3) et un Titre 1 n'ouvrirait plus de plant (point 6) — deux
+        regressions qui ne se voient pas.
 
         Les lignes gardees ne rendent rien, et c'est tout l'interet : sur une
         these de mille cinq cents lignes, un tic n'en signale qu'une ou deux.
         """
-        nouvelles = decouper(texte)
+        nouvelles, appartenance = decouper_marque(texte)
         mouvements = rapprocher(self.lignes, nouvelles)
 
         ids = [None] * len(nouvelles)
@@ -251,17 +308,21 @@ class Guet:
             elif genre == "retouchee":
                 ids[j] = self.ids[i]
                 faits.append({"type": "retouchee", "id": self.ids[i],
-                              "texte": nouvelles[j], "ancien": self.lignes[i]})
+                              "texte": nouvelles[j], "ancien": self.lignes[i],
+                              "style": _style(styles, appartenance, j)})
             elif genre == "nee":
                 ids[j] = self._neuf()
                 faits.append({"type": "nee", "id": ids[j],
-                              "texte": nouvelles[j], "ancien": None})
+                              "texte": nouvelles[j], "ancien": None,
+                              "style": _style(styles, appartenance, j)})
             else:
                 faits.append({"type": "disparue", "id": self.ids[i],
-                              "texte": None, "ancien": self.lignes[i]})
+                              "texte": None, "ancien": self.lignes[i],
+                              "style": ""})
 
         self.lignes = nouvelles
         self.ids = ids
+        self.paragraphes = compter_paragraphes(texte)
 
         # La visite. Elle se ferme d'elle-meme quand on ecrit ailleurs — _actif
         # n'a qu'une case — donc il ne reste ici qu'a fermer celle qu'on a
@@ -275,7 +336,7 @@ class Guet:
             self.calme += 1
             if self.calme >= self.silence:
                 faits.append({"type": "visite_finie", "id": self.visitee,
-                              "texte": None, "ancien": None})
+                              "texte": None, "ancien": None, "style": ""})
                 self.visitee = None
                 self.calme = 0
 

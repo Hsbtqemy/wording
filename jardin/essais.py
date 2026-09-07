@@ -619,10 +619,71 @@ def _():
 def _():
     from guet import Guet
     g = Guet()
-    lignes = g.amorcer("Alpha\x0bBeta\x0bGamma")
-    assert lignes == ["Alpha", "Beta", "Gamma"], lignes
+    depart = g.amorcer("Alpha\x0bBeta\x0bGamma")
+    # rattacher() attend des couples (texte, style) : l'amorce les rend prets.
+    assert depart == [("Alpha", "Normal"), ("Beta", "Normal"),
+                      ("Gamma", "Normal")], depart
     assert g.relever("Alpha\x0bBeta\x0bGamma") == [], "un instantane egal doit etre muet"
     return "decision 11 : le capital de depart n'est pas une pousse"
+
+
+@essai("guet / une ligne herite du style de son paragraphe")
+def _():
+    from guet import decouper_marque, Guet
+    corps = "Titre du chapitre\rUne ligne.\x0bUne autre.\rUne citation."
+    lignes, appartenance = decouper_marque(corps)
+    assert lignes == ["Titre du chapitre", "Une ligne.", "Une autre.",
+                      "Une citation."], lignes
+    # Les deux lignes du deuxieme paragraphe pointent le meme paragraphe : c'est
+    # ce qui leur donne le meme style sans le demander a Word ligne par ligne.
+    assert appartenance == [0, 1, 1, 2], appartenance
+
+    styles = ["Titre 1", "Normal", "Citation"]
+    g = Guet()
+    assert g.amorcer(corps, styles) == [
+        ("Titre du chapitre", "Titre 1"), ("Une ligne.", "Normal"),
+        ("Une autre.", "Normal"), ("Une citation.", "Citation")], \
+        g.amorcer(corps, styles)
+    # Sans style, une citation compterait comme de l'ecriture (point 3) et un
+    # Titre 1 n'ouvrirait plus de plant (point 6). Deux pannes muettes.
+    faits = g.relever(corps.replace("Une autre.", "Une autre ligne."), styles)
+    assert [f["style"] for f in faits] == ["Normal"], faits
+    return "le style descend du paragraphe a ses lignes, exactement"
+
+
+@essai("guet / une table de styles absente ou courte ne fait pas lever")
+def _():
+    from guet import Guet
+    corps = "A\rB\rC"
+    for table in (None, [], ["Titre 1"], ["a", "b", "c", "d", "e"]):
+        g = Guet()
+        depart = g.amorcer(corps, table)
+        assert len(depart) == 3, (table, depart)
+        # Une table absente, trop courte ou decalee d'un releve doit rendre
+        # « Normal » plutot que lever : une exception dans un tic arreterait
+        # tout, alors qu'un style faux se corrige au releve suivant.
+        for _texte, style in depart:
+            assert isinstance(style, str) and style, (table, depart)
+    return "4 tables de travers, aucune exception"
+
+
+@essai("guet / le compte de paragraphes dit quand les styles sont perimes")
+def _():
+    from guet import Guet, compter_paragraphes
+    assert compter_paragraphes("") == 0
+    assert compter_paragraphes("un seul") == 1
+    assert compter_paragraphes("a\rb\rc") == 3
+
+    g = Guet()
+    g.amorcer("a\rb")
+    assert g.paragraphes == 2, g.paragraphes
+    # Taper DANS un paragraphe ne change pas la structure : la lecture couteuse
+    # des styles — un objet Office.js par paragraphe — n'a pas a repartir.
+    g.relever("aa\rb")
+    assert g.paragraphes == 2, g.paragraphes
+    g.relever("aa\rb\rc")
+    assert g.paragraphes == 3, g.paragraphes
+    return "la table ne se rafraichit que quand la structure bouge"
 
 
 @essai("guet / inserer au milieu ne decale aucune identite")
