@@ -322,6 +322,16 @@ for (const appel of cahier.journal) {
     p.quitter();
     continue;
   }
+  if (geste === "absorber-naissance") {
+    // Le paragraphe qu'on a vu naitre sous le curseur : il echappe a la
+    // reconnaissance du registre, parce que le registre existe pour rendre
+    // un DEPLACEMENT gratuit, pas pour nier une frappe.
+    const [, texte, style, mpi, jour, heure, attendu] = appel;
+    empreintesCorpus.add(empreinte(texte));
+    meme(`appel ${n} absorber(naissance)`, attendu,
+         p.absorber(texte, style, mpi, jour, heure, true));
+    continue;
+  }
   if (geste === "absorber") {
     const [, texte, style, mpi, jour, heure, attendu] = appel;
     empreintesCorpus.add(empreinte(texte));

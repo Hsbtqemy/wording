@@ -29,7 +29,12 @@ const ICI = dirname(fileURLToPath(import.meta.url));
 const SRC = join(ICI, "..", "src");
 const CAS = join(ICI, "cas.json");
 
-// [fichier, motif, remplacement, ce que la regression retablit]
+// [fichier, motif, remplacement, ce que la regression retablit, verificateur]
+//
+// Le verificateur vaut "parite" par defaut. Le pont, lui, n'a pas de Python en
+// face : il se verifie contre un Word simule, donc ses mutations doivent lancer
+// essais.js. C'est justement la partie du portage qu'aucune parite ne couvre,
+// donc celle ou une mutation qui echappe couterait le plus cher.
 const MUTATIONS = [
   ["traits.js",
    "const MOT = /\\p{L}+/gu;",
@@ -242,6 +247,54 @@ const MUTATIONS = [
    "    const opacite = OPACITE_FOND + (1.0 - OPACITE_FOND) * d;",
    "    const opacite = OPACITE_FOND * d;",
    "decision 1 : le fond fane au lieu de s'eloigner, un plant jamais repris s'efface"],
+
+  // ---------------------------------------------------------------------- pont
+  // Verifiees contre le Word simule, pas contre le Python. Les deux premieres
+  // sont les defauts que cette batterie a reellement trouves, et qui auraient
+  // ete livres.
+  ["pont.js",
+   "        if (v === \"vide\") {",
+   "        if (false) {",
+   "le paragraphe vide entre au registre : le plant cesse de pousser au deuxieme",
+   "essais"],
+
+  ["pont.js",
+   "        const ne = this.naissances.has(p.id);",
+   "        const ne = false;",
+   "un paragraphe qui commence comme un autre est declare connu et disparait",
+   "essais"],
+
+  // Celle-ci est la raison d'etre du pont. Word n'a pas d'evenement de
+  // selection : il faut DocumentSelectionChanged, qui se declenche aussi a
+  // chaque frappe puisque taper deplace le point d'insertion.
+  ["pont.js",
+   "    if (id === this.curseur) return false;",
+   "    if (false) return false;",
+   "decision 2 : le curseur quitte a chaque frappe, toute redaction devient reprise",
+   "essais"],
+
+  ["pont.js",
+   "    if (distant) return 0;          // la frappe d'un co-auteur n'est pas la notre",
+   "    if (false) return 0;",
+   "la frappe d'un co-auteur fait pousser notre paysage",
+   "essais"],
+
+  ["pont.js",
+   "    const debit = mots * INTERVALLE / Math.max(ecoule, 1);",
+   "    const debit = mots;",
+   "le debit n'est plus ramene a l'intervalle : un vidage en retard fait une greffe",
+   "essais"],
+
+  // Et les deux corrections apportees a la specification, vues par la parite.
+  ["paysage.js",
+   "    if (!en_mots(texte).length) return \"vide\";",
+   "    if (false) return \"vide\";",
+   "absorber accepte de nouveau le vide, comme avant le portage"],
+
+  ["paysage.js",
+   "    if (this.registre.has(e) && !naissance) return \"connue\";",
+   "    if (this.registre.has(e)) return \"connue\";",
+   "la naissance ne dispense plus de la reconnaissance du registre"],
 ];
 
 if (!existsSync(CAS)) {
@@ -278,7 +331,7 @@ console.log(barre);
 let attrapees = 0;
 const manquees = [];
 
-for (const [fichier, vieux, neuf, libelle] of MUTATIONS) {
+for (const [fichier, vieux, neuf, libelle, verificateur] of MUTATIONS) {
   const chemin = join(SRC, fichier);
   const src = sauvegardes[fichier];
   if (!src.includes(vieux)) {
@@ -291,16 +344,20 @@ for (const [fichier, vieux, neuf, libelle] of MUTATIONS) {
   writeFileSync(chemin, src.replace(vieux, neuf), "utf-8");
   let r;
   try {
-    r = spawnSync(process.execPath, [join(ICI, "parite.js"), CAS], { encoding: "utf-8" });
+    const args = verificateur === "essais"
+      ? [join(ICI, "..", "essais.js")]
+      : [join(ICI, "parite.js"), CAS];
+    r = spawnSync(process.execPath, args, { encoding: "utf-8" });
   } finally {
     writeFileSync(chemin, src, "utf-8");
     rmSync(cote);
   }
   if (r.status !== 0) {
     attrapees += 1;
-    const premier = (r.stdout || "").split("\n").find((l) => l.includes("ECART"));
+    const lignes = (r.stdout || "").split("\n");
+    const premier = lignes.find((l) => l.includes("ECART") || l.includes("ECHEC"));
     console.log(`  ok    ${libelle}`);
-    if (premier) console.log(`          vue en : ${premier.trim().slice(7)}`);
+    if (premier) console.log(`          vue en : ${premier.trim().replace(/^(ECART|ECHEC)\s*/, "")}`);
   } else {
     manquees.push([libelle, "aucune comparaison ne la voit"]);
     console.log(`  ECHAPPE ${libelle}`);

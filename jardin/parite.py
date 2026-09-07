@@ -343,6 +343,18 @@ def cas_journal() -> tuple[list, list, int]:
     journal.append(["absorber", cit, "Citation", 0, 210, 14,
                     p.absorber(cit, "Citation", 0, 210, 14)])
 
+    # Deux chemins que seul le vrai Word emprunte, et que le corpus ne produit
+    # jamais : le paragraphe VIDE cree par un retour a la ligne, et la
+    # NAISSANCE — un paragraphe qu'on a vu naitre sous le curseur, et qui
+    # echappe donc a la reconnaissance du registre. Les deux ont ete trouves
+    # en eprouvant le pont contre un Word simule, pas ici.
+    for vide in ("", "   ", chr(10)):
+        journal.append(["absorber", vide, "Normal", 0, 210, 14,
+                        p.absorber(vide, "Normal", 0, 210, 14)])
+    deja = ecrits[3]
+    journal.append(["absorber-naissance", deja, "Normal", 0, 210, 14,
+                    p.absorber(deja, "Normal", 0, 210, 14, True)])
+
     # Une retouche qui ne change rien : Word reecrit un paragraphe a l'identique
     # des qu'on entre et sort d'une cellule, et ce cas doit rester gratuit.
     inchange = ecrits[-1]
@@ -377,7 +389,7 @@ def cas_journal() -> tuple[list, list, int]:
     # l'etre. On refuse de le fabriquer plutot que de le decouvrir plus tard.
     vus = {e[-1] for e in journal if e[0] != "quitter"}
     attendus = {"ecriture", "connue", "greffe", "conversion", "ignoree",
-                "inchangee", "frappe", "reprise", "reprise en cours"}
+                "inchangee", "vide", "frappe", "reprise", "reprise en cours"}
     manquants = attendus - vus
     if manquants:
         raise AssertionError(f"le journal n'emprunte pas : {sorted(manquants)}")

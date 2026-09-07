@@ -84,6 +84,31 @@ celui-ci non.
 
 Coût : 17 Ko pour 1 450 paragraphes, 59 Ko avec trois fois plus de reprises.
 
+### Une exception, trouvée en simulant Word
+
+La reconnaissance existe pour rendre un **déplacement** gratuit. Elle ne doit
+pas pouvoir nier une frappe — et elle le pouvait.
+
+Un paragraphe qu'on tape passe par tous ses états intermédiaires, et chacun
+entre au registre : après « Il faut donc admettre », le registre contient ce
+début. Or en français un paragraphe sur deux commence par les mêmes quatre
+mots. Le suivant était donc déclaré `connue`, ne comptait pas, et **le plant
+cessait de pousser au milieu d'une page**, sans que rien ne le signale.
+
+`absorber()` prend donc un drapeau `naissance` : l'appelant qui a **vu** le
+paragraphe naître vide sous le curseur sait ce que le registre ne peut pas
+savoir. C'est le pont qui le tient, parce que c'est lui qui a vu.
+
+Le même endroit a livré un second défaut : Word crée un paragraphe **vide** à
+chaque retour à la ligne. Sans filtre, l'empreinte du vide entrait au registre
+au premier `Entrée`, et tous les suivants étaient `connue` — le plant cessait de
+pousser au deuxième paragraphe. `rattacher()` filtrait déjà le vide ;
+`absorber()` non. Les deux portes d'entrée disent maintenant la même chose.
+
+⚠️ Aucun des deux n'était visible sur le banc : le corpus n'émet ni paragraphe
+vide, ni frappe progressive. Ils ne sont apparus qu'en rejouant les **suites
+d'événements** que Word produit réellement.
+
 ---
 
 ## 4. Le collage
@@ -407,12 +432,48 @@ courante (14), le germe qui prend la plus petite famille et rétrécit donc au
 verrou (1), le fond qui fane au lieu de s'éloigner (1). Chacune produit un
 paysage parfaitement présentable, et faux.
 
+`addin/src/pont.js` — le pont entre Word et le paysage.
+
 **Reste à porter :** le message et les phrases — puis la coquille Word
-elle-même (manifeste, volet, câblage des événements).
+elle-même (manifeste, volet).
+
+### Le pont, et ce qu'aucune parité ne peut voir
+
+Tout le reste du portage est vérifié par parité : il y a un Python en face qui
+dit la réponse. Le pont, non — il traduit des événements Office.js que le banc
+ne produit jamais. C'est pourtant lui qui porte la décision 2. Il a donc sa
+propre batterie, `addin/essais.js`, contre un Word **simulé** : pas une
+imitation de Word, une imitation des suites d'événements qu'il documente.
+
+Trois faits de l'API ont changé la conception, et aucun ne se devine :
+
+**Les identifiants de paragraphe changent à chaque session.** `uniqueLocalId`
+est un GUID « qui diffère d'une session et d'un co-auteur à l'autre ». Rien ne
+peut être persisté avec. Le registre du point 3 est heureusement textuel : c'est
+l'empreinte qui traverse, pas l'identifiant.
+
+**Il n'y a aucun événement de sélection sur `Word.Document`.** Le curseur du
+point 2 doit passer par l'API commune, `DocumentSelectionChanged` — qui se
+déclenche **aussi quand on tape**, puisque taper déplace le point d'insertion.
+Appeler `quitter()` à chaque déclenchement rouvrirait exactement ce que le
+point 2 ferme : chaque frappe deviendrait une visite neuve, donc une reprise, et
+une première rédaction ne ferait plus jamais pousser la forme. Le curseur n'est
+donc pas « la sélection a bougé » mais « la sélection a changé de paragraphe ».
+
+**Un événement peut venir d'ailleurs.** `args.source` vaut `Local` ou `Remote` :
+la frappe d'un co-auteur ne doit pas faire pousser le paysage de quelqu'un
+d'autre.
+
+Un quatrième point, mesuré plutôt que lu : le débit du point 4 se compte **par
+intervalle**, pas par vidage. Quinze mots en deux secondes valent 450 mots par
+minute, que personne n'atteint à la main — mais si un vidage a pris dix secondes
+(machine chargée, volet masqué), quinze mots tapés honnêtement arrivent d'un
+coup et deviennent une greffe. On aurait converti l'écriture de quelqu'un en
+collage, en silence.
 
 **La parité se vérifie, elle ne se suppose pas.** `jardin/parite.py` fabrique un
 cahier de cas *avec les réponses du Python* ; `addin/parite/parite.js` le rejoue
-et compare. 163 904 comparaisons, dont le verdict de chaque appel d'une rédaction
+et compare. 163 914 comparaisons, dont le verdict de chaque appel d'une rédaction
 de 30 000 mots, pris un par un — un écart est situé au paragraphe près, et pas
 constaté à la fin sur un total qui ne dit pas où il s'est formé.
 
@@ -503,7 +564,10 @@ ne connaît pas les lettres accentuées, `\d` ne connaît pas les chiffres arabe
 `.length` compte des unités UTF-16 quand `len()` compte des points de code.
 Aucune de ces erreurs ne fait planter quoi que ce soit — le texte se découpe un
 peu autrement, la famille bascule un peu plus tôt, et personne ne s'en aperçoit.
-`addin/parite/mutations.js` les réintroduit une par une : 35 sur 35 sont vues.
+`addin/parite/mutations.js` les réintroduit une par une : 42 sur 42 sont vues.
+Sept d'entre elles visent le pont et se vérifient contre `essais.js`, pas contre
+la parité — c'est la partie du portage qu'aucun Python ne couvre, donc celle où
+une mutation qui échappe coûterait le plus cher.
 
 Cinq choses sont sorties du portage. **Aucune des cinq n'était dans le
 JavaScript** : porter un programme, c'est le relire une fois de plus, et par
@@ -828,6 +892,8 @@ deux divergent, c'est le JavaScript qui a un bug.
 | `src/alea.js` | le générateur de Python, refait à l'identique |
 | `src/blake2s.js` | BLAKE2s, pour la graine du document |
 | `src/composition.js` | portage de `composition.py`, sans les planches |
+| `src/pont.js` | le pont vers Word — la seule part sans Python en face |
+| `essais.js` | **le pont, contre un Word simulé, avec un code de sortie** |
 | `src/grammaire.js` | portage de `grammaire.py`, sans les planches |
 | `src/traits.js` | portage de `traits.py` |
 | `src/paysage.js` | portage de `paysage.py` |

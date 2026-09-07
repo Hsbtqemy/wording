@@ -372,7 +372,8 @@ export class Paysage {
    * Le registre passe AVANT le test de vitesse : sinon la fusion de douze
    * chapitres dans le document maitre est lue comme un collage geant.
    */
-  absorber(texte, style = "Normal", mots_par_intervalle = 0, jour = 0, heure = 14) {
+  absorber(texte, style = "Normal", mots_par_intervalle = 0, jour = 0,
+           heure = 14, naissance = false) {
     // _sans_accent et non _deplier : contrairement a un paragraphe, un nom de
     // style revient a chaque appel et se compte sur les doigts. C'est le cas
     // pour lequel la memoire a ete faite.
@@ -381,6 +382,15 @@ export class Paysage {
     // Filtre gratuit : une citation ne compte jamais.
     if (STYLES_IGNORES.has(st)) return "ignoree";
 
+    // Un paragraphe SANS MOTS n'est pas encore un paragraphe.
+    //
+    // Word en cree un a chaque retour a la ligne, avant qu'on ait tape quoi que
+    // ce soit. Sans ce filtre, l'empreinte du vide entre au registre au premier
+    // Entree — et tous les retours a la ligne suivants sont lus comme
+    // « connue », donc le plant CESSE DE POUSSER au deuxieme paragraphe.
+    // rattacher() filtrait deja le vide ; absorber() ne le faisait pas.
+    if (!en_mots(texte).length) return "vide";
+
     const e = empreinte(texte);
 
     // 1. Connue : rien. Ni croissance, ni mots, ni traits, ET PAS DE PLANT
@@ -388,7 +398,15 @@ export class Paysage {
     //    (decision 11) rouvrirait un plant a chaque titre deja connu, a chaque
     //    ouverture du fichier. Le registre passe avant tout le reste. C'est ce
     //    qui rend un deplacement, une fusion et une suppression gratuits.
-    if (this.registre.has(e)) return "connue";
+    //    `naissance` est l'exception. Un paragraphe qu'on TAPE passe par
+    //    tous ses etats intermediaires, et chacun entre au registre. Or « Il
+    //    faut donc admettre » a toutes les chances d'avoir deja commence un
+    //    autre paragraphe : en francais, un paragraphe sur deux debute par les
+    //    memes quatre mots. Le registre declarait alors « connue » un
+    //    paragraphe genuinement neuf, et LE PLANT CESSAIT DE POUSSER — sans
+    //    rien signaler. Quand l'appelant a VU le paragraphe naitre vide sous
+    //    le curseur, il sait ce que le registre ne peut pas savoir.
+    if (this.registre.has(e) && !naissance) return "connue";
 
     // Un Titre 1 ouvre un plant (decision 6) — sauf si le plant courant vient
     // tout juste de naitre. Quand un chapitre commence peu apres qu'un plant

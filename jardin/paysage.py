@@ -308,7 +308,7 @@ class Paysage:
     # --------------------------------------------------------------- collage
     def absorber(self, texte: str, style: str = "Normal",
                  mots_par_intervalle: int = 0, jour: int = 0,
-                 heure: int = 14) -> str:
+                 heure: int = 14, naissance: bool = False) -> str:
         """
         Un paragraphe arrive. Ordre de verification strict (decision 4) :
 
@@ -326,6 +326,20 @@ class Paysage:
         if st in STYLES_IGNORES:
             return "ignoree"
 
+        # Un paragraphe SANS MOTS n'est pas encore un paragraphe.
+        #
+        # Word en cree un a chaque retour a la ligne, avant qu'on ait tape quoi
+        # que ce soit. Sans ce filtre, l'empreinte du vide entre au registre au
+        # premier Entree — et tous les retours a la ligne suivants sont lus
+        # comme « connue », donc le plant CESSE DE POUSSER au deuxieme
+        # paragraphe. Personne ne s'en apercevrait avant d'ecrire dans le vrai
+        # Word, parce que le corpus n'emet jamais de paragraphe vide.
+        #
+        # rattacher() filtrait deja le vide ; absorber() ne le faisait pas. Les
+        # deux portes d'entree doivent dire la meme chose.
+        if not en_mots(texte):
+            return "vide"
+
         e = empreinte(texte)
 
         # 1. Connue : rien. Ni croissance, ni mots, ni traits, ET PAS DE PLANT
@@ -334,7 +348,19 @@ class Paysage:
         #    chaque ouverture du fichier. Le registre passe avant tout le reste.
         #    C'est ce qui rend un deplacement, une fusion et une suppression
         #    gratuits.
-        if e in self.registre:
+        #    `naissance` est l'exception, et elle a une raison precise. Un
+        #    paragraphe qu'on TAPE passe par tous ses etats intermediaires, et
+        #    chacun entre au registre. Or « Il faut donc admettre » a toutes
+        #    les chances d'avoir deja commence un autre paragraphe : en
+        #    francais, un paragraphe sur deux debute par les memes quatre mots.
+        #    Le registre declarait alors « connue » un paragraphe genuinement
+        #    neuf, et LE PLANT CESSAIT DE POUSSER — sans rien signaler.
+        #
+        #    Quand l'appelant a VU le paragraphe naitre vide sous le curseur,
+        #    il sait ce que le registre ne peut pas savoir. La reconnaissance
+        #    existe pour rendre un DEPLACEMENT gratuit, pas pour nier une
+        #    frappe.
+        if e in self.registre and not naissance:
             return "connue"
 
         # Un Titre 1 ouvre un plant (decision 6) — sauf si le plant courant

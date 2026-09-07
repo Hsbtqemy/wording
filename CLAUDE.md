@@ -56,13 +56,20 @@ Les quatre suites, **dans une seule commande**, jamais en parallèle :
 
 ```bash
 python jardin/essais.py && python jardin/mutations.py \
-  && python jardin/parite.py && node addin/parite/mutations.js
+  && python jardin/parite.py && node addin/essais.js \
+  && node addin/parite/mutations.js
 ```
 
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `30 passes, 0 en echec` · `8/8` · `aucun ecart` · `13/13`.
+Attendu : `30 passes, 0 en echec` · `8/8` · `aucun ecart` · `22 passes` ·
+`42/42`.
+
+`addin/essais.js` éprouve le **pont** vers Word contre un Word simulé. C'est la
+seule partie du portage qu'aucune parité ne couvre — il n'y a pas de Python en
+face — et c'est celle qui porte la décision 2. Elle y a déjà trouvé deux défauts
+qui auraient été livrés.
 
 ⚠️ **`mutations.py` et `mutations.js` réécrivent les fichiers source sur le
 disque** pour vérifier que les essais savent échouer. Deux suites en même temps,
@@ -71,9 +78,10 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durées mesurées : `essais` 17 s · `mutations` 110 s (il relance `essais` huit
-fois) · `parite` 3 s · `mutations.js` 14 s — **2 min 24 en tout**. Assez long
-pour donner envie de paralléliser, ce qu'il ne faut surtout pas faire.
+Durée mesurée de l'enchaînement complet : **3 min 46**. Assez long pour donner
+envie de paralléliser, ce qu'il ne faut surtout pas faire — `mutations` relance
+`essais` huit fois, et `mutations.js` relance la parité ou les essais du pont
+quarante-deux fois.
 
 `addin/parite/cas.json` et `jardin/planches.html` sont des produits de
 compilation, ignorés par git et régénérés en quelques secondes.
