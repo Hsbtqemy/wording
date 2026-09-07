@@ -23,7 +23,7 @@ import { choisir } from "./src/magasin.js";
 // --------------------------------------------------------------------------
 // Le faux Office
 // --------------------------------------------------------------------------
-function monter_hote({ version16 = true, url = "C:/These/chapitre1.docx",
+function monter_hote({ plafond = 109, url = "C:/These/chapitre1.docx",
                        paragraphes = [], reglages = {},
                        refus_sauvegarde = false } = {}) {
   const etat = {
@@ -42,6 +42,9 @@ function monter_hote({ version16 = true, url = "C:/These/chapitre1.docx",
     dessins: 0,
     dialogues: [],
     tic: null,
+    casser: false,
+    styles_cassent: false,
+    lectures_de_style: 0,
     stockage: new Map(),
   };
   for (const p of paragraphes) {
@@ -79,13 +82,13 @@ function monter_hote({ version16 = true, url = "C:/These/chapitre1.docx",
     context: {
       requirements: {
         // Les jeux d'API sont EMBOITES : un hote qui ne sait pas faire 1.6 ne
-        // sait pas davantage faire 1.7. Le simulateur repondait « oui » a tout
-        // sauf a 1.6 exactement, ce qu'aucun Word ne fait — et le sondage de
-        // version aurait mesure ce mensonge plutot que l'hote.
+        // sait pas davantage faire 1.7. Le plafond est donne en centiemes —
+        // 109 pour 1.9, 103 pour un Office LTSC 2021, 0 pour un Word qui ne
+        // sait rien faire du tout.
         isSetSupported: (nom, v) => {
           if (nom !== "WordApi") return false;
           const [maj, min] = String(v).split(".").map(Number);
-          return maj * 100 + (min || 0) <= (version16 ? 109 : 105);
+          return maj * 100 + (min || 0) <= plafond;
         },
       },
       diagnostics: { host: "Word", platform: "PC", version: "16.0.14334" },
@@ -133,19 +136,30 @@ function monter_hote({ version16 = true, url = "C:/These/chapitre1.docx",
             // Le simulateur doit le faire aussi, sinon la mesure du « corps en
             // un bloc » compterait des lignes qui n'existent pas.
             load() {},
-            get text() { return etat.paras.map((p) => p.text).join("\r"); },
+            get text() {
+              // Un corps qu'on n'arrive pas a lire : le document a bouge sous
+              // les pieds du volet, ce qui remplace le paragraphe disparu du
+              // chemin des evenements.
+              if (etat.casser) throw new Error("le corps est illisible");
+              return etat.paras.map((p) => p.text).join("\r");
+            },
             paragraphs: {
               items: [],
-              load() { this.items = etat.paras.map((p) => proxyPara(p.id)); },
+              load(quoi) {
+                // On COMPTE les lectures de style : c'est la lecture chere, et
+                // savoir qu'elle ne part pas a chaque tic est tout l'interet.
+                if (String(quoi || "").includes("style")) {
+                  etat.lectures_de_style += 1;
+                  if (etat.styles_cassent) throw new Error("styles illisibles");
+                }
+                this.items = etat.paras.map((p) => proxyPara(p.id));
+              },
             },
           },
           getParagraphByUniqueLocalId: (id) => proxyPara(id),
           getSelection: () => ({
             paragraphs: { getFirstOrNullObject: () => proxyPara(etat.selection) },
           }),
-          onParagraphAdded: { add: (h) => { etat.ecouteurs.ajout = h; } },
-          onParagraphChanged: { add: (h) => { etat.ecouteurs.changement = h; } },
-          onParagraphDeleted: { add: (h) => { etat.ecouteurs.suppression = h; } },
         },
         sync: async () => {},
       };
@@ -216,8 +230,9 @@ const PHRASE = "La chambre neuve gardait la porte, et le couloir revenait vers "
  * un paragraphe VIDE, puis le texte.
  */
 async function entrer(etat) {
+  // Word cree un paragraphe VIDE a chaque Entree. Personne ne previent le
+  // volet : c'est le tic qui le verra en relisant le corps.
   const id = etat.ajouter("");
-  await etat.ecouteurs.ajout({ uniqueLocalIds: [id], source: "Local" });
   await etat.tic();
   return id;
 }
@@ -225,7 +240,6 @@ async function entrer(etat) {
 async function pousser(etat, texte) {
   const id = await entrer(etat);
   etat.paras.find((p) => p.id === id).text = texte;
-  await etat.ecouteurs.changement({ uniqueLocalIds: [id], source: "Local" });
   await etat.tic();
   return id;
 }
@@ -257,96 +271,38 @@ suite.push(["le demarrage va jusqu'au bout et dessine", async () => {
   await demarrer(etat);
   vrai(etat.elements.paysage.innerHTML.includes("<svg"),
        "le volet doit contenir un SVG");
-  vrai(etat.ecouteurs.ajout && etat.ecouteurs.changement && etat.ecouteurs.suppression,
-       "les trois evenements de paragraphe sont branches");
-  vrai(etat.ecouteurs.documentSelectionChanged,
-       "le curseur est branche sur DocumentSelectionChanged");
-  vrai(etat.tic, "le tic est arme");
+  vrai(etat.tic, "le tic est arme : c'est lui qui regarde, faute d'evenements");
 }]);
+
+// Un Office LTSC 2021 s'arrete a WordApi 1.3, et c'est la machine a qui ce
+// cadeau est destine. Tout doit y marcher — c'est toute la raison du guet.
+suite.push(["un Word de 2021, sans les evenements, fait pousser le paysage",
+  async () => {
+    const etat = monter_hote({ plafond: 103, paragraphes: [{ texte: PHRASE }] });
+    await demarrer(etat);
+    vrai(etat.tic, "le tic doit etre arme sur un WordApi 1.3");
+    const avant = etat.elements.paysage.innerHTML;
+    await pousser(etat, "Un paragraphe tape a la main, du premier au dernier mot.");
+    vrai(etat.elements.paysage.innerHTML !== avant,
+         "la forme doit avoir bouge");
+    const id = etat.reglages["paysage.identifiant"];
+    const range = JSON.parse(etat.stockage.get(`paysage:etat:${id}`));
+    vrai(range.segments[0].nouveaux >= 2,
+         `le plant doit avoir pousse, obtenu ${range.segments[0].nouveaux}`);
+  }]);
 
 suite.push(["un Word trop ancien dit ce qui manque au lieu de rester noir",
   async () => {
-    const etat = monter_hote({ version16: false, paragraphes: [{ texte: PHRASE }] });
+    const etat = monter_hote({ plafond: 0, paragraphes: [{ texte: PHRASE }] });
     await demarrer(etat);
     const mot = etat.elements.mot.textContent;
     vrai(mot.length > 20, "le volet doit expliquer, pas se taire");
-    // L'invariant n'est plus « ne rien armer » depuis que le guet mesure : il
-    // arme bien un releve. Il est, et il l'a toujours ete, que rien ne pousse.
+    // L'invariant : un Word trop ancien ne fait RIEN pousser, et ne laisse
+    // aucune trace derriere lui.
     vrai(!etat.elements.paysage.innerHTML.includes("<svg"),
          "aucun paysage ne doit etre dessine");
     egal(etat.stockage.size, 0, "ni quoi que ce soit range");
-    // ECHAFAUDAGE : sur un Office LTSC, gele a sa version de sortie, savoir
-    // QUE ca manque ne sert a rien — il faut savoir jusqu'ou l'hote va.
-    vrai(mot.includes("WordApi 1.5"),
-         `le volet doit nommer le niveau trouve, obtenu : ${mot}`);
-    vrai(mot.includes("16.0.14334"),
-         "et la version de l'hote, qui dit s'il peut seulement bouger");
-    // Prive d'evenements, le seul repli est de regarder. Ce que ca coute decide
-    // si le repli tient : le budget de la decision 12 est de 100 ms par tic.
-    vrai(/1 paragraphes \/ \d+ k signes/.test(mot),
-         `le volet doit dire la taille du document, obtenu : ${mot}`);
-    // A FROID PUIS A CHAUD, separement : la premiere mesure prise sur un vrai
-    // Word disait 216 ms pour dix-huit paragraphes, c'est-a-dire le cout
-    // d'allumage du canal RPC et pas celui d'une lecture. Le tic, lui, ne
-    // tourne jamais a froid — une mesure unique mesurait la mauvaise chose.
-    vrai(/tout : froid \d+ puis \d+ \d+ \d+ \d+ ms/.test(mot),
-         `le volet doit separer le froid du chaud, obtenu : ${mot}`);
-    vrai(/curseur seul : \d+ \d+ \d+ \d+ ms/.test(mot),
-         `et mesurer ce que le guet lirait vraiment, obtenu : ${mot}`);
-    // Le corps en une seule chaine : c'est ce qui decide de la FORME du guet —
-    // un diff sur des instantanes complets, ou une continuite devinee.
-    vrai(/corps en un bloc : 1 lignes en \d+ \d+ \d+ \d+ ms/.test(mot),
-         `le volet doit mesurer body.text, obtenu : ${mot}`);
-    vrai(/tout sans le style : \d+ \d+ \d+ ms/.test(mot),
-         `et separer le cout du style, obtenu : ${mot}`);
-    // Sans numero de sonde, une lecture rapportee est indechiffrable : on a
-    // deja pris pour neuve une mesure produite par du code remplace depuis.
-    vrai(/sonde \d+/.test(mot), `la sonde doit se nommer, obtenu : ${mot}`);
-    // Trente-cinq pages et UN SEUL paragraphe : un document reel s'est annonce
-    // comme ca. Sauts de ligne au lieu de marques de paragraphe, ou body.paragraphs
-    // qui se comporte autrement ? Compter les separateurs tranche.
-    vrai(/separateurs : \d+ CR . \d+ VT . \d+ LF . 1 objets/.test(mot),
-         `le volet doit compter les separateurs, obtenu : ${mot}`);
-  }]);
-
-suite.push(["ouvrir un document ne le marque pas comme modifie", async () => {
-  const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
-  await demarrer(etat);
-  const id = etat.reglages["paysage.identifiant"];
-  vrai(id && id.length > 4, "un identifiant est tire");
-  vrai(etat.stockage.has(`paysage:etat:${id}`), "l'etat est range");
-  // Decision 16 : ouvrir un fichier et regarder le volet ne doit rien y
-  // ecrire, sinon Word demande « voulez-vous enregistrer les modifications ? »
-  // a la fermeture d'un document ou personne n'a tape une lettre.
-  egal(etat.sauvegardes, 0, "aucune sauvegarde tant que rien n'a pousse");
-  egal(etat.persistes["paysage.identifiant"], undefined,
-       "et rien n'est encore ecrit dans le fichier");
-}]);
-
-// Le risque le plus lourd du repli : tout le guet repose sur
-// DocumentSelectionChanged, qui est present sur un Word de 2021 — mais present
-// ne dit pas qu'il se declenche a la frappe. Ce que le volet compte, cet essai
-// verifie qu'il le compte juste.
-suite.push(["prive d'evenements, le volet compte ce que le curseur laisse voir",
-  async () => {
-    const etat = monter_hote({ version16: false, paragraphes: [{ texte: PHRASE }] });
-    await demarrer(etat);
-    vrai(/guet : 0 signaux · 0 releves · 0 changements vus/
-      .test(etat.elements.mot.textContent),
-         `le guet doit partir de zero, obtenu : ${etat.elements.mot.textContent}`);
-
-    const p = etat.paras[0];
-    etat.selection = p.id;
-    await etat.ecouteurs.documentSelectionChanged();
-    await etat.tic();                       // premier releve : rien a comparer
-    p.text = `${PHRASE} Et un mot de plus.`;
-    await etat.tic();                       // celui-la doit VOIR la frappe
-
-    const mot = etat.elements.mot.textContent;
-    vrai(/guet : 1 signaux · 2 releves · 1 changements vus/.test(mot),
-         `le guet doit voir la frappe sans aucun evenement, obtenu : ${mot}`);
-    vrai(!etat.elements.paysage.innerHTML.includes("<svg"),
-         "et ne toujours rien faire pousser");
+    egal(etat.sauvegardes, 0, "ni le document marque comme modifie");
   }]);
 
 // Decision 11 : le paysage appartient au DOSSIER. Un second document du meme
@@ -413,49 +369,74 @@ suite.push(["rouvrir le document ne fait rien pousser", async () => {
        "ni un paragraphe");
 }]);
 
-suite.push(["le tic absorbe ce que les evenements ont mis en file", async () => {
-  const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
-  await demarrer(etat);
-  const id = etat.reglages["paysage.identifiant"];
-  const avant = JSON.parse(etat.stockage.get(`paysage:etat:${id}`)).segments[0].mots;
+suite.push(["le tic voit ce qui a change, sans que personne le previenne",
+  async () => {
+    const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
+    await demarrer(etat);
+    const id = etat.reglages["paysage.identifiant"];
+    const avant = JSON.parse(etat.stockage.get(`paysage:etat:${id}`)).segments[0].mots;
 
-  // On tape un paragraphe neuf : Entree, puis le texte.
-  const neuf = etat.ajouter("");
-  await etat.ecouteurs.ajout({ uniqueLocalIds: [neuf], source: "Local" });
-  await etat.tic();
-  etat.paras.find((p) => p.id === neuf).text = "Quatre mots arrivent ici.";
-  await etat.ecouteurs.changement({ uniqueLocalIds: [neuf], source: "Local" });
-  await etat.tic();
+    // On tape un paragraphe neuf : Entree, puis le texte. AUCUN evenement n'est
+    // envoye — le simulateur n'en offre plus. Le tic doit s'en apercevoir seul.
+    await pousser(etat, "Quatre mots arrivent ici, puis quelques autres encore.");
 
-  const apres = JSON.parse(etat.stockage.get(`paysage:etat:${id}`)).segments[0].mots;
-  vrai(apres > avant, `le paysage doit avoir pousse : ${avant} -> ${apres}`);
-}]);
+    const apres = JSON.parse(etat.stockage.get(`paysage:etat:${id}`)).segments[0].mots;
+    vrai(apres > avant, `le paysage doit avoir pousse : ${avant} -> ${apres}`);
+  }]);
 
-suite.push(["le curseur suit le paragraphe de la selection", async () => {
-  const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
-  await demarrer(etat);
-  const a = etat.ajouter("Premier paragraphe tape a la main ici meme.");
-  etat.selection = a;
-  await etat.ecouteurs.documentSelectionChanged();
-  const b = etat.ajouter("Second paragraphe, ailleurs dans la page.");
-  etat.selection = b;
-  await etat.ecouteurs.documentSelectionChanged();
-  // Rien a assurer de plus ici que l'absence d'exception : c'est essais.js qui
-  // eprouve ce que le curseur DECIDE. Ici on verifie qu'il est bien alimente.
-  vrai(true, "la selection se lit sans lever");
-}]);
-
+// Ce que le guet decide — la fermeture de visite, le debit, la conversion — est
+// eprouve par la parite, qui a un Python en face. Ici on ne verifie que le
+// cablage : que le volet lise, nourrisse, et survive.
 suite.push(["un tic qui leve n'arrete pas les suivants", async () => {
   const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
   await demarrer(etat);
-  const perdu = etat.ajouter("Un paragraphe qui va disparaitre avant le tic.");
-  await etat.ecouteurs.ajout({ uniqueLocalIds: [perdu], source: "Local" });
-  etat.paras = etat.paras.filter((p) => p.id !== perdu);   // efface sans evenement
-  await etat.tic();                                        // ne doit pas lever
-  const encore = etat.ajouter("Un paragraphe qui, lui, reste en place.");
-  await etat.ecouteurs.ajout({ uniqueLocalIds: [encore], source: "Local" });
-  await etat.tic();
+  etat.casser = true;
+  await etat.tic();                       // le corps est illisible : ne doit pas lever
+  etat.casser = false;
+  await pousser(etat, "Un paragraphe qui, lui, arrive sans encombre.");
   vrai(etat.elements.paysage.innerHTML.includes("<svg"), "le volet dessine encore");
+  const id = etat.reglages["paysage.identifiant"];
+  vrai(etat.stockage.has(`paysage:etat:${id}`), "et range ce qui a pousse");
+}]);
+
+// Le style appartient au paragraphe, et la lecture qui le donne est CHERE : un
+// objet Office.js par paragraphe. Elle ne doit partir que quand la structure
+// bouge, jamais pendant qu'on tape dans un paragraphe existant.
+// Une relecture ratee laisse la table DECALEE, pas seulement vieille. Sans
+// memoire de cet echec, le compte de paragraphes correspondrait des le tic
+// suivant et la table ne serait plus jamais relue.
+suite.push(["une lecture de styles ratee se rejoue au tic suivant", async () => {
+  const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
+  await demarrer(etat);
+  const depart = etat.lectures_de_style;
+
+  etat.styles_cassent = true;
+  etat.ajouter("Un paragraphe neuf, dont on ne pourra pas lire le style.");
+  await etat.tic();                       // la structure bouge, la lecture echoue
+  egal(etat.lectures_de_style, depart + 1, "la relecture a bien ete tentee");
+  vrai(etat.elements.paysage.innerHTML.includes("<svg"),
+       "et l'echec n'arrete pas le volet");
+
+  etat.styles_cassent = false;
+  await etat.tic();                       // rien n'a bouge : elle doit repartir
+  egal(etat.lectures_de_style, depart + 2,
+       "une table perimee doit etre relue meme sans changement de structure");
+  await etat.tic();
+  egal(etat.lectures_de_style, depart + 2, "puis se taire une fois rattrapee");
+}]);
+
+suite.push(["les styles ne se relisent que quand la structure bouge", async () => {
+  const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
+  await demarrer(etat);
+  const depart = etat.lectures_de_style;
+  // Taper DANS un paragraphe : aucune relecture.
+  etat.paras[0].text = `${PHRASE} Et une suite.`;
+  await etat.tic();
+  egal(etat.lectures_de_style, depart, "taper ne change pas la structure");
+  // Un paragraphe de plus : la table est perimee.
+  etat.ajouter("Un paragraphe entierement neuf, avec son propre style.");
+  await etat.tic();
+  egal(etat.lectures_de_style, depart + 1, "un paragraphe de plus la perime");
 }]);
 
 suite.push(["l'apercu s'ouvre et recoit la cle de son paysage", async () => {

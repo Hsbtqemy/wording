@@ -1,33 +1,60 @@
 /**
  * Le volet : le seul fichier qui parle a Office.js.
  *
- * Tout ce qui decide quoi que ce soit est ailleurs — pont.js pour la lecture
- * des evenements, paysage.js pour l'etat, composition.js pour le dessin. Ici on
- * ne fait que brancher, et c'est voulu : ce fichier ne peut etre eprouve ni par
- * la parite ni par les essais du pont, donc moins il decide, mieux c'est.
- * magasin.js a ete detache pour la meme raison — l'arbitrage entre les deux
- * copies du paysage est une decision, et une decision doit pouvoir s'eprouver
- * sans hote.
+ * Tout ce qui decide quoi que ce soit est ailleurs — guet.js pour lire ce qui a
+ * change, paysage.js pour l'etat, magasin.js pour l'arbitrage entre les deux
+ * copies, composition.js pour le dessin. Ici on ne fait que brancher, et c'est
+ * voulu : ce fichier ne peut etre eprouve ni par la parite ni autrement que
+ * contre un hote simule, donc moins il decide, mieux c'est.
  *
- * Ce qu'il porte quand meme, et qui n'est nulle part ailleurs :
+ * ⚠️ IL NE PASSE PLUS PAR LES EVENEMENTS DE PARAGRAPHE. Ils demandent WordApi
+ * 1.6, et la machine a qui ce cadeau est destine est un Office LTSC 2021, gele
+ * a sa version de sortie : elle ne les aura jamais. Le volet REGARDE donc, au
+ * lieu d'etre prevenu — il relit body.text a chaque tic et le compare au
+ * precedent. Mesure sur cette machine : 74 000 signes coutent 17 a 21 ms, le
+ * prix d'un aller-retour et rien de plus, alors que dix-neuf paragraphes lus
+ * objet par objet en coutent quarante-cinq. Le cout est dans les OBJETS
+ * qu'Office.js fabrique, pas dans le texte.
+ *
+ * Ce qui reste necessaire tient maintenant en WordApi 1.1, c'est-a-dire
+ * n'importe quel Word.
+ *
+ * ⚠️ CE QUE CE CHEMIN NE SAIT PLUS FAIRE : distinguer la frappe d'un CO-AUTEUR.
+ * Les evenements portaient args.source, et le pont ignorait les modifications
+ * distantes. Un instantane de texte ne dit pas qui a ecrit. Sur un document
+ * partage, la frappe de quelqu'un d'autre fera donc pousser le paysage. C'est
+ * assume : sans WordApi 1.6, l'information n'existe pas, et une these s'ecrit
+ * seul.
+ *
+ * Ce qu'il porte, et qui n'est nulle part ailleurs :
  *
  *   - la cle du DOSSIER, tiree de l'URL du document (decision 11) ;
  *   - les deux magasins branches sur l'hote (decision 16) ;
- *   - la degradation quand WordApi 1.6 manque ;
+ *   - la lecture du corps, et celle des styles quand la structure bouge ;
  *   - le tic de deux secondes (decision 12).
  */
 
-import { Pont, INTERVALLE } from "./pont.js";
+import { Guet, INTERVALLE, compter_paragraphes } from "./guet.js";
 import { Magasin, CLE_ETAT, REGLAGE_ID } from "./magasin.js";
 import { graine_du_document } from "./grammaire.js";
 import { vue_de_travail } from "./composition.js";
 
 let paysage = null;
-let pont = null;
+let guet = null;
 let magasin = null;
 let graine = 1;
 let dialogue = null;
 let aEcrire = false;
+
+// La table des styles, un par paragraphe. Relue seulement quand le nombre de
+// paragraphes change — voir lire_corps().
+let styles = [];
+// ⚠️ Une relecture qui a echoue laisse la table DECALEE, pas seulement vieille :
+// la structure a bouge et la table ne l'a pas suivie. Sans ce drapeau, le compte
+// de paragraphes correspondrait des le tic suivant et on ne la relirait plus
+// jamais — les styles resteraient de travers jusqu'au prochain changement de
+// structure, sans que rien ne le signale.
+let styles_perimes = false;
 
 // --------------------------------------------------------------------------
 // Les deux magasins (decision 16)
@@ -95,77 +122,65 @@ function ranger() {
 // La lecture du document
 // --------------------------------------------------------------------------
 /**
- * Resout des identifiants de paragraphe en texte.
+ * Le corps entier, en UNE chaine.
  *
- * Un identifiant peut avoir disparu entre l'evenement et le vidage : le
- * paragraphe a ete supprime, annule, ou fusionne. On tente le lot d'un coup,
- * et si le lot echoue on reprend un par un — un paragraphe disparu ne doit pas
- * emporter les onze autres.
+ * C'est la seule facon abordable de regarder un document a chaque tic :
+ * body.text ne fabrique aucun objet intermediaire, et c'est la que se trouvait
+ * tout le cout.
  */
-async function lire(ids) {
-  try {
-    return await Word.run(async (ctx) => {
-      const charges = ids.map((id) => {
-        const p = ctx.document.getParagraphByUniqueLocalId(id);
-        p.load("text,style");
-        return { id, p };
-      });
-      await ctx.sync();
-      return charges.map(({ id, p }) => ({ id, texte: p.text, style: p.style }));
-    });
-  } catch {
-    const sortie = [];
-    for (const id of ids) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        const un = await Word.run(async (ctx) => {
-          const p = ctx.document.getParagraphByUniqueLocalId(id);
-          p.load("text,style");
-          await ctx.sync();
-          return { id, texte: p.text, style: p.style };
-        });
-        sortie.push(un);
-      } catch { /* ce paragraphe n'existe plus : c'est une reponse, pas une panne */ }
-    }
-    return sortie;
-  }
-}
-
-/** Le scan complet a l'ouverture (decision 11). */
-async function scanner() {
+async function lire_texte() {
   return Word.run(async (ctx) => {
-    const paras = ctx.document.body.paragraphs;
-    paras.load("items/text,items/style,items/uniqueLocalId");
+    const corps = ctx.document.body;
+    corps.load("text");
     await ctx.sync();
-    return paras.items.map((p) => ({
-      id: p.uniqueLocalId, texte: p.text, style: p.style,
-    }));
+    return corps.text || "";
   });
 }
 
-// --------------------------------------------------------------------------
-// Le curseur (decision 2)
-// --------------------------------------------------------------------------
 /**
- * La selection a bouge. On demande a Word DANS QUEL PARAGRAPHE elle est, et
- * c'est le pont qui decide si cela vaut un depart.
- *
- * DocumentSelectionChanged se declenche aussi quand on tape, puisque taper
- * deplace le point d'insertion. Sans ce detour par l'identite du paragraphe,
- * chaque frappe serait une visite neuve — voir l'en-tete de pont.js.
+ * Les styles, un par paragraphe. C'est la lecture CHERE : un objet Office.js
+ * par paragraphe, ~1,7 ms piece, soit deux secondes et demie sur une these.
  */
-async function sur_selection() {
-  try {
-    await Word.run(async (ctx) => {
-      const p = ctx.document.getSelection().paragraphs.getFirstOrNullObject();
-      p.load("uniqueLocalId,isNullObject");
-      await ctx.sync();
-      pont.signaler_curseur(p.isNullObject ? null : p.uniqueLocalId);
-    });
-  } catch {
-    // Une selection qu'on n'arrive pas a lire ne doit pas casser la frappe en
-    // cours. On prefere ne rien quitter plutot que quitter a tort.
+async function lire_styles() {
+  return Word.run(async (ctx) => {
+    const paras = ctx.document.body.paragraphs;
+    paras.load("items/style");
+    await ctx.sync();
+    return paras.items.map((p) => p.style);
+  });
+}
+
+/**
+ * Le corps, et les styles SEULEMENT s'ils ont pu changer.
+ *
+ * Le style appartient au paragraphe ; taper dedans ne le change pas. Le nombre
+ * de paragraphes se lit gratuitement dans la chaine qu'on vient de recevoir, et
+ * il suffit a savoir si la table est perimee. La lecture chere ne part donc que
+ * quand la structure bouge, jamais pendant qu'on ecrit.
+ */
+async function lire_corps() {
+  const texte = await lire_texte();
+  if (styles_perimes || compter_paragraphes(texte) !== guet.paragraphes) {
+    try {
+      styles = await lire_styles();
+      styles_perimes = false;
+    } catch {
+      // Une table qu'on n'a pas pu relire vaut mieux qu'un tic qui leve. Mais
+      // on RETIENT qu'elle est perimee : sinon le compte correspondrait des le
+      // tic suivant et elle ne serait plus jamais relue.
+      styles_perimes = true;
+    }
   }
+  return texte;
+}
+
+/** Le jour de l'annee, base zero, et l'heure : ce que la palette attend. */
+function horloge() {
+  const d = new Date();
+  const debut = Date.UTC(d.getFullYear(), 0, 1);
+  const jour = Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())
+    - debut) / 86400000);
+  return { jour, heure: d.getHours() };
 }
 
 // --------------------------------------------------------------------------
@@ -184,255 +199,6 @@ function dire(texte) {
   if (hote) hote.textContent = texte || "";
 }
 
-/**
- * Ce que cet hote sait faire, en clair.
- *
- * ECHAFAUDAGE, et il porte une date. Le refus « il manque une version de Word »
- * ne disait pas CE QUI manque, et sur une machine qui ne peut pas etre mise a
- * jour — un Office LTSC est gele a sa version de sortie pour cinq ans — c'est
- * la seule question qui compte. Ces lignes disparaissent le jour ou le volet
- * saura se passer des evenements de paragraphe.
- *
- * On monte jusqu'a 1.8 sans s'arreter au premier refus : les jeux d'API sont
- * emboites, mais rien n'oblige un hote a le rester, et supposer l'emboitement
- * ici reviendrait a mesurer sa propre hypothese.
- */
-async function signalement() {
-  // ⚠️ A INCREMENTER A CHAQUE CHANGEMENT DE SONDE. Word garde longtemps sa
-  // copie des fichiers du volet, et une lecture rapportee sans ce numero est
-  // indechiffrable : on a deja pris pour neuve une mesure produite par du code
-  // remplace depuis. Un chiffre faux serait pire que pas de chiffre.
-  const morceaux = ["sonde 5"];
-  try {
-    let haut = "aucun";
-    for (const v of ["1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8"]) {
-      if (Office.context.requirements.isSetSupported("WordApi", v)) haut = v;
-    }
-    morceaux.push(`WordApi ${haut}`);
-  } catch {
-    morceaux.push("WordApi indeterminable");
-  }
-  try {
-    const d = Office.context.diagnostics;
-    if (d) morceaux.push(`${d.host} ${d.platform} ${d.version}`);
-  } catch { /* diagnostics n'est pas partout : son absence n'est pas une panne */ }
-
-  // Le second chiffre, et il decide autant que le premier. Prive d'evenements,
-  // le seul repli est que le tic REGARDE au lieu d'etre prevenu — ce qui ne
-  // tient que dans le budget de 100 ms par tic de la decision 12.
-  //
-  // ⚠️ LA PREMIERE MESURE PRISE ICI DISAIT 216 ms POUR DIX-HUIT PARAGRAPHES.
-  // Cinq mille signes ne coutent pas un cinquieme de seconde a traverser un
-  // pont : c'etait le PREMIER Word.run de la session, qui monte tout le canal.
-  // Un cout d'allumage, pas un cout de lecture — et le tic ne tourne jamais a
-  // froid. Mesurer une fois, c'etait mesurer la mauvaise chose.
-  //
-  // On TOUCHE le texte de chaque paragraphe, on ne compte pas les objets : le
-  // cout est dans le passage du texte par le pont, et un compteur qui ne lit
-  // rien mesurerait un aller-retour vide.
-  const relire_tout = () => Word.run(async (ctx) => {
-    const paras = ctx.document.body.paragraphs;
-    paras.load("items/text,items/style");
-    await ctx.sync();
-    let total = 0;
-    for (const p of paras.items) total += p.text.length;
-    return { n: paras.items.length, signes: total };
-  });
-
-  try {
-    const t0 = Date.now();
-    const { n, signes } = await relire_tout();
-    const froid = Date.now() - t0;
-    morceaux.push(`${n} paragraphes / ${Math.round(signes / 1000)} k signes`);
-    const chaud = [];
-    for (let i = 0; i < 4; i++) {
-      const t = Date.now();
-      // eslint-disable-next-line no-await-in-loop
-      await relire_tout();
-      chaud.push(Date.now() - t);
-    }
-    morceaux.push(`tout : froid ${froid} puis ${chaud.join(" ")} ms`);
-  } catch {
-    morceaux.push("relecture complete impossible");
-  }
-
-  // Et le chiffre qui decide vraiment : le paragraphe SOUS LE CURSEUR, seul.
-  // C'est ce que le guet lirait a chaque tic, pas le document entier — la
-  // decision 2 dit deja que la croissance se produit la ou est le curseur.
-  //
-  // On charge `text`, pas `uniqueLocalId` : c'est justement la propriete qui
-  // demande 1.6 et qui manque ici. sur_selection() la charge encore, et devra
-  // changer si le guet est retenu.
-  try {
-    const t = [];
-    for (let i = 0; i < 4; i++) {
-      const t0 = Date.now();
-      // eslint-disable-next-line no-await-in-loop
-      await Word.run(async (ctx) => {
-        const p = ctx.document.getSelection().paragraphs.getFirstOrNullObject();
-        p.load("text,style");
-        await ctx.sync();
-        return p.isNullObject ? 0 : p.text.length;
-      });
-      t.push(Date.now() - t0);
-    }
-    morceaux.push(`curseur seul : ${t.join(" ")} ms`);
-  } catch {
-    morceaux.push("curseur illisible");
-  }
-
-  // L'hypothese qui change la FORME du guet, pas sa faisabilite.
-  //
-  // Mesure : 19 paragraphes coutent 45 ms quand un seul en coute 14. Environ
-  // 1,6 ms par paragraphe — mais de quoi ? Du texte, ou des mille cinq cents
-  // objets qu'Office.js fabrique pour le porter ? body.text rend le corps
-  // entier en UNE chaine, paragraphes separes par des retours chariot.
-  //
-  // Si c'est beaucoup moins cher, le guet prend un instantane complet a chaque
-  // tic et le compare au precedent : un diff sur des tableaux de chaines,
-  // logique pure, donc specifiable en Python et couvert par la parite — ce que
-  // pont.js n'a jamais pu etre. Sinon il devra deviner la continuite du
-  // paragraphe sous le curseur, et c'est le terrain ou ce projet s'est deja
-  // fait piege deux fois.
-  try {
-    const t = [];
-    let lignes = 0;
-    for (let i = 0; i < 4; i++) {
-      const t0 = Date.now();
-      // eslint-disable-next-line no-await-in-loop
-      lignes = await Word.run(async (ctx) => {
-        const corps = ctx.document.body;
-        corps.load("text");
-        await ctx.sync();
-        return corps.text.split("\r").length;
-      });
-      t.push(Date.now() - t0);
-    }
-    morceaux.push(`corps en un bloc : ${lignes} lignes en ${t.join(" ")} ms`);
-  } catch {
-    morceaux.push("corps en un bloc illisible");
-  }
-
-  // La troisieme hypothese, laissee passer jusqu'ici : les 45 ms chargeaient
-  // « items/text,items/style ». Or resoudre un style coute souvent bien plus
-  // cher que lire du texte — Word doit remonter la chaine des styles pour
-  // chacun. Le guet a besoin du style (decision 6 : un Titre 1 ouvre un plant),
-  // mais s'il ne coute presque rien sans lui, on saura que c'est LUI qu'il faut
-  // aller chercher autrement, et pas le texte.
-  try {
-    const t = [];
-    for (let i = 0; i < 3; i++) {
-      const t0 = Date.now();
-      // eslint-disable-next-line no-await-in-loop
-      await Word.run(async (ctx) => {
-        const paras = ctx.document.body.paragraphs;
-        paras.load("items/text");
-        await ctx.sync();
-        let total = 0;
-        for (const p of paras.items) total += p.text.length;
-        return total;
-      });
-      t.push(Date.now() - t0);
-    }
-    morceaux.push(`tout sans le style : ${t.join(" ")} ms`);
-  } catch {
-    morceaux.push("lecture sans style impossible");
-  }
-
-  // ⚠️ TRENTE-CINQ PAGES ET UN SEUL PARAGRAPHE.
-  //
-  // Un document de 74 000 signes s'est annonce avec paragraphs.items.length
-  // valant 1 et un body.text sans le moindre retour chariot. Les deux methodes
-  // concordent, donc ce n'est pas une erreur de mesure. Deux explications, aux
-  // consequences tres inegales :
-  //
-  //   - le document est fait de SAUTS DE LIGNE (Maj+Entree, U+000B) au lieu de
-  //     marques de paragraphe — frequent quand on convertit un PDF ou qu'on
-  //     colle depuis ailleurs. Word n'y voit alors qu'un paragraphe, et TOUT LE
-  //     PAYSAGE EST BATI SUR LE PARAGRAPHE : une these de cette forme donnerait
-  //     une empreinte unique, jamais d'extension, et chaque frappe serait une
-  //     reprise du document entier. Rien dans le projet ne prevoit ce cas ;
-  //   - ou body.paragraphs se comporte autrement sur cet hote, ce qui serait
-  //     bien plus grave, et remettrait en cause jusqu'au scan d'ouverture.
-  //
-  // Compter les separateurs tranche sans rien supposer.
-  try {
-    const c = await Word.run(async (ctx) => {
-      const corps = ctx.document.body;
-      corps.load("text");
-      const paras = corps.paragraphs;
-      paras.load("items/text");
-      await ctx.sync();
-      const t = corps.text;
-      const compte = (ch) => t.split(ch).length - 1;
-      // \u000B ecrit en clair, jamais le caractere lui-meme : une
-      // tabulation verticale dans une source est invisible, et elle ne
-      // survit pas au premier copier-coller.
-      return { cr: compte("\r"), vt: compte("\u000B"), lf: compte("\n"),
-               objets: paras.items.length };
-    });
-    morceaux.push(`separateurs : ${c.cr} CR · ${c.vt} VT · ${c.lf} LF`
-                + ` · ${c.objets} objets`);
-  } catch {
-    morceaux.push("separateurs illisibles");
-  }
-  return morceaux.join(" · ");
-}
-
-/**
- * ECHAFAUDAGE, et le plus important des trois.
- *
- * Prive d'evenements de paragraphe, le seul repli possible est un GUET : le tic
- * regarde le paragraphe sous le curseur au lieu d'etre prevenu. Tout cela
- * repose sur DocumentSelectionChanged — de l'API commune, donc presente ici.
- * Mais « presente » ne dit pas « se declenche quand on tape ». Si l'evenement
- * ne partait qu'au clic, la decision 2 tomberait, et on ne le decouvrirait
- * qu'apres avoir tout construit.
- *
- * Alors on compte, en clair, dans le volet — les trois nombres qui decident :
- *
- *   signaux      combien de fois la selection s'est annoncee
- *   releves      combien de fois on a pu lire le paragraphe sous le curseur
- *   vus          combien de ces releves ont vu le texte CHANGER
- *
- * `vus` est celui qui compte. S'il monte pendant qu'on tape, le guet marche et
- * la frappe est visible sans aucun evenement de paragraphe. S'il reste a zero,
- * il n'y a pas de repli de ce cote-la et il faut chercher ailleurs.
- *
- * Rien ici ne touche au paysage : ce chemin ne fait pousser rien du tout.
- */
-function guetter(phrase, sonde) {
-  let signaux = 0;
-  let releves = 0;
-  let vus = 0;
-  let precedent = null;
-  const montrer = () => dire(`${phrase}\n\n${sonde}\n\nguet : ${signaux} signaux`
-    + ` · ${releves} releves · ${vus} changements vus`);
-  montrer();
-
-  try {
-    Office.context.document.addHandlerAsync(
-      Office.EventType.DocumentSelectionChanged,
-      () => { signaux += 1; montrer(); },
-    );
-  } catch { /* si meme ca manque, le compteur reste a zero et le dit */ }
-
-  setInterval(async () => {
-    try {
-      const texte = await Word.run(async (ctx) => {
-        const p = ctx.document.getSelection().paragraphs.getFirstOrNullObject();
-        p.load("text");
-        await ctx.sync();
-        return p.isNullObject ? null : p.text;
-      });
-      releves += 1;
-      if (precedent !== null && texte !== precedent) vus += 1;
-      precedent = texte;
-      montrer();
-    } catch { /* un releve manque n'arrete pas le guet */ }
-  }, INTERVALLE);
-}
-
 // --------------------------------------------------------------------------
 // Le tic (decision 12)
 // --------------------------------------------------------------------------
@@ -446,8 +212,10 @@ async function tic() {
   const ecoule = maintenant - dernier;
   dernier = maintenant;
   try {
-    const verdicts = await pont.vider(ecoule);
-    if (verdicts.length) {
+    const faits = guet.relever(await lire_corps(), styles);
+    if (faits.length) {
+      const { jour, heure } = horloge();
+      guet.nourrir(paysage, faits, jour, heure, guet.debit(faits, ecoule));
       dessiner();
       aEcrire = true;
     }
@@ -508,12 +276,15 @@ Office.onReady(async (info) => {
 
   // On verifie la version ICI et pas dans le manifeste : une contrainte non
   // satisfaite dans le manifeste rend l'add-in invisible, sans un mot.
-  if (!Office.context.requirements.isSetSupported("WordApi", "1.6")) {
-    const phrase = "Il manque une version de Word un peu plus recente pour que "
-      + "le paysage suive l'ecriture. Tout le reste est deja la.";
-    const sonde = await signalement();
-    dire(`${phrase}\n\n${sonde}`);
-    guetter(phrase, sonde);
+  //
+  // 1.1 ET NON 1.6. Depuis que le volet regarde au lieu d'etre prevenu, il n'a
+  // plus besoin que de body.text et body.paragraphs — autant dire n'importe
+  // quel Word. C'etait tout le but : la machine a qui ce cadeau est destine ne
+  // depassera jamais 1.3, et la version precedente s'y ouvrait pour dire
+  // qu'elle ne pouvait rien faire.
+  if (!Office.context.requirements.isSetSupported("WordApi", "1.1")) {
+    dire("Ce Word est trop ancien pour que le paysage suive l'ecriture. "
+       + "Tout le reste est deja la.");
     return;
   }
 
@@ -529,35 +300,28 @@ Office.onReady(async (info) => {
   paysage.identifiant = id;
   paysage.cle_dossier = dossier;
   graine = graine_du_document(id);
-  pont = new Pont(paysage, lire);
+  guet = new Guet();
 
-  // Le scan complet : tout ce qui est deja la est acquis (decision 11).
+  // Le premier instantane : tout ce qui est deja la est acquis (decision 11).
   // rattacher() passe par le registre, donc rouvrir le fichier ne fait rien
-  // pousser — c'est l'empreinte qui traverse les sessions, pas l'identifiant
-  // de paragraphe, qui lui change a chaque ouverture.
+  // pousser — c'est l'empreinte qui traverse les sessions.
+  //
+  // Les styles sont lus SANS CONDITION ici : le guet n'a pas encore de compte
+  // de paragraphes a comparer, et l'ouverture est le seul moment ou la lecture
+  // chere est permise — elle est hors du tic, donc hors du budget de 100 ms.
   try {
-    pont.rattacher(await scanner());
+    const texte = await lire_texte();
+    try {
+      styles = await lire_styles();
+    } catch {
+      styles = [];
+    }
+    const { jour, heure } = horloge();
+    paysage.rattacher(guet.amorcer(texte, styles), jour, heure);
     ranger();
   } catch (e) {
-    console.warn("paysage : scan d'ouverture manque", e);
+    console.warn("paysage : premier instantane manque", e);
   }
-
-  await Word.run(async (ctx) => {
-    ctx.document.onParagraphAdded.add(async (args) => {
-      pont.signaler("ajout", args.uniqueLocalIds, args.source === "Remote");
-    });
-    ctx.document.onParagraphChanged.add(async (args) => {
-      pont.signaler("changement", args.uniqueLocalIds, args.source === "Remote");
-    });
-    ctx.document.onParagraphDeleted.add(async (args) => {
-      pont.signaler("suppression", args.uniqueLocalIds, args.source === "Remote");
-    });
-    await ctx.sync();
-  });
-
-  Office.context.document.addHandlerAsync(
-    Office.EventType.DocumentSelectionChanged, sur_selection,
-  );
 
   dessiner();
   setInterval(tic, INTERVALLE);

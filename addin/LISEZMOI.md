@@ -47,10 +47,8 @@ depuis OneDrive, puis *Insertion → Compléments → Mes compléments →
 **Charger mon complément*** et désigner `manifest.xml`.
 
 Ça suffit à voir si le volet s'ouvre et si la forme se dessine. Mais **le vrai
-essai reste le bureau** : c'est là qu'on écrit, et les quatre points de la
-section suivante portent tous sur des comportements de frappe. Si la version du
-web ne suffit pas, le volet le dira lui-même — il vérifie WordApi 1.6 et
-explique ce qui manque au lieu de rester noir.
+essai reste le bureau** : c'est là qu'on écrit, et les points de la section
+suivante portent tous sur des comportements de frappe.
 
 ### Mac
 
@@ -91,26 +89,35 @@ machine, c'est acquis.
 ## Ce qu'il faut regarder en premier
 
 Le portage est vérifié par 164 000 comparaisons contre le Python, et le câblage
-par deux batteries contre un Word simulé. **Rien de tout cela ne prouve que le
-vrai Word se comporte comme le faux.** Quatre choses valent d'être regardées
-tout de suite :
+par une batterie contre un Word simulé. **Rien de tout cela ne prouve que le
+vrai Word se comporte comme le faux** — et surtout, à cette heure, *le paysage
+n'a jamais poussé dans un vrai Word*. Pas une fois.
 
-**Le curseur.** Taper trois paragraphes d'affilée, sans revenir en arrière. Les
-trois doivent faire pousser la forme. Si la plante ne bouge qu'au premier, c'est
-que `DocumentSelectionChanged` se comporte autrement qu'on l'a supposé — et
-c'est la décision 2 qui est en jeu.
+**Est-ce que ça pousse, tout court.** Écrire quelques lignes, et regarder la
+forme changer. C'est la seule chose qui compte, et rien ne l'a jamais fait. Le
+volet relit le document toutes les deux secondes : la forme doit bouger sans
+qu'on ait à faire quoi que ce soit.
 
-**Le retour à la ligne.** Le même essai vérifie l'autre panne : Word crée un
-paragraphe vide à chaque `Entrée`, et deux paragraphes français sur trois
-commencent par les mêmes mots.
+**Les lignes en Maj+Entrée.** Écrire trois lignes séparées par Maj+Entrée, sans
+créer de paragraphe. Les trois doivent compter. Word n'y voit qu'un paragraphe,
+et la version d'avant n'aurait rien fait pousser du tout — c'est la décision 17
+qui règle ça, et c'est votre façon d'écrire qui l'a révélée.
+
+**Est-ce que Word rame.** Le volet lit le corps entier à chaque tic. Mesuré
+17 à 21 ms sur 74 000 signes, mais une thèse entière n'a jamais été essayée. Si
+la frappe accroche, c'est là qu'il faut regarder.
 
 **Le collage.** Coller un chapitre entier. Rien ne doit pousser — la forme
-attend qu'on retravaille le texte collé.
+attend qu'on retravaille le texte collé. Et si on le retravaille, il doit
+basculer en écriture : c'est neuf, ça n'arrivait jamais avant.
 
 **Le document qu'on n'a fait qu'ouvrir.** Ouvrir un chapitre, regarder le volet,
 fermer sans rien taper. Word ne doit **pas** demander d'enregistrer les
-modifications. Le paysage n'écrit dans le fichier qu'une fois qu'il a poussé, et
-c'est la décision 16 qui l'exige : un cadeau ne salit pas les fichiers.
+modifications. Un cadeau ne salit pas les fichiers.
+
+⚠️ **Ce que ce volet ne sait plus faire :** distinguer la frappe d'un co-auteur.
+Sur un document partagé, ce que quelqu'un d'autre écrit fera pousser le paysage.
+Sans WordApi 1.6, l'information n'existe pas — et une thèse s'écrit seul.
 
 Et une chose qu'aucun essai ne peut trancher, **le point ouvert 12** : la
 transition du germe vers une famille est une coupure. À 800 mots, une chaîne
@@ -125,10 +132,11 @@ Il ne devrait jamais l'être : un plant qui vient de naître est presque rien,
 mais le précédent déborde du cadre par la gauche. Un volet vraiment vide veut
 dire que le paysage n'a pas été retrouvé.
 
-- **Word trop ancien** : le volet le dit lui-même. Les événements de paragraphe
-  demandent WordApi 1.6. Aucune contrainte n'est déclarée dans le manifeste
-  exprès — une contrainte non satisfaite rendrait l'add-in *invisible*, sans un
-  mot, ce qui est le pire accueil possible.
+- **Word trop ancien** : le volet le dit lui-même. Mais il ne demande plus que
+  WordApi **1.1**, autrement dit n'importe quel Word depuis 2016 — le volet
+  regarde le document au lieu d'attendre qu'on le prévienne, et c'est toute la
+  décision 17. Aucune contrainte n'est déclarée dans le manifeste exprès : une
+  contrainte non satisfaite rendrait l'add-in *invisible*, sans un mot.
 - **Document jamais enregistré** : `Office.context.document.url` est vide tant
   que le fichier n'a pas de chemin, donc la clé du dossier l'est aussi, et
   **tous les documents non enregistrés partagent un même paysage**.

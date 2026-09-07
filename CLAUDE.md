@@ -4,7 +4,7 @@ Un add-in Word qui fait pousser un paysage SVG pendant qu'on écrit une thèse.
 C'est un cadeau, pas un outil de productivité : rien ne doit ressembler à une
 barre de progression, à un score, ni à un rappel.
 
-**`DECISIONS.md` est la colonne du projet.** Seize décisions, chacune payée par
+**`DECISIONS.md` est la colonne du projet.** Dix-sept décisions, chacune payée par
 une panne réelle. Avant de toucher une constante, lire son entrée — le nombre
 qui a l'air arbitraire ne l'est pas, et le changer casse quelque chose qui a
 coûté cher. Toute décision de conception se consigne là, avec ce qui l'a
@@ -63,14 +63,17 @@ python jardin/essais.py && python jardin/mutations.py \
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `30 passes, 0 en echec` · `8/8` · `aucun ecart` · `23 passes` ·
-`20 passes` · `53/53`.
+Attendu : `50 passes, 0 en echec` · `26/26` · `aucun ecart` · `23 passes` ·
+`20 passes` · `70/70`.
 
-Les deux batteries JavaScript éprouvent ce qu'**aucune parité ne peut couvrir**,
-faute de Python en face : `essais.js` le **pont** (la décision 2, contre un Word
-simulé), `essais_volet.js` le **câblage Office.js et les deux magasins** (la
-décision 16, contre un hôte simulé). Elles y ont déjà trouvé quatre défauts qui
-auraient été livrés.
+`essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
+qu'aucune parité ne peut couvrir, faute de Python en face. Elle y a trouvé
+quatre défauts qui auraient été livrés.
+
+⚠️ `essais.js` éprouve `pont.js`, **qui n'est plus dans le livrable** depuis la
+décision 17 : `volet.js` ne l'importe pas. Le fichier et ses vingt-trois essais
+restent le temps que le guet ait tourné dans un vrai Word — le chemin des
+événements est alors à une ligne de distance. Ils partiront ensemble.
 
 ⚠️ Aucune des deux ne prouve que le vrai Word se comporte comme le faux. C'est
 le risque irréductible, et il ne se lève qu'en déposant le manifeste dans Word —
@@ -83,15 +86,21 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **3 min 12**. Assez long pour donner
-envie de paralléliser, ce qu'il ne faut surtout pas faire — `mutations` relance
-`essais` huit fois, et `mutations.js` relance la parité ou l'une des deux
-batteries à hôte simulé cinquante-trois fois.
+Durée mesurée de l'enchaînement complet : **8 min 13**. Assez long pour donner
+envie de paralléliser, ce qu'il ne faut surtout pas faire — `mutations.py`
+relance `essais.py` vingt-six fois, et `mutations.js` relance la parité ou la
+batterie du volet soixante-dix fois.
 
-⚠️ Et ne rien **modifier** dans `jardin/*.py` ni `addin/**/*.js` pendant qu'une
-suite de mutations tourne. Elle garde en mémoire la version lue au démarrage et
-la réécrit après chaque mutation : une modification faite entre-temps disparaît
-sans un mot, et la suite se termine en vert.
+⚠️ Pendant qu'une suite de mutations tourne, ne rien **modifier** dans
+`jardin/*.py` ni `addin/**/*.js` — elle garde en mémoire la version lue au
+démarrage et la réécrit après chaque mutation, donc une modification faite
+entre-temps disparaît sans un mot et la suite finit en vert.
+
+⚠️ Et ne rien **exécuter** qui importe ces sources, ce qui est plus insidieux.
+Reconstruire le cahier de parité pendant une passe de mutations l'a rempli avec
+les réponses d'un `guet.py` **muté** : tous les styles valaient « Normal », la
+parité a signalé quarante-six écarts, et le diagnostic a coûté un cycle entier
+avant qu'on comprenne que le code était bon et le cahier faux.
 
 `addin/parite/cas.json` et `jardin/planches.html` sont des produits de
 compilation, ignorés par git et régénérés en quelques secondes.

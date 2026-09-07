@@ -309,29 +309,39 @@ const MUTATIONS = [
 
   // --------------------------------------------------------------------- volet
   ["volet.js",
-   "  if (!Office.context.requirements.isSetSupported(\"WordApi\", \"1.6\")) {",
+   "  if (!Office.context.requirements.isSetSupported(\"WordApi\", \"1.1\")) {",
    "  if (false) {",
    "un Word trop ancien laisse le volet noir au lieu de dire ce qui manque",
    "volet"],
 
   ["volet.js",
-   "    pont.rattacher(await scanner());\n    ranger();",
-   "    pont.rattacher(await scanner());",
+   "    paysage.rattacher(guet.amorcer(texte, styles), jour, heure);\n    ranger();",
+   "    paysage.rattacher(guet.amorcer(texte, styles), jour, heure);",
    "le capital de depart n'est pas range : rouvrir le fichier le perd",
+   "volet"],
+
+  // La lecture des styles est la seule qui coute cher — un objet Office.js par
+  // paragraphe, deux secondes et demie sur une these. La lancer a chaque tic
+  // tiendrait dans aucun budget, et rien ne le signalerait : le paysage
+  // pousserait juste, en faisant ramer Word.
+  ["volet.js",
+   "  if (styles_perimes || compter_paragraphes(texte) !== guet.paragraphes) {",
+   "  if (compter_paragraphes(texte) !== guet.paragraphes) {",
+   "une lecture de styles ratee n'est jamais rejouee : la table reste DECALEE"
+   + " d'un paragraphe jusqu'au prochain changement de structure",
+   "volet"],
+
+  ["volet.js",
+   "  if (styles_perimes || compter_paragraphes(texte) !== guet.paragraphes) {",
+   "  if (true) {",
+   "les styles se relisent a chaque tic : deux secondes et demie de lecture"
+   + " toutes les deux secondes",
    "volet"],
 
   ["volet.js",
    "  const coupe = url.lastIndexOf(\"/\");\n  return coupe > 0 ? url.slice(0, coupe) : url;",
    "  return url;",
    "la cle du dossier devient le chemin du FICHIER : plus aucun partage",
-   "volet"],
-
-  // ECHAFAUDAGE, a retirer avec le guet. Un instrument qui compte faux est pire
-  // que pas d'instrument : on batirait la decision 17 sur une lecture inventee.
-  ["volet.js",
-   "      if (precedent !== null && texte !== precedent) vus += 1;",
-   "      if (precedent !== null && texte === precedent) vus += 1;",
-   "le guet compte les releves qui n'ont RIEN vu : la frappe parait invisible",
    "volet"],
 
   // ------------------------------------------------------------------ magasin
@@ -385,6 +395,112 @@ const MUTATIONS = [
    "le reglage est enregistre des l'ouverture : Word demande d'enregistrer un"
    + " document ou personne n'a tape",
    "volet"],
+
+  // ------------------------------------------------------------------- guet
+  // Le guet est le premier morceau du cablage Word couvert par la PARITE : le
+  // rapprochement de deux instantanes a un Python en face. Ces mutations se
+  // verifient donc contre le cahier, pas contre un hote simule.
+  ["guet.js",
+   'export const SEPARATEURS_LIGNE = ["\\u000B", "\\n"];',
+   'export const SEPARATEURS_LIGNE = ["\\n"];',
+   "point 14 : le saut de ligne cesse de separer, 35 pages font une seule ligne"],
+
+  ["guet.js",
+   "    while (libres && libres.length) {",
+   "    while (false) {",
+   "les lignes egales ne se reconnaissent plus : un deplacement devient deux"
+   + " retouches, donc de la maturite inventee"],
+
+  ["guet.js",
+   "      const i = libres.shift();",
+   "      const i = libres.pop();",
+   "pop() pour pop(0) : parmi des lignes identiques, c'est la derniere qui est"
+   + " appariee, et les identifiants divergent de la specification"],
+
+  ["guet.js",
+   "  return texte.split(SEPARATEUR_PARAGRAPHE).length;",
+   "  return texte.split(SEPARATEURS_LIGNE[0]).length;",
+   "la peremption des styles se compte en LIGNES : la table ne se rafraichit"
+   + " plus quand un paragraphe apparait"],
+
+  ["guet.js",
+   "  const rang = appartenance[k];\n"
+   + "  return rang < styles.length ? styles[rang] : \"Normal\";",
+   "  return \"Normal\";",
+   "plus aucun style ne remonte : une citation compte comme de l'ecriture"
+   + " (point 3) et un Titre 1 n'ouvre plus de plant (point 6)"],
+
+  ["guet.js",
+   "      lignes.push(m);\n      appartenance.push(rang);",
+   "      lignes.push(m);\n      appartenance.push(lignes.length - 1);",
+   "le style est indexe par LIGNE et non par paragraphe : deux lignes d'un meme"
+   + " paragraphe recoivent deux styles differents"],
+
+  ["guet.js",
+   "  const disparues = restants_a.slice(restants_b.length);",
+   "  const disparues = [];",
+   "une ligne supprimee ne disparait plus : le miroir garde un fantome"],
+
+  ["guet.js",
+   "        ids[j] = this.ids[i];\n        faits.push({ type: \"retouchee\"",
+   "        ids[j] = this._neuf();\n        faits.push({ type: \"retouchee\"",
+   "une ligne retouchee change d'identifiant : chaque frappe devient une ligne"
+   + " neuve"],
+
+  ["guet.js",
+   "      if (this.calme >= this.silence) {",
+   "      if (this.calme >= 1) {",
+   "la visite se ferme au premier releve calme : une pause pour reflechir"
+   + " devient une reprise, et l'extension s'effondre"],
+
+
+  // ------------------------------------------------- guet : nourrir le paysage
+  // C'est ici que le guet remplace le pont, donc ici que les decisions du pont
+  // doivent survivre. Le cahier compare la chaine entiere — texte, faits,
+  // verdicts, etat final — donc ces regressions se voient sur le verdict ET
+  // sur la forme qui pousse.
+  ["guet.js",
+   "      } else if (!compter_mots(f.ancien)) {",
+   "      } else if (false) {",
+   "une ligne nee vide qui se remplit redevient une REPRISE : le premier mot de"
+   + " chaque ligne neuve cesse de compter, et l'extension n'existe plus"],
+
+  ["guet.js",
+   "        v = paysage.absorber(f.texte, f.style, debit, jour, heure, true);",
+   "        v = paysage.absorber(f.texte, f.style, debit, jour, heure, false);",
+   "le drapeau de naissance se perd : une ligne qui commence comme une autre est"
+   + " declaree connue et le plant cesse de pousser"],
+
+  ["guet.js",
+   "                              this.greffes.has(f.id));",
+   "                              false);",
+   "decision 4 : un chapitre colle puis retravaille reste une greffe pour"
+   + " toujours — le defaut que le pont avait, remis en place"],
+
+  ["guet.js",
+   '      if (v === "greffe") this.greffes.add(f.id);',
+   '      if (v === "ecriture") this.greffes.add(f.id);',
+   "les greffes ne sont plus retenues : la conversion se declenche sur le mauvais"
+   + " verdict"],
+
+  ["guet.js",
+   "    return mots * INTERVALLE / Math.max(ecoule, INTERVALLE);",
+   "    return mots * INTERVALLE / Math.max(ecoule, 1);",
+   "le debit s'amplifie quand un releve arrive tot : quatre mots tapes deviennent"
+   + " un collage"],
+
+  ["guet.js",
+   '      if (genre === "visite_finie") {\n        paysage.quitter();',
+   '      if (genre === "visite_finie") {\n        paysage.etat();',
+   "la visite ne se ferme plus : plant.reprises ne monte jamais et l'element"
+   + " cesse de murir"],
+
+  ["guet.js",
+   "        mots += Math.max(0, compter_mots(f.texte) - compter_mots(f.ancien));",
+   "        mots += compter_mots(f.texte) - compter_mots(f.ancien);",
+   "raccourcir une ligne rend un debit NEGATIF, qui compense un collage arrive"
+   + " dans le meme releve"],
+
 ];
 
 if (!existsSync(CAS)) {
@@ -413,6 +529,28 @@ const sauvegardes = Object.fromEntries(
   fichiers.map((f) => [f, readFileSync(join(SRC, f), "utf-8")]),
 );
 
+// Les motifs d'abord, avant de toucher un seul fichier.
+//
+// Un motif perime se signalait « obsolete » en cours de route, apres avoir
+// laisse tourner la verification complete pour toutes les mutations d'avant —
+// des minutes pour apprendre qu'une ligne avait bouge. Pire, « obsolete » a
+// l'air d'un probleme de maintenance et non d'une mutation qui ne teste rien.
+// C'est arrive trois fois dans la meme journee, dans les deux langages : le
+// motif contenait un echappement que le langage interpretait a l'execution,
+// donc il cherchait un vrai caractere de controle la ou la source porte ses
+// quatre caracteres. Le controle est instantane, il vient en premier.
+const perimes = MUTATIONS.filter(([f, vieux]) => !sauvegardes[f].includes(vieux));
+if (perimes.length) {
+  console.log("=".repeat(78));
+  console.log("MOTIFS PERIMES — rien n'a ete mute");
+  console.log("=".repeat(78));
+  for (const [fichier, , , libelle] of perimes) {
+    console.log(`  ${fichier} : ${libelle}`);
+  }
+  console.log(`\n${perimes.length} motif(s) ne mordent plus sur la source.`);
+  process.exit(2);
+}
+
 const barre = "=".repeat(78);
 console.log(barre);
 console.log("MUTATIONS DU PORTAGE — le verificateur sait-il echouer ?");
@@ -424,11 +562,8 @@ const manquees = [];
 for (const [fichier, vieux, neuf, libelle, verificateur] of MUTATIONS) {
   const chemin = join(SRC, fichier);
   const src = sauvegardes[fichier];
-  if (!src.includes(vieux)) {
-    manquees.push([libelle, "motif introuvable — mutation obsolete"]);
-    console.log(`  ????  ${libelle}`);
-    continue;
-  }
+  // Plus besoin de tester le motif ici : le controle prealable a deja rendu
+  // la main si l'un d'eux ne mordait plus.
   const cote = chemin + ".intact";
   writeFileSync(cote, src, "utf-8");
   writeFileSync(chemin, src.replace(vieux, neuf), "utf-8");

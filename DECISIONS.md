@@ -941,6 +941,179 @@ exactement ce que cette décision règle.
 
 ---
 
+## 17. Le guet : regarder au lieu d'être prévenu
+
+**Décidé :** le volet ne passe plus par les événements de paragraphe. À chaque
+tic il relit le corps du document en **une seule chaîne** et le compare au
+relevé précédent.
+
+Ce n'est pas un choix d'élégance, c'est une contrainte : les événements
+`onParagraphAdded` / `Changed` / `Deleted` demandent **WordApi 1.6**, et la
+machine à qui ce cadeau est destiné est un **Office LTSC Professionnel Plus
+2021**, gelé à sa version de sortie pour cinq ans. `isSetSupported` y répond
+`false` et le fera toujours. Ce n'était pas un canal en retard : c'était la
+conception qui ne passait pas sur la machine cible.
+
+### Ce qui a été mesuré, sur cette machine et sur du vrai texte
+
+| Mesure | Valeur | Ce qu'elle décide |
+|---|---|---|
+| Jeu d'API | `WordApi 1.3` | `body.text`, `body.paragraphs`, `getSelection` présents ; ni événements ni `uniqueLocalId` |
+| Aller-retour à vide | ~6 ms | le plancher d'un `Word.run` |
+| 19 paragraphes, texte + style | ~45 ms | ~1,7 ms par paragraphe |
+| 74 000 signes, **1 paragraphe** | 17–21 ms | **le coût est dans les objets, pas dans le texte** |
+| Paragraphe sous le curseur | ~14 ms | 14 % du budget du point 12 |
+| Frappe vue sans événements | 33 puis 43 changements | `DocumentSelectionChanged` suffisait déjà |
+
+La ligne qui tranche est la troisième. Relire un document **objet par objet**
+coûterait ~2,4 s sur une thèse — vingt-cinq fois le budget d'un tic. Mais
+`body.text` rend le corps entier en une chaîne, sans fabriquer un seul objet
+intermédiaire, et reste **plat quelle que soit la taille**.
+
+⚠️ La toute première mesure disait 216 ms pour dix-huit paragraphes, et elle
+était fausse : c'était le **premier `Word.run` de la session**, donc l'allumage
+du canal RPC. Le tic, lui, ne tourne jamais à froid. Mesurer une fois, c'était
+mesurer la mauvaise chose — et en conclure que le repli ne tenait pas aurait
+fermé la seule porte qui restait.
+
+### Ce que ça règle en plus, et qui vaut mieux que le dépannage
+
+Le premier vrai document ouvert avec le volet faisait trente-cinq pages et **un
+seul paragraphe** : `0 CR · 1119 VT · 0 LF`. Son auteur allait à la ligne sans
+en créer une — ce qu'on fait pour éviter l'espacement entre paragraphes.
+
+Le paysage y aurait vu **une empreinte pour 74 000 signes**. Aucune extension,
+jamais ; chaque frappe lue comme une reprise du document entier. La plante
+n'aurait pas poussé d'un millimètre, et rien ne l'aurait signalé.
+
+Le guet découpe donc sur `\r` **et** sur `\x0b`. **L'unité est la ligne que la
+personne fabrique en écrivant, pas celle que Word enregistre** — sinon le cadeau
+récompenserait une habitude de traitement de texte.
+
+### La règle de rapprochement
+
+Deux instantanés, et il faut savoir ce qui a bougé. Trois temps :
+
+1. **Rogner** la tête et la queue identiques. Écrire ne change qu'une région
+   locale, donc il ne reste presque toujours qu'une ou deux lignes.
+2. **Apparier ce qui est ÉGAL** dans la fenêtre restante.
+3. **Apparier le reste par rang.**
+
+⚠️ **C'est le deuxième temps qui tient l'invariant cardinal, pas le premier.**
+Identifier les lignes par leur rang serait la faute : insérer une ligne au
+milieu décalerait toutes les suivantes, et une insertion se lirait comme une
+pluie de retouches — de l'extension prise pour de la maturité. Le rognage n'est
+qu'une accélération : le retirer ne change aucun verdict.
+
+Ce n'est pas un raisonnement, c'est une mesure. La première version de ce
+commentaire attribuait la protection au rognage ; les mutations l'ont démentie —
+retirer le rognage laisse tous les essais passer, retirer l'appariement par
+texte les fait tomber. **Un commentaire qui désigne la mauvaise pièce fait
+retirer la bonne.**
+
+L'appariement par texte donne au passage ce que le point 3 promet : une ligne
+**déplacée** garde son identifiant et ne rend aucun verdict.
+
+### La fermeture de visite
+
+Le curseur est mort avec ce document : sur trente-cinq pages en un paragraphe,
+`getSelection().paragraphs` ne rend aucune ligne. Il fallait fermer les visites
+autrement — et deux choses réduisent beaucoup l'enjeu, toutes deux découvertes
+en relisant `paysage.py` plutôt qu'en raisonnant :
+
+- **changer de ligne ferme déjà la visite**, sans rien ajouter : `_actif` n'a
+  qu'une case, donc écrire ailleurs la déplace et revenir tombe forcément dans
+  la branche « reprise » ;
+- **tripoter ne pousse pas**, même dans une visite ouverte : la branche `frappe`
+  compte `max(0, mots(nouveau) − mots(ancien))`.
+
+Ce que `quitter()` protégeait n'était donc **pas l'extension mais la maturité**.
+Sans lui, revenir sur une ligne une semaine plus tard reste la même visite,
+`plant.reprises` ne monte jamais, et l'élément cesse de mûrir — l'autre axe
+meurt en silence.
+
+Le guet ferme donc la visite après `SILENCE` relevés sans changement, soit deux
+minutes. **La borne basse est mesurée** : 57 % des relevés voient un changement
+en écriture active, 24 % en frappe distraite, donc soixante relevés calmes ne
+peuvent pas arriver pendant qu'on écrit. ⚠️ **La borne haute reste un
+jugement** — assez pour une pause de réflexion, pas pour un café. À confirmer au
+banc.
+
+### Les styles
+
+`body.text` n'en porte aucun, et sans eux une citation compterait comme de
+l'écriture (point 3) et un Titre 1 n'ouvrirait plus de plant (point 6).
+
+La structure donne la réponse : `body.text` sépare les **paragraphes** par `\r`
+et les **lignes** par `\x0b`. Découper en deux temps rend les deux échelles, et
+une ligne hérite du style de son paragraphe, exactement.
+
+Et le rafraîchissement est gratuit : le **nombre de paragraphes** se lit dans la
+chaîne qu'on vient de recevoir. Taper dedans ne le change pas ; en ajouter un,
+si. La lecture chère ne part donc que quand la structure bouge.
+
+### Ce que ça coûte
+
+⚠️ **Le guet ne distingue plus la frappe d'un CO-AUTEUR.** Les événements
+portaient `args.source`, et le pont ignorait les modifications distantes. Un
+instantané de texte ne dit pas qui a écrit. Sur un document partagé, la frappe
+de quelqu'un d'autre fera pousser le paysage. Sans WordApi 1.6 l'information
+n'existe pas — et une thèse s'écrit seul.
+
+⚠️ **Un seul chemin, pas deux.** Le guet marche sur tous les Word, les
+événements seulement sur certains : ce n'est donc pas deux versions pour deux
+publics, mais un chemin universel plus une optimisation. Dans un cadeau, la
+complexité facultative est ce qu'il faut refuser — et deux chemins voudraient
+dire que chaque mutation devrait être attrapée sur les deux, sinon la moitié du
+code n'est pas éprouvée. `pont.js` reste dans l'arbre, plus importé par le
+livrable, jusqu'à ce que le guet ait tourné dans un vrai Word.
+
+### Un défaut trouvé en chemin
+
+`pont.js` passait **toujours** `etait_greffe = false`, donc la branche
+`conversion` de `retoucher()` n'était **jamais atteinte** dans l'add-in : un
+chapitre collé puis retravaillé restait une greffe pour toujours, et la décision
+4 ne s'appliquait qu'à moitié. Le guet retient quelles lignes sont arrivées en
+greffe, et la conversion a enfin lieu.
+
+### Où ça se vérifie
+
+**Le guet est le premier morceau du câblage Word couvert par la PARITÉ.**
+`pont.js` et `volet.js` n'ont jamais eu de Python en face ; le rapprochement de
+deux instantanés, lui, est de la logique pure sur des tableaux de chaînes.
+
+Le cahier rejoue une session d'écriture et compare, à chaque relevé, les faits,
+**les identifiants**, le compte de paragraphes, le débit, les verdicts et l'état
+du paysage. Il refuse de se construire s'il ne traverse pas les quatre genres de
+faits et les sept verdicts.
+
+Six mutations ont pourtant échappé au premier passage, toutes pour la même
+raison — **le cahier ne contenait rien qui traverse ce qu'elles cassaient** :
+
+| Ce qui échappait | Ce qui manquait au cahier |
+|---|---|
+| `pop()` pour `pop(0)` | aucune ligne en double dans une même fenêtre |
+| le style indexé par ligne | tous les styles après le premier valaient « Normal » |
+| le drapeau de naissance | aucun texte n'entrait en collision avec le registre |
+| le plancher du débit | `ecoule` valait toujours l'intervalle |
+| la fermeture de visite | aucune retouche **sur la ligne active** après le silence |
+| le débit négatif | aucune ligne ne raccourcissait jamais |
+
+Une mutation qui échappe est un trou dans les cas, pas une bonne nouvelle. Les
+six trous sont comblés, et le cahier porte maintenant deux lignes vides
+consécutives, un dernier paragraphe en style Citation, une ligne qui raccourcit,
+une ligne dont le texte est déjà au registre, des temps écoulés variés — dont un
+relevé **en avance**, celui qui transformait quatre mots tapés en collage.
+
+Les deux harnais **vérifient leurs motifs avant de muter quoi que ce soit**. Un
+motif périmé se signalait « obsolète » en cours de route, après avoir laissé
+tourner la vérification complète pour toutes les mutations d'avant. C'est arrivé
+trois fois dans la même journée, dans les deux langages, et toujours pour la
+même cause : le motif contenait un échappement que le langage interprétait à
+l'exécution.
+
+---
+
 ## Points ouverts
 
 1. **Le creux des phrases — le mécanisme est prêt, les phrases sont à écrire.**
@@ -1011,13 +1184,14 @@ exactement ce que cette décision règle.
     découle — copie rare, jamais pour rien, et le réglage d'identité qui attend
     la première pousse au lieu de partir à l'ouverture.
 
-14. **L'unité du paysage n'est pas celle de tout le monde.** Le premier vrai
-    document ouvert avec le volet faisait trente-cinq pages — et **un seul
-    paragraphe**. Mesuré : `0 CR · 1119 VT · 0 LF · 1 objets`. Aucune marque de
-    paragraphe, mille cent dix-neuf sauts de ligne (Maj+Entrée), soit soixante-six
-    signes par ligne. Word a raison, il n'y a bien qu'un paragraphe ; c'est
-    l'auteur qui allait à la ligne sans en créer un, ce qu'on fait naturellement
-    pour éviter l'espacement entre paragraphes.
+14. ~~**L'unité du paysage n'est pas celle de tout le monde.**~~ **Réglé** —
+    voir la décision 17 : le guet découpe sur tous les séparateurs de ligne. Le
+    premier vrai document ouvert avec le volet faisait trente-cinq pages — et
+    **un seul paragraphe**. Mesuré : `0 CR · 1119 VT · 0 LF · 1 objets`. Aucune
+    marque de paragraphe, mille cent dix-neuf sauts de ligne (Maj+Entrée), soit
+    soixante-six signes par ligne. Word a raison, il n'y a bien qu'un
+    paragraphe ; c'est l'auteur qui allait à la ligne sans en créer un, ce
+    qu'on fait naturellement pour éviter l'espacement entre paragraphes.
 
     ⚠️ **Le paysage y verrait une empreinte pour 74 000 signes.** Aucune
     extension, jamais ; chaque frappe lue comme une reprise du document entier.
@@ -1042,12 +1216,14 @@ exactement ce que cette décision règle.
     l'extension prise pour de la maturité. L'identification doit passer par le
     contenu, donc par un rapprochement des deux états, jamais par l'indice.
 
-15. **Un Office LTSC ne verra jamais les événements de paragraphe.** La machine
-    cible est un Office LTSC Professionnel Plus 2021, version 2108 — gelé à sa
-    version de sortie pour cinq ans, correctifs de sécurité seulement.
-    `isSetSupported("WordApi", "1.6")` répond `false` et le fera toujours. La
-    personne à qui le cadeau est destiné a la même. Ce n'est pas un canal en
-    retard : c'est la conception qui ne passe pas sur la machine cible.
+15. ~~**Un Office LTSC ne verra jamais les événements de paragraphe.**~~
+    **Réglé** — voir la décision 17 : le volet regarde au lieu d'être prévenu,
+    et ne demande plus que WordApi 1.1. La machine cible est un Office LTSC
+    Professionnel Plus 2021, version 2108 — gelé à sa version de sortie pour
+    cinq ans, correctifs de sécurité seulement. `isSetSupported("WordApi",
+    "1.6")` répond `false` et le fera toujours. La personne à qui le cadeau est
+    destiné a la même. Ce n'est pas un canal en retard : c'est la conception
+    qui ne passe pas sur la machine cible.
 
     Mesuré sur cette machine, et plus rien n'est supposé :
 
@@ -1099,6 +1275,7 @@ exactement ce que cette décision règle.
 |---|---|
 | `traits.py` | extraction des traits, classement en familles |
 | `paysage.py` | registre, collage, segments, verrou par segment, dérive |
+| `guet.py` | deux instantanés comparés : ce que le volet lit sans être prévenu |
 | `grammaire.py` | les quatre familles, couleur, à l'état des décisions |
 | `message.py` | alphabet en segments, tracé à la main, révélation |
 | `composition.py` | où se pose un plant : le paysage entier |
@@ -1120,6 +1297,7 @@ deux divergent, c'est le JavaScript qui a un bug.
 | `src/composition.js` | portage de `composition.py`, sans les planches |
 | `src/pont.js` | le pont vers Word — sans Python en face |
 | `src/magasin.js` | les deux copies du paysage, et laquelle gagne (point 16) |
+| `src/guet.js` | portage de `guet.py` — le premier cablage couvert par la parité |
 | `essais.js` | **le pont, contre un Word simulé, avec un code de sortie** |
 | `essais_volet.js` | **le câblage Office.js, contre un hôte simulé** |
 | `src/volet.js` | le seul fichier qui parle à Office.js |

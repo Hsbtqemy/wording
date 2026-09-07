@@ -72,6 +72,141 @@ MUTATIONS = [
      "        queue = set(_paquet(tour - 1, corpus)[-garde:])",
      "        queue = set()",
      "point ouvert 10 : le raccord du paquet ne porte plus"),
+
+    # ------------------------------------------------------------------ guet
+    # Le guet remplace les evenements de paragraphe, absents de la machine
+    # cible (point ouvert 15). Aucune de ces regressions ne fait planter quoi
+    # que ce soit : elles decalent des identifiants, et le paysage pousse de
+    # travers sans que rien ne le dise.
+    ("guet.py",
+     r'SEPARATEURS_LIGNE = ("\x0b", "\n")',
+     r'SEPARATEURS_LIGNE = ()',
+     "point 14 : le saut de ligne cesse de separer, 35 pages font un paragraphe"),
+
+    # Le style appartient au PARAGRAPHE, la ligne en herite. Confondre
+    # les deux indices est la faute naturelle a cet endroit.
+    ("guet.py",
+     "            appartenance.append(rang)",
+     "            appartenance.append(len(lignes) - 1)",
+     "le style est indexe par LIGNE et non par paragraphe : deux lignes"
+     " d'un meme paragraphe recoivent deux styles differents"),
+
+    ("guet.py",
+     "    rang = appartenance[k]\n"
+     '    return styles[rang] if rang < len(styles) else "Normal"',
+     '    return "Normal"',
+     "plus aucun style ne remonte : une citation compte comme de"
+     " l'ecriture (point 3) et un Titre 1 n'ouvre plus de plant (point 6)"),
+
+    ("guet.py",
+     "    if not styles or k >= len(appartenance):",
+     "    if False:",
+     "une table absente fait lever dans un tic, au lieu de rendre Normal"),
+
+    ("guet.py",
+     "    return texte.count(SEPARATEUR_PARAGRAPHE) + 1 if texte else 0",
+     "    return texte.count(SEPARATEURS_LIGNE[0]) + 1 if texte else 0",
+     "la peremption des styles se compte en LIGNES : la table ne se"
+     " rafraichit plus quand un paragraphe apparait"),
+
+    ("guet.py",
+     """    deplacees = {}                       # j -> i
+    pris = set()
+    for j in fenetre_b:
+        libres = par_texte.get(nouvelles[j])
+        while libres:
+            i = libres.pop(0)
+            if i not in pris:
+                deplacees[j] = i
+                pris.add(i)
+                break""",
+     """    deplacees = {}
+    pris = set()""",
+     "les lignes egales ne se reconnaissent plus : un deplacement devient"
+     " deux retouches, donc de la maturite inventee"),
+
+    ("guet.py",
+     "        self.lignes, appartenance = decouper_marque(texte)\n"
+     "        self.ids = [self._neuf() for _ in self.lignes]",
+     "        self.lignes, appartenance = [], []\n"
+     "        self.ids = []",
+     "decision 11 : le capital de depart est declare NE, une these entiere"
+     " pousse d'un coup a l'ouverture"),
+
+    ("guet.py",
+     '                              "texte": nouvelles[j], "ancien": self.lignes[i],\n'
+     '                              "style": _style(styles, appartenance, j)})',
+     '                              "texte": nouvelles[j], "ancien": None,\n'
+     '                              "style": _style(styles, appartenance, j)})',
+     "la retouche perd son ancien texte : paysage.retoucher ne peut plus"
+     " distinguer une reprise d'une premiere redaction"),
+
+    ("guet.py",
+     "            elif genre == \"retouchee\":\n                ids[j] = self.ids[i]",
+     "            elif genre == \"retouchee\":\n                ids[j] = self._neuf()",
+     "une ligne retouchee change d'identifiant : chaque frappe devient une"
+     " ligne neuve"),
+
+    ("guet.py",
+     "    disparues = restants_a[len(restants_b):]",
+     "    disparues = []",
+     "une ligne supprimee ne disparait plus : le miroir garde un fantome"),
+
+    ("guet.py",
+     "            if self.calme >= self.silence:",
+     "            if self.calme >= 1:",
+     "la visite se ferme au premier releve calme : une pause pour reflechir"
+     " devient une reprise, et l'extension s'effondre"),
+
+    ("guet.py",
+     "            self.visitee = remuees[-1]\n            self.calme = 0",
+     "            self.visitee = remuees[-1]",
+     "le compte de silence ne repart pas : la visite se ferme en pleine"
+     " ecriture"),
+
+
+    # ----------------------------------------------------- guet : nourrir
+    # C'est ici que le guet remplace le pont, donc ici que les decisions du
+    # pont doivent survivre. Aucune de ces regressions ne fait planter : la
+    # forme pousse de travers, et personne ne le voit.
+    ("guet.py",
+     '            elif not compter_mots(f["ancien"]):',
+     "            elif False:",
+     "une ligne nee vide qui se remplit redevient une REPRISE : le premier mot"
+     " de chaque ligne neuve cesse de compter, l'extension n'existe plus"),
+
+    ("guet.py",
+     '                v = paysage.absorber(f["texte"], f["style"], debit, jour,\n'
+     "                                     heure, True)",
+     '                v = paysage.absorber(f["texte"], f["style"], debit, jour,\n'
+     "                                     heure, False)",
+     "le drapeau de naissance se perd : une ligne qui commence comme une autre"
+     " est declaree connue et le plant cesse de pousser"),
+
+    ("guet.py",
+     '                                      f["id"] in self.greffes)',
+     "                                      False)",
+     "decision 4 : un chapitre colle puis retravaille reste une greffe pour"
+     " toujours — le defaut que le pont avait, remis en place"),
+
+    ("guet.py",
+     '            if v == "greffe":',
+     '            if v == "ecriture":',
+     "les greffes ne sont plus retenues : la conversion se declenche sur le"
+     " mauvais verdict"),
+
+    ("guet.py",
+     "        return mots * INTERVALLE / max(ecoule, INTERVALLE)",
+     "        return mots * INTERVALLE / max(ecoule, 1)",
+     "le debit s'amplifie quand un releve arrive tot : quatre mots tapes"
+     " deviennent un collage"),
+
+    ("guet.py",
+     '            if genre == "visite_finie":\n                paysage.quitter()',
+     '            if genre == "visite_finie":\n                paysage.etat()',
+     "la visite ne se ferme plus : plant.reprises ne monte jamais et l'element"
+     " cesse de murir"),
+
 ]
 
 
@@ -102,6 +237,25 @@ def main() -> int:
     _restaurer_les_restes(fichiers)
     sauvegardes = {f: io.open(os.path.join(RACINE, f), encoding="utf-8").read()
                    for f in fichiers}
+    # Les motifs d'abord, avant de toucher un seul fichier.
+    #
+    # Un motif perime se signalait « obsolete » en cours de route, apres avoir
+    # laisse tourner la batterie complete pour toutes les mutations d'avant —
+    # plusieurs minutes pour apprendre qu'une ligne du fichier avait bouge. Pire,
+    # « obsolete » a l'air d'un probleme de maintenance et non d'une mutation qui
+    # ne mord pas : c'est arrive deux fois de suite, et deux fois le diagnostic a
+    # coute un passage entier. Le controle est instantane, il doit venir avant.
+    perimes = [(f, lib) for f, vieux, _n, lib in MUTATIONS
+               if vieux not in sauvegardes[f]]
+    if perimes:
+        print("=" * 78)
+        print("MOTIFS PERIMES — rien n'a ete mute")
+        print("=" * 78)
+        for fichier, libelle in perimes:
+            print(f"  {fichier} : {libelle}")
+        print(f"\n{len(perimes)} motif(s) ne mordent plus sur la source.")
+        return 2
+
     print("=" * 78)
     print("MUTATIONS — la batterie sait-elle echouer ?")
     print("=" * 78)
@@ -109,10 +263,8 @@ def main() -> int:
     for fichier, vieux, neuf, libelle in MUTATIONS:
         chemin = os.path.join(RACINE, fichier)
         src = sauvegardes[fichier]
-        if vieux not in src:
-            manquees.append((libelle, "motif introuvable — mutation obsolete"))
-            print(f"  ????  {libelle}")
-            continue
+        # Plus besoin de tester le motif ici : le controle prealable a deja
+        # rendu la main si l'un d'eux ne mordait plus.
         cote = chemin + ".intact"
         io.open(cote, "w", encoding="utf-8", newline="\n").write(src)
         io.open(chemin, "w", encoding="utf-8", newline="\n").write(
