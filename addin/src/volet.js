@@ -214,28 +214,67 @@ async function signalement() {
   } catch { /* diagnostics n'est pas partout : son absence n'est pas une panne */ }
 
   // Le second chiffre, et il decide autant que le premier. Prive d'evenements,
-  // le seul repli est que le tic RELISE le document au lieu d'etre prevenu —
-  // ce qui ne tient que si un aller-retour Office.js entre dans le budget de
-  // 100 ms de la decision 12. Ca ne se devine pas : ca se mesure ici, sur un
-  // vrai chapitre, sur la machine qui recevra le cadeau.
+  // le seul repli est que le tic REGARDE au lieu d'etre prevenu — ce qui ne
+  // tient que dans le budget de 100 ms par tic de la decision 12.
+  //
+  // ⚠️ LA PREMIERE MESURE PRISE ICI DISAIT 216 ms POUR DIX-HUIT PARAGRAPHES.
+  // Cinq mille signes ne coutent pas un cinquieme de seconde a traverser un
+  // pont : c'etait le PREMIER Word.run de la session, qui monte tout le canal.
+  // Un cout d'allumage, pas un cout de lecture — et le tic ne tourne jamais a
+  // froid. Mesurer une fois, c'etait mesurer la mauvaise chose.
   //
   // On TOUCHE le texte de chaque paragraphe, on ne compte pas les objets : le
   // cout est dans le passage du texte par le pont, et un compteur qui ne lit
   // rien mesurerait un aller-retour vide.
+  const relire_tout = () => Word.run(async (ctx) => {
+    const paras = ctx.document.body.paragraphs;
+    paras.load("items/text,items/style");
+    await ctx.sync();
+    let total = 0;
+    for (const p of paras.items) total += p.text.length;
+    return { n: paras.items.length, signes: total };
+  });
+
   try {
     const t0 = Date.now();
-    const { n, signes } = await Word.run(async (ctx) => {
-      const paras = ctx.document.body.paragraphs;
-      paras.load("items/text,items/style");
-      await ctx.sync();
-      let total = 0;
-      for (const p of paras.items) total += p.text.length;
-      return { n: paras.items.length, signes: total };
-    });
-    morceaux.push(`${n} paragraphes / ${Math.round(signes / 1000)} k signes`
-                + ` relus en ${Date.now() - t0} ms`);
+    const { n, signes } = await relire_tout();
+    const froid = Date.now() - t0;
+    morceaux.push(`${n} paragraphes / ${Math.round(signes / 1000)} k signes`);
+    const chaud = [];
+    for (let i = 0; i < 4; i++) {
+      const t = Date.now();
+      // eslint-disable-next-line no-await-in-loop
+      await relire_tout();
+      chaud.push(Date.now() - t);
+    }
+    morceaux.push(`tout : froid ${froid} puis ${chaud.join(" ")} ms`);
   } catch {
     morceaux.push("relecture complete impossible");
+  }
+
+  // Et le chiffre qui decide vraiment : le paragraphe SOUS LE CURSEUR, seul.
+  // C'est ce que le guet lirait a chaque tic, pas le document entier — la
+  // decision 2 dit deja que la croissance se produit la ou est le curseur.
+  //
+  // On charge `text`, pas `uniqueLocalId` : c'est justement la propriete qui
+  // demande 1.6 et qui manque ici. sur_selection() la charge encore, et devra
+  // changer si le guet est retenu.
+  try {
+    const t = [];
+    for (let i = 0; i < 4; i++) {
+      const t0 = Date.now();
+      // eslint-disable-next-line no-await-in-loop
+      await Word.run(async (ctx) => {
+        const p = ctx.document.getSelection().paragraphs.getFirstOrNullObject();
+        p.load("text,style");
+        await ctx.sync();
+        return p.isNullObject ? 0 : p.text.length;
+      });
+      t.push(Date.now() - t0);
+    }
+    morceaux.push(`curseur seul : ${t.join(" ")} ms`);
+  } catch {
+    morceaux.push("curseur illisible");
   }
   return morceaux.join(" · ");
 }

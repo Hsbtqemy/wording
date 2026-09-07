@@ -272,10 +272,18 @@ suite.push(["un Word trop ancien dit ce qui manque au lieu de rester noir",
          `le volet doit nommer le niveau trouve, obtenu : ${mot}`);
     vrai(mot.includes("16.0.14334"),
          "et la version de l'hote, qui dit s'il peut seulement bouger");
-    // Prive d'evenements, le seul repli est de relire. Ce que ca coute decide
+    // Prive d'evenements, le seul repli est de regarder. Ce que ca coute decide
     // si le repli tient : le budget de la decision 12 est de 100 ms par tic.
-    vrai(/1 paragraphes \/ \d+ k signes relus en \d+ ms/.test(mot),
-         `le volet doit mesurer une relecture complete, obtenu : ${mot}`);
+    vrai(/1 paragraphes \/ \d+ k signes/.test(mot),
+         `le volet doit dire la taille du document, obtenu : ${mot}`);
+    // A FROID PUIS A CHAUD, separement : la premiere mesure prise sur un vrai
+    // Word disait 216 ms pour dix-huit paragraphes, c'est-a-dire le cout
+    // d'allumage du canal RPC et pas celui d'une lecture. Le tic, lui, ne
+    // tourne jamais a froid — une mesure unique mesurait la mauvaise chose.
+    vrai(/tout : froid \d+ puis \d+ \d+ \d+ \d+ ms/.test(mot),
+         `le volet doit separer le froid du chaud, obtenu : ${mot}`);
+    vrai(/curseur seul : \d+ \d+ \d+ \d+ ms/.test(mot),
+         `et mesurer ce que le guet lirait vraiment, obtenu : ${mot}`);
   }]);
 
 suite.push(["ouvrir un document ne le marque pas comme modifie", async () => {
