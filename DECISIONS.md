@@ -433,9 +433,11 @@ verrou (1), le fond qui fane au lieu de s'éloigner (1). Chacune produit un
 paysage parfaitement présentable, et faux.
 
 `addin/src/pont.js` — le pont entre Word et le paysage.
+`addin/src/volet.js`, `volet.html`, `apercu.html`, `manifest.xml` — la coquille.
 
-**Reste à porter :** le message et les phrases — puis la coquille Word
-elle-même (manifeste, volet).
+**Reste à porter :** le message et les phrases. **L'add-in tient debout sans
+eux** : le message de nuit est un easter egg, et le registre `creux` de
+`phrases.py` appartient de toute façon à l'auteur.
 
 ### Le pont, et ce qu'aucune parité ne peut voir
 
@@ -564,9 +566,9 @@ ne connaît pas les lettres accentuées, `\d` ne connaît pas les chiffres arabe
 `.length` compte des unités UTF-16 quand `len()` compte des points de code.
 Aucune de ces erreurs ne fait planter quoi que ce soit — le texte se découpe un
 peu autrement, la famille bascule un peu plus tôt, et personne ne s'en aperçoit.
-`addin/parite/mutations.js` les réintroduit une par une : 42 sur 42 sont vues.
-Sept d'entre elles visent le pont et se vérifient contre `essais.js`, pas contre
-la parité — c'est la partie du portage qu'aucun Python ne couvre, donc celle où
+`addin/parite/mutations.js` les réintroduit une par une : 47 sur 47 sont vues.
+Douze d'entre elles ne passent pas par la parité mais par les deux batteries à
+hôte simulé — c'est la part du portage qu'aucun Python ne couvre, donc celle où
 une mutation qui échappe coûterait le plus cher.
 
 Cinq choses sont sorties du portage. **Aucune des cinq n'était dans le
@@ -668,6 +670,38 @@ Mesuré plutôt que raisonné, et remplacé par une mutation qui mord.
 était écrite en dur des deux côtés — 200 × 200 ici, 250 × 240 là pour la planche
 des membres. Le vérificateur comparait deux cadrages différents et signalait un
 écart de SVG qui n'existait pas. La boîte voyage maintenant avec le cas.
+
+### La coquille, et où s'arrête ce qui se vérifie
+
+`manifest.xml` est un manifeste **XML classique**, pas le JSON unifié : le point
+13 le dit, l'unifié ne se charge pas à la main sur Mac, et l'installation se
+fait à la main.
+
+⚠️ **Aucune contrainte `<Requirements>` n'y est déclarée**, alors que le code a
+besoin de WordApi 1.6. C'est délibéré : une contrainte non satisfaite rend
+l'add-in **invisible**, sans un mot. Le volet s'ouvre donc toujours, vérifie
+lui-même la version, et dit ce qui manque. Un cadeau qui ne s'ouvre pas et
+n'explique rien est le pire accueil possible.
+
+`volet.js` ne décide presque rien — il branche. Tout ce qui arbitre est
+ailleurs, et c'est voulu : c'est le seul fichier qu'aucune batterie ne peut
+vraiment tenir. Il garde quand même trois choses qui ne sont nulle part ailleurs
+— le rattachement du document à *son* paysage, la dégradation quand 1.6 manque,
+et le tic de deux secondes.
+
+Une quatrième panne trouvée là, dans le même esprit que les précédentes : la
+normalisation du débit **ne doit corriger que dans un sens**. Divisé par cinq
+millisecondes, un vidage en avance transformait quatre mots tapés en un débit de
+mille six cents — donc en collage. Le plancher est l'intervalle, pas 1 : la
+correction peut réduire le débit, jamais l'amplifier.
+
+**Ce qui reste hors d'atteinte.** Les deux batteries JavaScript prouvent que le
+câblage tient contre un hôte simulé, pas que le vrai Word se comporte comme le
+faux. Trois choses valent d'être regardées le premier jour, et `LISEZMOI.md` les
+liste : que trois paragraphes tapés d'affilée fassent bien pousser la forme
+(sinon `DocumentSelectionChanged` ne se comporte pas comme supposé, et c'est le
+point 2 qui tombe), que le retour à la ligne compte, et qu'un chapitre collé ne
+fasse rien pousser.
 
 Et un détail qui n'en est pas un : `rattacher()` acceptait un couple
 `(texte, style)` sous forme de tuple, pas de liste. JSON n'a que des tableaux,
@@ -894,6 +928,12 @@ deux divergent, c'est le JavaScript qui a un bug.
 | `src/composition.js` | portage de `composition.py`, sans les planches |
 | `src/pont.js` | le pont vers Word — la seule part sans Python en face |
 | `essais.js` | **le pont, contre un Word simulé, avec un code de sortie** |
+| `essais_volet.js` | **le câblage Office.js, contre un hôte simulé** |
+| `src/volet.js` | le seul fichier qui parle à Office.js |
+| `manifest.xml` | le manifeste XML, sans contrainte de version |
+| `volet.html` · `apercu.html` | les deux vues du point 14 |
+| `icones.py` | les trois icônes du ruban, dessinées par la grammaire |
+| `LISEZMOI.md` | installer, et quoi regarder le premier jour |
 | `src/grammaire.js` | portage de `grammaire.py`, sans les planches |
 | `src/traits.js` | portage de `traits.py` |
 | `src/paysage.js` | portage de `paysage.py` |

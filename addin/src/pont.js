@@ -153,7 +153,14 @@ export class Pont {
       const n = compter_mots(p.texte);
       mots += ancien === undefined ? n : Math.max(0, n - compter_mots(ancien));
     }
-    const debit = mots * INTERVALLE / Math.max(ecoule, 1);
+    //
+    // Le plancher est l'INTERVALLE, pas 1. La normalisation doit corriger un
+    // vidage EN RETARD, jamais un vidage en avance : divise par cinq
+    // millisecondes, quatre mots tapes deviennent un debit de mille six cents
+    // et passent pour un collage. Elle ne peut donc que reduire le debit,
+    // jamais l'amplifier — trouve en deroulant le volet contre un Office.js
+    // simule, ou tout s'enchaine sans attendre.
+    const debit = mots * INTERVALLE / Math.max(ecoule, INTERVALLE);
 
     const verdicts = [];
     for (const p of lus) {

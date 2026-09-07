@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le paysage</title>
+<!--
+  La vue d'ensemble.
+
+  Le volet Word est une colonne etroite et haute ; une bande horizontale y est
+  le pire format possible. Cette vue vit donc dans un dialogue, qui s'ouvre
+  large — et c'est un dezoom qu'on FAIT, pas un dezoom qu'on subit. La camera
+  recule, le monde ne retrecit pas (decision 14).
+
+  Le dialogue partage l'origine du volet, donc son localStorage : il relit
+  l'etat tout seul. Le volet ne lui passe que la cle et la graine.
+-->
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #faf8f4; color: #2c3230;
+    font: 14px/1.6 Georgia, "Times New Roman", serif;
+  }
+  body { display: flex; flex-direction: column; }
+  /* Le paysage defile horizontalement : a l'echelle constante, le retour reste
+     intact. C'est l'autre moitie de la decision 14. */
+  #paysage { flex: 1 1 auto; min-height: 0; overflow-x: auto; overflow-y: hidden; }
+  #paysage svg { display: block; height: 100%; width: auto; }
+  #mot {
+    flex: 0 0 auto; padding: 14px 22px; color: #8d8880;
+    font-size: 12.5px; font-style: italic;
+  }
+</style>
+</head>
+<body>
+  <div id="paysage"></div>
+  <div id="mot"></div>
+  <script type="module">
+    import { svg_apercu } from "./src/composition.js";
+    import { Paysage } from "./src/paysage.js";
+
+    function dessiner(cle, graine) {
+      const hote = document.getElementById("paysage");
+      const paysage = Paysage.depuis(localStorage.getItem(cle));
+      const plants = paysage.etat().plants;
+      if (!plants.length) {
+        document.getElementById("mot").textContent =
+          "Rien n'a encore pousse. C'est normal : il faut ecrire un peu.";
+        return;
+      }
+      hote.innerHTML = svg_apercu(plants, hote.clientHeight || 520, graine);
+    }
+
+    Office.onReady(() => {
+      // On demande la cle au volet : c'est lui qui sait quel paysage est
+      // celui de ce dossier.
+      Office.context.ui.addHandlerAsync(
+        Office.EventType.DialogParentMessageReceived,
+        (arg) => {
+          const { cle, graine } = JSON.parse(arg.message);
+          dessiner(cle, graine);
+        },
+      );
+      Office.context.ui.messageParent("pret");
+    });
+  </script>
+</body>
+</html>

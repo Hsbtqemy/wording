@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Manifeste XML classique, PAS le manifeste unifie JSON.
+
+  La decision 13 le dit : le manifeste unifie ne peut pas etre charge a la main
+  sur Mac, et l'installation se fait a la main — on depose ce fichier dans
+  ~/Library/Containers/com.microsoft.Word/Data/Documents/wef, on redemarre Word.
+  Sur Windows, un dossier partage declare comme catalogue de confiance.
+
+  L'URL ci-dessous doit pointer vers un hebergement statique HTTPS. Le projet
+  n'a pas de serveur — un cadeau adosse a un serveur meurt le jour ou
+  l'hebergement n'est plus paye — mais Word exige que le volet vienne d'une
+  URL. GitHub Pages, Netlify, Cloudflare Pages : n'importe lequel, et le jour
+  ou il ferme, on change cette ligne.
+
+  ⚠️ AUCUNE contrainte <Requirements> n'est declaree, alors que le code a besoin
+  de WordApi 1.6 pour les evenements de paragraphe. C'est deliberé : une
+  contrainte non satisfaite rend l'add-in INVISIBLE, sans un mot. Le volet
+  s'ouvre donc toujours, verifie lui-meme la version, et dit ce qui manque.
+  Un cadeau qui ne s'ouvre pas et n'explique rien est le pire accueil possible.
+-->
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+           xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+           xsi:type="TaskPaneApp">
+
+  <Id>398a6771-a068-4652-a51e-ab2a8cc626b6</Id>
+  <Version>0.1.0.0</Version>
+  <ProviderName>Paysage</ProviderName>
+  <DefaultLocale>fr-FR</DefaultLocale>
+  <DisplayName DefaultValue="Paysage" />
+  <Description DefaultValue="Un paysage qui pousse pendant qu'on ecrit." />
+  <IconUrl DefaultValue="https://exemple.invalid/paysage/icone-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://exemple.invalid/paysage/icone-80.png" />
+  <SupportUrl DefaultValue="https://github.com/Hsbtqemy/wording" />
+
+  <AppDomains>
+    <AppDomain>https://exemple.invalid</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Document" />
+  </Hosts>
+
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://exemple.invalid/paysage/volet.html" />
+  </DefaultSettings>
+
+  <!--
+    ReadWriteDocument et non ReadDocument : l'identifiant du paysage est range
+    dans les Settings du document (decision 11), et ecrire un reglage demande
+    l'acces en ecriture. Rien du texte n'est jamais modifie.
+  -->
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+                    xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Document">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="Paysage.Titre" />
+            <Description resid="Paysage.Description" />
+            <LearnMoreUrl resid="Paysage.Aide" />
+          </GetStarted>
+
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="Paysage.Groupe">
+                <Label resid="Paysage.Titre" />
+                <Icon>
+                  <bt:Image size="16" resid="Paysage.Icone16" />
+                  <bt:Image size="32" resid="Paysage.Icone32" />
+                  <bt:Image size="80" resid="Paysage.Icone80" />
+                </Icon>
+                <Control xsi:type="Button" id="Paysage.Ouvrir">
+                  <Label resid="Paysage.Bouton" />
+                  <Supertip>
+                    <Title resid="Paysage.Bouton" />
+                    <Description resid="Paysage.Description" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Paysage.Icone16" />
+                    <bt:Image size="32" resid="Paysage.Icone32" />
+                    <bt:Image size="80" resid="Paysage.Icone80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>Paysage.Volet</TaskpaneId>
+                    <SourceLocation resid="Paysage.Volet.Url" />
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Paysage.Icone16" DefaultValue="https://exemple.invalid/paysage/icone-16.png" />
+        <bt:Image id="Paysage.Icone32" DefaultValue="https://exemple.invalid/paysage/icone-32.png" />
+        <bt:Image id="Paysage.Icone80" DefaultValue="https://exemple.invalid/paysage/icone-80.png" />
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Paysage.Volet.Url" DefaultValue="https://exemple.invalid/paysage/volet.html" />
+        <bt:Url id="Paysage.Aide" DefaultValue="https://github.com/Hsbtqemy/wording" />
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="Paysage.Titre" DefaultValue="Paysage" />
+        <bt:String id="Paysage.Bouton" DefaultValue="Ouvrir le paysage" />
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="Paysage.Description"
+                   DefaultValue="Le volet montre ce qui pousse pendant que vous ecrivez." />
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

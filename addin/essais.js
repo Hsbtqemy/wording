@@ -330,6 +330,20 @@ suite.push(["ecrire a vitesse humaine ne declenche jamais la greffe", async () =
 // la machine chargee, un vidage peut couvrir dix secondes : quinze mots tapes
 // honnetement arrivent alors d'un coup, et sans normalisation ils passent le
 // seuil. On aurait converti l'ecriture de quelqu'un en collage.
+// L'autre sens, trouve en deroulant le volet : un vidage EN AVANCE ne doit pas
+// amplifier le debit. Divise par cinq millisecondes, quatre mots tapes
+// deviendraient mille six cents et passeraient pour un collage.
+suite.push(["un vidage en avance n'amplifie pas le debit", async () => {
+  const { word, pont, paysage } = monter();
+  const id = word.entree();
+  await pont.vider(3);
+  word.paras.get(id).texte = "Quatre mots arrivent ici.";
+  pont.signaler("changement", [id]);
+  await pont.vider(3);                     // trois millisecondes se sont ecoulees
+  egal(paysage.segments[0].greffes, 0, "ce n'est pas un collage");
+  egal(paysage.segments[0].nouveaux, 1, "c'est une ecriture");
+}]);
+
 suite.push(["un vidage en retard ne transforme pas la frappe en collage", async () => {
   const { word, pont, paysage } = monter();
   const id = word.entree();

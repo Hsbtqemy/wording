@@ -57,19 +57,23 @@ Les quatre suites, **dans une seule commande**, jamais en parallèle :
 ```bash
 python jardin/essais.py && python jardin/mutations.py \
   && python jardin/parite.py && node addin/essais.js \
-  && node addin/parite/mutations.js
+  && node addin/essais_volet.js && node addin/parite/mutations.js
 ```
 
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `30 passes, 0 en echec` · `8/8` · `aucun ecart` · `22 passes` ·
-`42/42`.
+Attendu : `30 passes, 0 en echec` · `8/8` · `aucun ecart` · `23 passes` ·
+`12 passes` · `47/47`.
 
-`addin/essais.js` éprouve le **pont** vers Word contre un Word simulé. C'est la
-seule partie du portage qu'aucune parité ne couvre — il n'y a pas de Python en
-face — et c'est celle qui porte la décision 2. Elle y a déjà trouvé deux défauts
-qui auraient été livrés.
+Les deux batteries JavaScript éprouvent ce qu'**aucune parité ne peut couvrir**,
+faute de Python en face : `essais.js` le **pont** (la décision 2, contre un Word
+simulé), `essais_volet.js` le **câblage Office.js** (contre un hôte simulé).
+Elles y ont déjà trouvé trois défauts qui auraient été livrés.
+
+⚠️ Aucune des deux ne prouve que le vrai Word se comporte comme le faux. C'est
+le risque irréductible, et il ne se lève qu'en déposant le manifeste dans Word —
+voir `addin/LISEZMOI.md`.
 
 ⚠️ **`mutations.py` et `mutations.js` réécrivent les fichiers source sur le
 disque** pour vérifier que les essais savent échouer. Deux suites en même temps,

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paysage</title>
+<!--
+  Le volet.
+
+  Rien ne doit ressembler a une barre de progression, a un score, ni a un
+  rappel : pas de chiffre, pas de pourcentage, pas de compteur de mots. Ce qui
+  est montre est le paysage, et rien d'autre. Le seul texte est le bouton qui
+  ouvre la vue d'ensemble, et le mot qui s'affiche quand quelque chose empeche
+  le paysage de pousser.
+
+  Office.js vient du CDN de Microsoft, qui est la seule dependance possible :
+  Word refuse de charger un add-in autrement. Le reste du code est a nous, sans
+  bibliotheque, comme le veut la decision 13.
+-->
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+  :root {
+    --fond: #faf8f4;
+    --encre: #2c3230;
+    --pale: #8d8880;
+  }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--fond); color: var(--encre);
+    font: 13px/1.5 Georgia, "Times New Roman", serif;
+    overflow: hidden;
+  }
+  body { display: flex; flex-direction: column; }
+  /* Le paysage prend tout ce qu'il peut. Le volet Word est une colonne
+     etroite et haute — c'est pour ca que la vue d'ensemble est ailleurs. */
+  #paysage { flex: 1 1 auto; min-height: 0; }
+  #paysage svg { display: block; width: 100%; height: 100%; }
+  #pied {
+    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 8px 12px 12px;
+  }
+  #mot { color: var(--pale); font-size: 12px; font-style: italic; }
+  /* Un bouton discret : il ne demande rien, il ouvre. */
+  button {
+    font: inherit; font-size: 12px; color: var(--pale);
+    background: none; border: 0; border-bottom: 1px solid transparent;
+    padding: 2px 0; cursor: pointer;
+  }
+  button:hover, button:focus-visible {
+    color: var(--encre); border-bottom-color: var(--pale); outline: none;
+  }
+</style>
+</head>
+<body>
+  <div id="paysage"></div>
+  <div id="pied">
+    <span id="mot"></span>
+    <button id="apercu" type="button">tout voir</button>
+  </div>
+  <script type="module" src="src/volet.js"></script>
+</body>
+</html>

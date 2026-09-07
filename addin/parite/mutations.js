@@ -31,10 +31,14 @@ const CAS = join(ICI, "cas.json");
 
 // [fichier, motif, remplacement, ce que la regression retablit, verificateur]
 //
-// Le verificateur vaut "parite" par defaut. Le pont, lui, n'a pas de Python en
-// face : il se verifie contre un Word simule, donc ses mutations doivent lancer
-// essais.js. C'est justement la partie du portage qu'aucune parite ne couvre,
-// donc celle ou une mutation qui echappe couterait le plus cher.
+// Le verificateur vaut "parite" par defaut. Deux parties du portage n'ont pas
+// de Python en face et se verifient autrement :
+//
+//   "essais"  le pont, contre un Word simule (addin/essais.js)
+//   "volet"   le cablage Office.js, contre un hote simule (essais_volet.js)
+//
+// Ce sont justement les parties qu'aucune parite ne couvre, donc celles ou une
+// mutation qui echappe couterait le plus cher.
 const MUTATIONS = [
   ["traits.js",
    "const MOT = /\\p{L}+/gu;",
@@ -280,7 +284,7 @@ const MUTATIONS = [
    "essais"],
 
   ["pont.js",
-   "    const debit = mots * INTERVALLE / Math.max(ecoule, 1);",
+   "    const debit = mots * INTERVALLE / Math.max(ecoule, INTERVALLE);",
    "    const debit = mots;",
    "le debit n'est plus ramene a l'intervalle : un vidage en retard fait une greffe",
    "essais"],
@@ -295,6 +299,37 @@ const MUTATIONS = [
    "    if (this.registre.has(e) && !naissance) return \"connue\";",
    "    if (this.registre.has(e)) return \"connue\";",
    "la naissance ne dispense plus de la reconnaissance du registre"],
+
+  ["pont.js",
+   "    const debit = mots * INTERVALLE / Math.max(ecoule, INTERVALLE);",
+   "    const debit = mots * INTERVALLE / Math.max(ecoule, 1);",
+   "le debit s'amplifie quand un vidage arrive tot : quatre mots font un collage",
+   "essais"],
+
+  // --------------------------------------------------------------------- volet
+  ["volet.js",
+   "  if (!Office.context.requirements.isSetSupported(\"WordApi\", \"1.6\")) {",
+   "  if (false) {",
+   "un Word trop ancien laisse le volet noir au lieu de dire ce qui manque",
+   "volet"],
+
+  ["volet.js",
+   "    id = index[dossier] || tirer_identifiant();",
+   "    id = tirer_identifiant();",
+   "decision 11 : chaque document ouvre son paysage, le dossier ne compte plus",
+   "volet"],
+
+  ["volet.js",
+   "    pont.rattacher(await scanner());\n    ranger();",
+   "    pont.rattacher(await scanner());",
+   "le capital de depart n'est pas range : rouvrir le fichier le perd",
+   "volet"],
+
+  ["volet.js",
+   "  const coupe = url.lastIndexOf(\"/\");\n  return coupe > 0 ? url.slice(0, coupe) : url;",
+   "  return url;",
+   "la cle du dossier devient le chemin du FICHIER : plus aucun partage",
+   "volet"],
 ];
 
 if (!existsSync(CAS)) {
@@ -344,8 +379,8 @@ for (const [fichier, vieux, neuf, libelle, verificateur] of MUTATIONS) {
   writeFileSync(chemin, src.replace(vieux, neuf), "utf-8");
   let r;
   try {
-    const args = verificateur === "essais"
-      ? [join(ICI, "..", "essais.js")]
+    const args = verificateur === "essais" ? [join(ICI, "..", "essais.js")]
+      : verificateur === "volet" ? [join(ICI, "..", "essais_volet.js")]
       : [join(ICI, "parite.js"), CAS];
     r = spawnSync(process.execPath, args, { encoding: "utf-8" });
   } finally {
