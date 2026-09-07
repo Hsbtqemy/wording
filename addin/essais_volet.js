@@ -129,6 +129,11 @@ function monter_hote({ version16 = true, url = "C:/These/chapitre1.docx",
       const ctx = {
         document: {
           body: {
+            // Word joint les paragraphes par un retour chariot dans body.text.
+            // Le simulateur doit le faire aussi, sinon la mesure du « corps en
+            // un bloc » compterait des lignes qui n'existent pas.
+            load() {},
+            get text() { return etat.paras.map((p) => p.text).join("\r"); },
             paragraphs: {
               items: [],
               load() { this.items = etat.paras.map((p) => proxyPara(p.id)); },
@@ -288,6 +293,10 @@ suite.push(["un Word trop ancien dit ce qui manque au lieu de rester noir",
          `le volet doit separer le froid du chaud, obtenu : ${mot}`);
     vrai(/curseur seul : \d+ \d+ \d+ \d+ ms/.test(mot),
          `et mesurer ce que le guet lirait vraiment, obtenu : ${mot}`);
+    // Le corps en une seule chaine : c'est ce qui decide de la FORME du guet —
+    // un diff sur des instantanes complets, ou une continuite devinee.
+    vrai(/corps en un bloc : 1 lignes en \d+ \d+ \d+ \d+ ms/.test(mot),
+         `le volet doit mesurer body.text, obtenu : ${mot}`);
   }]);
 
 suite.push(["ouvrir un document ne le marque pas comme modifie", async () => {

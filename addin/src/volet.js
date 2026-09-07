@@ -276,6 +276,38 @@ async function signalement() {
   } catch {
     morceaux.push("curseur illisible");
   }
+
+  // L'hypothese qui change la FORME du guet, pas sa faisabilite.
+  //
+  // Mesure : 19 paragraphes coutent 45 ms quand un seul en coute 14. Environ
+  // 1,6 ms par paragraphe — mais de quoi ? Du texte, ou des mille cinq cents
+  // objets qu'Office.js fabrique pour le porter ? body.text rend le corps
+  // entier en UNE chaine, paragraphes separes par des retours chariot.
+  //
+  // Si c'est beaucoup moins cher, le guet prend un instantane complet a chaque
+  // tic et le compare au precedent : un diff sur des tableaux de chaines,
+  // logique pure, donc specifiable en Python et couvert par la parite — ce que
+  // pont.js n'a jamais pu etre. Sinon il devra deviner la continuite du
+  // paragraphe sous le curseur, et c'est le terrain ou ce projet s'est deja
+  // fait piege deux fois.
+  try {
+    const t = [];
+    let lignes = 0;
+    for (let i = 0; i < 4; i++) {
+      const t0 = Date.now();
+      // eslint-disable-next-line no-await-in-loop
+      lignes = await Word.run(async (ctx) => {
+        const corps = ctx.document.body;
+        corps.load("text");
+        await ctx.sync();
+        return corps.text.split("\r").length;
+      });
+      t.push(Date.now() - t0);
+    }
+    morceaux.push(`corps en un bloc : ${lignes} lignes en ${t.join(" ")} ms`);
+  } catch {
+    morceaux.push("corps en un bloc illisible");
+  }
   return morceaux.join(" · ");
 }
 
