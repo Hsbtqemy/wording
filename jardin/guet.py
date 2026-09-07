@@ -80,6 +80,11 @@ SEPARATEURS_LIGNE = ("\x0b", "\n")
 # regardant comment les deux axes repondent quand on fait varier ce nombre.
 SILENCE = 60
 
+# Combien de temps entre deux releves (decision 12). Le pont a la meme, pour le
+# chemin des evenements ; elle est redite ici parce que le guet doit pouvoir se
+# specifier sans lui.
+INTERVALLE = 2000
+
 
 def decouper_marque(texte):
     """Les lignes du corps, et le paragraphe d'ou chacune vient.
@@ -222,6 +227,17 @@ def rapprocher(anciennes, nouvelles):
     return mouvements
 
 
+def compter_mots(texte):
+    """Les mots d'une ligne, pour le SEUL calcul du debit.
+
+    en_mots() serait plus juste mais coute une expression reguliere Unicode par
+    ligne, et le debit ne sert qu'a comparer a SEUIL_COLLAGE — quinze mots par
+    intervalle de deux secondes, soit 450 mots par minute. A cette echelle,
+    decouper aux blancs suffit et ne se trompe jamais de cote.
+    """
+    return len(texte.split()) if texte and texte.strip() else 0
+
+
 def _style(styles, appartenance, k):
     """Le style de la ligne k, pris sur son paragraphe.
 
@@ -257,6 +273,10 @@ class Guet:
         # Le nombre de paragraphes du dernier releve : l'appelant s'en sert pour
         # savoir s'il doit aller rechercher les styles.
         self.paragraphes = 0
+        # Les lignes arrivees en GREFFE, pour que retoucher() sache les
+        # convertir (point 4). Le pont ne l'a jamais su, et la conversion
+        # n'arrivait donc jamais dans l'add-in.
+        self.greffes = set()
 
     def _neuf(self):
         self._suivant += 1
@@ -279,6 +299,84 @@ class Guet:
         self.paragraphes = compter_paragraphes(texte)
         return [(l, _style(styles, appartenance, k))
                 for k, l in enumerate(self.lignes)]
+
+    def debit(self, faits, ecoule=INTERVALLE):
+        """Les mots arrives DANS CE RELEVE, ramenes a l'intervalle.
+
+        Decision 4 : c'est le bloc qu'il faut mesurer, pas la ligne. Un collage
+        de douze chapitres arrive d'un coup ; une ligne de 400 mots tapee a la
+        main n'existe pas, mais 400 mots arrives en deux secondes, si.
+
+        ⚠️ LE PLANCHER EST L'INTERVALLE, PAS 1. La normalisation doit corriger
+        un releve EN RETARD, jamais un releve en avance : divise par cinq
+        millisecondes, quatre mots tapes deviendraient un debit de mille six
+        cents et passeraient pour un collage. Elle ne peut donc que reduire le
+        debit, jamais l'amplifier — panne trouvee en deroulant le volet contre
+        un Office.js simule, ou tout s'enchaine sans attendre.
+        """
+        mots = 0
+        for f in faits:
+            if f["type"] == "nee":
+                mots += compter_mots(f["texte"])
+            elif f["type"] == "retouchee":
+                mots += max(0, compter_mots(f["texte"])
+                            - compter_mots(f["ancien"]))
+        return mots * INTERVALLE / max(ecoule, INTERVALLE)
+
+    def nourrir(self, paysage, faits, jour=0, heure=14, debit=0.0):
+        """Donne au paysage ce que le releve a vu, et rend les verdicts.
+
+        C'est ici que le guet remplace le pont, et les trois decisions qu'il
+        portait sont reprises telles quelles.
+
+        UNE LIGNE NEE VIDE QUI SE REMPLIT EST UNE ECRITURE, pas une reprise.
+        Word cree une ligne vide a chaque Entree, et le guet la voit naitre ;
+        elle arrive donc en « retouchee » avec un ancien texte vide. Sans cette
+        conversion, absorber() n'aurait jamais mis _actif, retoucher() tomberait
+        dans la branche « nouvelle visite », et LE PREMIER MOT TAPE SUR CHAQUE
+        LIGNE NEUVE compterait comme une reprise. L'extension n'existerait plus.
+
+        Et naissance=True pour la meme raison que sous les evenements : « Il
+        faut donc admettre » a toutes les chances d'avoir deja commence une
+        autre ligne, et le registre declarerait connue une ligne genuinement
+        neuve. Quand on a VU la ligne naitre vide, on sait ce que le registre ne
+        peut pas savoir.
+
+        UNE SUPPRESSION EST GRATUITE (point 3). Le registre garde l'empreinte,
+        donc supprimer, deplacer ou fusionner ne coute rien et ne rend rien.
+
+        UN COLLAGE RETRAVAILLE SE CONVERTIT (point 4), et c'est neuf. Le pont
+        passait toujours etait_greffe=False, donc la branche « conversion » de
+        retoucher() n'etait JAMAIS atteinte dans l'add-in : un chapitre colle
+        puis retravaille restait une greffe pour toujours. Le guet retient
+        quelles lignes sont arrivees en greffe, et la conversion a enfin lieu.
+        """
+        verdicts = []
+        for f in faits:
+            genre = f["type"]
+            if genre == "visite_finie":
+                paysage.quitter()
+                verdicts.append({"id": f["id"], "verdict": "visite finie"})
+                continue
+            if genre == "disparue":
+                self.greffes.discard(f["id"])
+                verdicts.append({"id": f["id"], "verdict": "disparue"})
+                continue
+            if genre == "nee":
+                v = paysage.absorber(f["texte"], f["style"], debit, jour,
+                                     heure, False)
+            elif not compter_mots(f["ancien"]):
+                v = paysage.absorber(f["texte"], f["style"], debit, jour,
+                                     heure, True)
+            else:
+                v = paysage.retoucher(f["ancien"], f["texte"], jour, heure,
+                                      f["id"] in self.greffes)
+            if v == "greffe":
+                self.greffes.add(f["id"])
+            elif v in ("conversion", "ecriture"):
+                self.greffes.discard(f["id"])
+            verdicts.append({"id": f["id"], "verdict": v})
+        return verdicts
 
     def relever(self, texte, styles=None):
         """Compare le corps a ce qu'on avait vu, et rend ce qui a bouge.

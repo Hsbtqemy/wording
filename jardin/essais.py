@@ -818,6 +818,147 @@ def _():
     return "1000 lignes, 1 verdict"
 
 
+@essai("guet / une ligne nee vide qui se remplit est une ecriture")
+def _():
+    from guet import Guet
+    from paysage import Paysage
+    p, g = Paysage(), Guet()
+    p.rattacher(g.amorcer("Un debut de chapitre ecrit a la main."), 10, 14)
+
+    def tour(texte):
+        f = g.relever(texte)
+        return [v["verdict"] for v in g.nourrir(p, f, 10, 14, g.debit(f))]
+
+    # Word cree une ligne VIDE a chaque Entree ; le guet la voit naitre, donc
+    # elle revient ensuite en « retouchee » avec un ancien texte vide.
+    assert tour("Un debut de chapitre ecrit a la main.\x0b") == ["vide"]
+    avant = p.segments[0].mots
+    # Sans la conversion, absorber() n'aurait jamais pose _actif, retoucher()
+    # tomberait dans « nouvelle visite », et LE PREMIER MOT DE CHAQUE LIGNE
+    # NEUVE serait une reprise. L'extension n'existerait plus.
+    assert tour("Un debut de chapitre ecrit a la main.\x0bIl faut donc") == ["ecriture"]
+    assert tour("Un debut de chapitre ecrit a la main.\x0bIl faut donc admettre.") \
+        == ["frappe"]
+    assert p.segments[0].mots > avant, "les mots tapes doivent compter"
+    assert p.segments[0].reprises == 0, "et aucune reprise ne doit etre comptee"
+    return "vide, puis ecriture, puis frappe — jamais une reprise"
+
+
+@essai("guet / une ligne neuve echappe au registre quand on l'a vue naitre")
+def _():
+    from guet import Guet
+    from paysage import Paysage
+    p, g = Paysage(), Guet()
+    debut = "Il faut donc admettre que la chose est entendue."
+    p.rattacher(g.amorcer(debut), 10, 14)
+
+    def tour(texte):
+        f = g.relever(texte)
+        return [v["verdict"] for v in g.nourrir(p, f, 10, 14, g.debit(f))]
+
+    # En francais, une ligne sur deux commence par les memes mots. Sans le
+    # drapeau de naissance, le registre declarerait « connue » une ligne
+    # genuinement neuve et le plant cesserait de pousser, sans rien signaler.
+    tour(debut + "\x0b")
+    assert tour(debut + "\x0b" + debut) == ["ecriture"], \
+        "une ligne vue naitre doit passer outre le registre"
+    return "le registre passe apres ce qu'on a vu de ses propres yeux"
+
+
+@essai("guet / un collage retravaille se convertit en ecriture")
+def _():
+    from guet import Guet
+    from paysage import Paysage
+    from paysage import SEUIL_COLLAGE
+    p, g = Paysage(), Guet()
+    p.rattacher(g.amorcer("Un debut ecrit a la main."), 10, 14)
+    colle = " ".join("mot%d" % i for i in range(SEUIL_COLLAGE * 4))
+
+    def tour(texte):
+        f = g.relever(texte)
+        return [v["verdict"] for v in g.nourrir(p, f, 10, 14, g.debit(f))]
+
+    assert tour("Un debut ecrit a la main.\x0b" + colle) == ["greffe"]
+    assert g.greffes, "le guet doit retenir quelles lignes sont des greffes"
+    # LE PONT NE L'A JAMAIS SU : il passait toujours etait_greffe=False, donc
+    # cette branche n'etait jamais atteinte dans l'add-in et un chapitre colle
+    # puis retravaille restait une greffe pour toujours.
+    assert tour("Un debut ecrit a la main.\x0b" + colle + " et une suite ecrite.") \
+        == ["conversion"]
+    assert not g.greffes, "et l'oublier une fois convertie"
+    assert p.segments[0].greffes == 0, "le plant ne doit plus compter de greffe"
+    return "point 4 : la greffe retravaillee devient de l'ecriture"
+
+
+@essai("guet / une suppression ne rend rien au paysage")
+def _():
+    from guet import Guet
+    from paysage import Paysage
+    p, g = Paysage(), Guet()
+    p.rattacher(g.amorcer("Alpha.\x0bBeta.\x0bGamma."), 10, 14)
+    avant = dict(mots=p.segments[0].mots, reprises=p.segments[0].reprises)
+    f = g.relever("Alpha.\x0bGamma.")
+    v = g.nourrir(p, f, 10, 14, g.debit(f))
+    # Point 3 : le registre garde l'empreinte, donc supprimer ne coute rien.
+    assert [x["verdict"] for x in v] == ["disparue"], v
+    assert p.segments[0].mots == avant["mots"], "rien ne doit reculer"
+    assert p.segments[0].reprises == avant["reprises"], "ni murir"
+    return "decision 3 : une suppression est gratuite"
+
+
+@essai("guet / le debit se ramene a l'intervalle, jamais au-dela")
+def _():
+    from guet import Guet, INTERVALLE
+    g = Guet()
+    g.amorcer("Depart.")
+    faits = g.relever("Depart.\x0bun deux trois quatre")
+    # Un releve EN RETARD : quatre mots arrives en dix secondes valent moins
+    # que quatre mots en deux secondes.
+    lent = g.debit(faits, 10000)
+    normal = g.debit(faits, INTERVALLE)
+    assert lent < normal, (lent, normal)
+    # ⚠️ Un releve EN AVANCE ne doit PAS amplifier. Divise par cinq
+    # millisecondes, quatre mots deviendraient un debit de mille six cents et
+    # passeraient pour un collage. Le plancher est l'intervalle, pas 1.
+    rapide = g.debit(faits, 5)
+    assert rapide == normal, (rapide, normal)
+    return f"4 mots : {normal:.0f} a l'heure, {lent:.1f} en retard, {rapide:.0f} en avance"
+
+
+@essai("guet / une reprise par visite, et une seule")
+def _():
+    from guet import Guet
+    from paysage import Paysage
+    p, g = Paysage(), Guet(silence=2)
+    base = "Une ligne posee la, et rien d'autre"
+    p.rattacher(g.amorcer(base + "."), 10, 14)
+
+    def tour(texte):
+        f = g.relever(texte)
+        return [v["verdict"] for v in g.nourrir(p, f, 10, 14, g.debit(f))]
+
+    # Le document existait deja : retoucher une ligne rattachee EST une reprise.
+    tour(base + ", avec une suite.")
+    assert p.segments[0].reprises == 1, p.segments[0].reprises
+    # Dans la meme visite, on suit le texte sans rien recompter — sinon dix
+    # minutes de reecriture compteraient trois cents passages.
+    tour(base + ", avec une suite plus longue.")
+    tour(base + ", avec une suite bien plus longue encore.")
+    assert p.segments[0].reprises == 1, "une seule reprise par visite"
+
+    vus = []
+    for _tour in range(3):
+        vus += tour(base + ", avec une suite bien plus longue encore.")
+    assert "visite finie" in vus, vus
+
+    # Visite neuve : le droit a une reprise est rouvert. Sans quitter(),
+    # plant.reprises ne monterait plus jamais et l'element cesserait de murir —
+    # c'est l'axe de la maturite qui meurt, pas celui de l'extension.
+    tour(base + ", avec une troisieme suite.")
+    assert p.segments[0].reprises == 2, p.segments[0].reprises
+    return "trois retouches d'affilee valent une reprise, la quatrieme en vaut deux"
+
+
 # ==========================================================================
 def main(filtre=None):
     print("=" * LARGEUR)

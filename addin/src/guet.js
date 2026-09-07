@@ -58,6 +58,27 @@ export const SEPARATEURS_LIGNE = ["\u000B", "\n"];
 export const SILENCE = 60;
 
 /**
+ * Combien de temps entre deux releves (decision 12). Le pont a la meme, pour le
+ * chemin des evenements ; elle est redite ici parce que le guet doit pouvoir se
+ * specifier sans lui.
+ */
+export const INTERVALLE = 2000;
+
+/**
+ * Les mots d'une ligne, pour le SEUL calcul du debit.
+ *
+ * en_mots() serait plus juste mais coute une expression reguliere Unicode par
+ * ligne, et le debit ne sert qu'a comparer a SEUIL_COLLAGE — quinze mots par
+ * intervalle de deux secondes, soit 450 mots par minute. A cette echelle,
+ * decouper aux blancs suffit et ne se trompe jamais de cote.
+ */
+export function compter_mots(texte) {
+  if (!texte) return 0;
+  const t = texte.trim();
+  return t ? t.split(/\s+/u).length : 0;
+}
+
+/**
  * Les lignes du corps, et le paragraphe d'ou chacune vient.
  *
  * Rend {lignes, appartenance}, de meme longueur : appartenance[k] est l'indice
@@ -211,6 +232,10 @@ export class Guet {
     this.visitee = null;
     this.calme = 0;
     this.paragraphes = 0;
+    // Les lignes arrivees en GREFFE, pour que retoucher() sache les convertir
+    // (point 4). Le pont ne l'a jamais su, et la conversion n'arrivait donc
+    // jamais dans l'add-in.
+    this.greffes = new Set();
   }
 
   _neuf() {
@@ -233,6 +258,79 @@ export class Guet {
     this.ids = lignes.map(() => this._neuf());
     this.paragraphes = compter_paragraphes(texte);
     return lignes.map((l, k) => [l, _style(styles, appartenance, k)]);
+  }
+
+  /**
+   * Les mots arrives DANS CE RELEVE, ramenes a l'intervalle.
+   *
+   * Decision 4 : c'est le bloc qu'il faut mesurer, pas la ligne. Un collage de
+   * douze chapitres arrive d'un coup ; une ligne de 400 mots tapee a la main
+   * n'existe pas, mais 400 mots arrives en deux secondes, si.
+   *
+   * ⚠️ LE PLANCHER EST L'INTERVALLE, PAS 1. La normalisation doit corriger un
+   * releve EN RETARD, jamais un releve en avance : divise par cinq
+   * millisecondes, quatre mots tapes deviendraient un debit de mille six cents
+   * et passeraient pour un collage. Elle ne peut donc que reduire le debit,
+   * jamais l'amplifier.
+   */
+  debit(faits, ecoule = INTERVALLE) {
+    let mots = 0;
+    for (const f of faits) {
+      if (f.type === "nee") mots += compter_mots(f.texte);
+      else if (f.type === "retouchee") {
+        mots += Math.max(0, compter_mots(f.texte) - compter_mots(f.ancien));
+      }
+    }
+    return mots * INTERVALLE / Math.max(ecoule, INTERVALLE);
+  }
+
+  /**
+   * Donne au paysage ce que le releve a vu, et rend les verdicts.
+   *
+   * C'est ici que le guet remplace le pont, et les trois decisions qu'il
+   * portait sont reprises telles quelles.
+   *
+   * UNE LIGNE NEE VIDE QUI SE REMPLIT EST UNE ECRITURE, pas une reprise. Word
+   * cree une ligne vide a chaque Entree, et le guet la voit naitre ; elle
+   * arrive donc en « retouchee » avec un ancien texte vide. Sans cette
+   * conversion, absorber() n'aurait jamais pose _actif, retoucher() tomberait
+   * dans la branche « nouvelle visite », et LE PREMIER MOT TAPE SUR CHAQUE
+   * LIGNE NEUVE compterait comme une reprise.
+   *
+   * UNE SUPPRESSION EST GRATUITE (point 3) : le registre garde l'empreinte.
+   *
+   * UN COLLAGE RETRAVAILLE SE CONVERTIT (point 4), et c'est neuf. Le pont
+   * passait toujours etait_greffe = false, donc cette branche n'etait JAMAIS
+   * atteinte dans l'add-in.
+   */
+  nourrir(paysage, faits, jour = 0, heure = 14, debit = 0.0) {
+    const verdicts = [];
+    for (const f of faits) {
+      const genre = f.type;
+      if (genre === "visite_finie") {
+        paysage.quitter();
+        verdicts.push({ id: f.id, verdict: "visite finie" });
+        continue;
+      }
+      if (genre === "disparue") {
+        this.greffes.delete(f.id);
+        verdicts.push({ id: f.id, verdict: "disparue" });
+        continue;
+      }
+      let v;
+      if (genre === "nee") {
+        v = paysage.absorber(f.texte, f.style, debit, jour, heure, false);
+      } else if (!compter_mots(f.ancien)) {
+        v = paysage.absorber(f.texte, f.style, debit, jour, heure, true);
+      } else {
+        v = paysage.retoucher(f.ancien, f.texte, jour, heure,
+                              this.greffes.has(f.id));
+      }
+      if (v === "greffe") this.greffes.add(f.id);
+      else if (v === "conversion" || v === "ecriture") this.greffes.delete(f.id);
+      verdicts.push({ id: f.id, verdict: v });
+    }
+    return verdicts;
   }
 
   /**

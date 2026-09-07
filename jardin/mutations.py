@@ -164,6 +164,49 @@ MUTATIONS = [
      "le compte de silence ne repart pas : la visite se ferme en pleine"
      " ecriture"),
 
+
+    # ----------------------------------------------------- guet : nourrir
+    # C'est ici que le guet remplace le pont, donc ici que les decisions du
+    # pont doivent survivre. Aucune de ces regressions ne fait planter : la
+    # forme pousse de travers, et personne ne le voit.
+    ("guet.py",
+     '            elif not compter_mots(f["ancien"]):',
+     "            elif False:",
+     "une ligne nee vide qui se remplit redevient une REPRISE : le premier mot"
+     " de chaque ligne neuve cesse de compter, l'extension n'existe plus"),
+
+    ("guet.py",
+     '                v = paysage.absorber(f["texte"], f["style"], debit, jour,\n'
+     "                                     heure, True)",
+     '                v = paysage.absorber(f["texte"], f["style"], debit, jour,\n'
+     "                                     heure, False)",
+     "le drapeau de naissance se perd : une ligne qui commence comme une autre"
+     " est declaree connue et le plant cesse de pousser"),
+
+    ("guet.py",
+     '                                      f["id"] in self.greffes)',
+     "                                      False)",
+     "decision 4 : un chapitre colle puis retravaille reste une greffe pour"
+     " toujours — le defaut que le pont avait, remis en place"),
+
+    ("guet.py",
+     '            if v == "greffe":',
+     '            if v == "ecriture":',
+     "les greffes ne sont plus retenues : la conversion se declenche sur le"
+     " mauvais verdict"),
+
+    ("guet.py",
+     "        return mots * INTERVALLE / max(ecoule, INTERVALLE)",
+     "        return mots * INTERVALLE / max(ecoule, 1)",
+     "le debit s'amplifie quand un releve arrive tot : quatre mots tapes"
+     " deviennent un collage"),
+
+    ("guet.py",
+     '            if genre == "visite_finie":\n                paysage.quitter()',
+     '            if genre == "visite_finie":\n                paysage.etat()',
+     "la visite ne se ferme plus : plant.reprises ne monte jamais et l'element"
+     " cesse de murir"),
+
 ]
 
 

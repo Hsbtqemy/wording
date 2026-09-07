@@ -831,11 +831,15 @@ def cas_guet() -> dict:
     etapes.append([list(p) for p in a])
 
     # 2. Entree : une ligne vide nait sous le curseur, puis se remplit.
+    #    On vise par le BOUT et non par un rang absolu : les etapes qui
+    #    suivaient des indices fixes ont cesse de viser juste le jour ou deux
+    #    lignes ont ete ajoutees au depart, et le verdict « ecriture »
+    #    n'apparaissait plus nulle part. Le controle en fin de cahier l'a dit.
     a[1].append("")
     etapes.append([list(p) for p in a])
-    a[1][2] = phrases[3][:30]
+    a[1][-1] = phrases[3][:30]
     etapes.append([list(p) for p in a])
-    a[1][2] = phrases[3]
+    a[1][-1] = phrases[3]
     etapes.append([list(p) for p in a])
 
     # 3. Une ligne inseree AU MILIEU : le cas qui tient l'invariant.
@@ -851,7 +855,11 @@ def cas_guet() -> dict:
     etapes.append([list(p) for p in a])
 
     # 6. Un collage de trois lignes d'un bloc.
-    a[2].extend([phrases[5], phrases[6], phrases[7]])
+    #    DANS LE PARAGRAPHE ORDINAIRE, pas dans le dernier : celui-la porte le
+    #    style « Citation », et une citation ne compte JAMAIS (point 3). Colle
+    #    la, le bloc rendait « ignoree » et le cahier ne traversait ni la
+    #    greffe ni sa conversion — c'est le controle de fin qui l'a dit.
+    a[1].extend([phrases[5], phrases[6], phrases[7]])
     etapes.append([list(p) for p in a])
 
     # 6bis. On modifie de part et d'autre des deux lignes vides, dans le meme
@@ -862,18 +870,59 @@ def cas_guet() -> dict:
     a[2][3] = phrases[9] + " Et une autre, a l'autre bout."
     etapes.append([list(p) for p in a])
 
+    # 6ter. On retravaille une ligne du bloc colle. Elle etait une GREFFE, elle
+    #       doit devenir de l'ecriture (point 4). Le pont ne savait pas le
+    #       faire : il passait toujours etait_greffe=False, donc un chapitre
+    #       colle puis retravaille restait une greffe pour toujours.
+    a[1][-1] = phrases[7] + " Et une suite ecrite a la main, celle-la."
+    etapes.append([list(p) for p in a])
+
     # 7. Un paragraphe NEUF : la table des styles s'allonge, et le compte de
     #    paragraphes doit le dire.
     a.append([phrases[8]])
+    etapes.append([list(p) for p in a])
+
+    # 7bis. Une ligne qui RACCOURCIT. Sans elle, la soustraction de mots reste
+    #       toujours positive et retirer le max(0, ...) ne change rien : un
+    #       debit negatif compenserait pourtant un collage arrive dans le meme
+    #       releve, et un chapitre colle passerait pour de l'ecriture.
+    a[1][-1] = phrases[7][:40]
+    etapes.append([list(p) for p in a])
+
+    # 7ter. Une ligne neuve dont le texte est DEJA DANS LE REGISTRE — c'est un
+    #       etat intermediaire d'une autre ligne, tape plus tot. En francais une
+    #       ligne sur deux commence par les memes mots, et sans le drapeau de
+    #       naissance le registre la declarerait « connue » : le plant cesserait
+    #       de pousser sans que rien ne le signale.
+    a[1].append("")
+    etapes.append([list(p) for p in a])
+    a[1][-1] = phrases[3][:30]
     etapes.append([list(p) for p in a])
 
     # 8. Le calme, assez longtemps pour que la visite se ferme.
     for _ in range(5):
         etapes.append([list(p) for p in a])
 
+    # 8bis. Une retouche APRES le silence, SUR LA LIGNE QUI ETAIT ACTIVE.
+    #
+    #       C'est le seul endroit ou quitter() se voit. _actif n'a qu'une case :
+    #       retoucher une AUTRE ligne tombe de toute facon dans « nouvelle
+    #       visite », et la mutation qui supprime quitter() echappait. Sur la
+    #       meme ligne, la difference est nette — « reprise » si la visite a
+    #       ete fermee, « frappe » sinon, et dans ce dernier cas les mots
+    #       recomptent en extension alors qu'ils ne devraient pas.
+    a[1][-1] = phrases[3][:30] + " Repris apres une longue pause."
+    etapes.append([list(p) for p in a])
+
     # 9. Tout effacer : chaque ligne disparait.
     etapes.append([[""]])
 
+    # Un paysage marche a cote, nourri par les faits. C'est la chaine
+    # ENTIERE qui se compare alors — texte, faits, verdicts, etat final — et
+    # pas seulement le rapprochement. Une divergence de verdict ne se verrait
+    # nulle part ailleurs : les deux cotes rendraient les memes faits et
+    # feraient pousser deux paysages differents.
+    p = Paysage(identifiant="guet", cle_dossier="guet")
     g = Guet(silence=3)
     def styles_de(paras):
         # Le dernier paragraphe est une citation : sans un style DIFFERENT plus
@@ -883,18 +932,30 @@ def cas_guet() -> dict:
     releves = []
     depart_corps = corps(depart)
     amorce = g.amorcer(depart_corps, styles_de(depart))
+    p.rattacher(amorce, jour=40, heure=10)
     # Pris ICI et pas apres la boucle : a la fin le document est vide, donc
     # g.ids l'est aussi, et le cahier promettait une liste vide la ou le
     # portage rend les quatre identifiants de l'amorce. La parite l'a dit tout
     # de suite — c'est le cahier qui avait tort, pas le code.
     ids_depart = list(g.ids)
-    for paras in etapes:
+    # Des temps ECOULES varies, et c'est necessaire : avec toujours
+    # l'intervalle, max(ecoule, 1) et max(ecoule, INTERVALLE) rendent la meme
+    # chose, et le plancher de la normalisation ne se verifie pas. On y met un
+    # releve EN AVANCE (5 ms), celui qui transformait quatre mots tapes en un
+    # collage, et des releves EN RETARD, qu'il faut au contraire corriger.
+    ecoules = [2000, 10000, 5, 2000, 800, 30000, 1, 2000, 4000]
+    for n, paras in enumerate(etapes):
         texte = corps(paras)
         styles = styles_de(paras)
+        ecoule = ecoules[n % len(ecoules)]
         faits = g.relever(texte, styles)
+        debit = g.debit(faits, ecoule)
+        verdicts = g.nourrir(p, faits, jour=40, heure=10, debit=debit)
         releves.append({"texte": texte, "styles": styles, "faits": faits,
                         "ids": list(g.ids), "paragraphes": g.paragraphes,
-                        "visitee": g.visitee, "calme": g.calme})
+                        "visitee": g.visitee, "calme": g.calme,
+                        "ecoule": ecoule, "debit": debit, "verdicts": verdicts,
+                        "greffes": sorted(g.greffes)})
 
     genres = {f["type"] for r in releves for f in r["faits"]}
     attendus = {"nee", "retouchee", "disparue", "visite_finie"}
@@ -902,9 +963,17 @@ def cas_guet() -> dict:
         raise SystemExit(
             "cahier du guet incomplet : %s manquent" % (attendus - genres))
 
+    rendus = {v["verdict"] for r in releves for v in r["verdicts"]}
+    for exige in ("ecriture", "frappe", "reprise", "vide", "disparue",
+                  "greffe", "conversion"):
+        if exige not in rendus:
+            raise SystemExit(
+                "cahier du guet : le verdict %r n'est jamais rendu" % exige)
+
     return {"silence": 3, "depart": depart_corps,
             "styles_depart": styles_de(depart), "amorce": amorce,
-            "ids_depart": ids_depart, "releves": releves}
+            "ids_depart": ids_depart, "releves": releves,
+            "etat": p.etat(), "serialise": p.serialiser()}
 
 
 # --------------------------------------------------------------------------

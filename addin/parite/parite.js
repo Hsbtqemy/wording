@@ -572,19 +572,45 @@ titre("guet");
 {
   const c = cahier.guet;
   const g = new Guet(c.silence);
-  memeProfond("guet : amorce", c.amorce, g.amorcer(c.depart, c.styles_depart));
+  // UN PAYSAGE MARCHE A COTE, nourri par les faits. C'est la chaine entiere
+  // qui se compare alors — texte, faits, verdicts, etat final — et pas
+  // seulement le rapprochement. Une divergence de verdict ne se verrait nulle
+  // part ailleurs : les deux cotes rendraient les memes faits et feraient
+  // pousser deux paysages differents.
+  const p = new Paysage({ identifiant: "guet", cle_dossier: "guet" });
+  const amorce = g.amorcer(c.depart, c.styles_depart);
+  memeProfond("guet : amorce", c.amorce, amorce);
   memeProfond("guet : identifiants de l'amorce", c.ids_depart, g.ids);
-  let genres = 0;
+  p.rattacher(amorce, 40, 10);
+  let faits = 0;
   for (let n = 0; n < c.releves.length; n++) {
     const r = c.releves[n];
-    memeProfond(`guet : releve ${n} faits`, r.faits, g.relever(r.texte, r.styles));
+    const vus = g.relever(r.texte, r.styles);
+    memeProfond(`guet : releve ${n} faits`, r.faits, vus);
     memeProfond(`guet : releve ${n} identifiants`, r.ids, g.ids);
     meme(`guet : releve ${n} paragraphes`, r.paragraphes, g.paragraphes);
     meme(`guet : releve ${n} visitee`, r.visitee, g.visitee);
     meme(`guet : releve ${n} calme`, r.calme, g.calme);
-    genres += r.faits.length;
+    const debit = g.debit(vus, r.ecoule);
+    meme(`guet : releve ${n} debit`, r.debit, debit);
+    memeProfond(`guet : releve ${n} verdicts`, r.verdicts,
+                g.nourrir(p, vus, 40, 10, debit));
+    memeProfond(`guet : releve ${n} greffes`, r.greffes, [...g.greffes].sort());
+    faits += r.faits.length;
   }
-  console.log(`  ${c.releves.length} releves, ${genres} faits`);
+  // L'etat final : c'est ce que le volet dessinera, et une divergence de
+  // verdict qui n'aurait pas bouge un seul fait se verrait ici.
+  memeProfond("guet : etat du paysage", c.etat, p.etat());
+  // La CHAINE serialisee ne peut pas correspondre : elle porte le registre, et
+  // les deux hachages sont differents — c'est la seule divergence assumee du
+  // projet. Ce qui compte est que le schema tienne : le JavaScript doit relire
+  // ce que le Python a ecrit et retrouver le meme etat, aux empreintes pres,
+  // dont seul le NOMBRE est comparable.
+  memeProfond("guet : etat apres relecture du Python", c.etat,
+              Paysage.depuis(c.serialise).etat());
+  memeProfond("guet : aller-retour JavaScript", p.etat(),
+              Paysage.depuis(p.serialiser()).etat());
+  console.log(`  ${c.releves.length} releves, ${faits} faits`);
 }
 
 // --------------------------------------------------------------------------

@@ -309,29 +309,32 @@ const MUTATIONS = [
 
   // --------------------------------------------------------------------- volet
   ["volet.js",
-   "  if (!Office.context.requirements.isSetSupported(\"WordApi\", \"1.6\")) {",
+   "  if (!Office.context.requirements.isSetSupported(\"WordApi\", \"1.1\")) {",
    "  if (false) {",
    "un Word trop ancien laisse le volet noir au lieu de dire ce qui manque",
    "volet"],
 
   ["volet.js",
-   "    pont.rattacher(await scanner());\n    ranger();",
-   "    pont.rattacher(await scanner());",
+   "    paysage.rattacher(guet.amorcer(texte, styles), jour, heure);\n    ranger();",
+   "    paysage.rattacher(guet.amorcer(texte, styles), jour, heure);",
    "le capital de depart n'est pas range : rouvrir le fichier le perd",
+   "volet"],
+
+  // La lecture des styles est la seule qui coute cher — un objet Office.js par
+  // paragraphe, deux secondes et demie sur une these. La lancer a chaque tic
+  // tiendrait dans aucun budget, et rien ne le signalerait : le paysage
+  // pousserait juste, en faisant ramer Word.
+  ["volet.js",
+   "  if (compter_paragraphes(texte) !== guet.paragraphes) {",
+   "  if (true) {",
+   "les styles se relisent a chaque tic : deux secondes et demie de lecture"
+   + " toutes les deux secondes",
    "volet"],
 
   ["volet.js",
    "  const coupe = url.lastIndexOf(\"/\");\n  return coupe > 0 ? url.slice(0, coupe) : url;",
    "  return url;",
    "la cle du dossier devient le chemin du FICHIER : plus aucun partage",
-   "volet"],
-
-  // ECHAFAUDAGE, a retirer avec le guet. Un instrument qui compte faux est pire
-  // que pas d'instrument : on batirait la decision 17 sur une lecture inventee.
-  ["volet.js",
-   "      if (precedent !== null && texte !== precedent) vus += 1;",
-   "      if (precedent !== null && texte === precedent) vus += 1;",
-   "le guet compte les releves qui n'ont RIEN vu : la frappe parait invisible",
    "volet"],
 
   // ------------------------------------------------------------------ magasin
@@ -442,6 +445,54 @@ const MUTATIONS = [
    "      if (this.calme >= 1) {",
    "la visite se ferme au premier releve calme : une pause pour reflechir"
    + " devient une reprise, et l'extension s'effondre"],
+
+
+  // ------------------------------------------------- guet : nourrir le paysage
+  // C'est ici que le guet remplace le pont, donc ici que les decisions du pont
+  // doivent survivre. Le cahier compare la chaine entiere — texte, faits,
+  // verdicts, etat final — donc ces regressions se voient sur le verdict ET
+  // sur la forme qui pousse.
+  ["guet.js",
+   "      } else if (!compter_mots(f.ancien)) {",
+   "      } else if (false) {",
+   "une ligne nee vide qui se remplit redevient une REPRISE : le premier mot de"
+   + " chaque ligne neuve cesse de compter, et l'extension n'existe plus"],
+
+  ["guet.js",
+   "        v = paysage.absorber(f.texte, f.style, debit, jour, heure, true);",
+   "        v = paysage.absorber(f.texte, f.style, debit, jour, heure, false);",
+   "le drapeau de naissance se perd : une ligne qui commence comme une autre est"
+   + " declaree connue et le plant cesse de pousser"],
+
+  ["guet.js",
+   "                              this.greffes.has(f.id));",
+   "                              false);",
+   "decision 4 : un chapitre colle puis retravaille reste une greffe pour"
+   + " toujours — le defaut que le pont avait, remis en place"],
+
+  ["guet.js",
+   '      if (v === "greffe") this.greffes.add(f.id);',
+   '      if (v === "ecriture") this.greffes.add(f.id);',
+   "les greffes ne sont plus retenues : la conversion se declenche sur le mauvais"
+   + " verdict"],
+
+  ["guet.js",
+   "    return mots * INTERVALLE / Math.max(ecoule, INTERVALLE);",
+   "    return mots * INTERVALLE / Math.max(ecoule, 1);",
+   "le debit s'amplifie quand un releve arrive tot : quatre mots tapes deviennent"
+   + " un collage"],
+
+  ["guet.js",
+   '      if (genre === "visite_finie") {\n        paysage.quitter();',
+   '      if (genre === "visite_finie") {\n        paysage.etat();',
+   "la visite ne se ferme plus : plant.reprises ne monte jamais et l'element"
+   + " cesse de murir"],
+
+  ["guet.js",
+   "        mots += Math.max(0, compter_mots(f.texte) - compter_mots(f.ancien));",
+   "        mots += compter_mots(f.texte) - compter_mots(f.ancien);",
+   "raccourcir une ligne rend un debit NEGATIF, qui compense un collage arrive"
+   + " dans le meme releve"],
 
 ];
 
