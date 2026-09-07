@@ -325,7 +325,14 @@ const MUTATIONS = [
   // tiendrait dans aucun budget, et rien ne le signalerait : le paysage
   // pousserait juste, en faisant ramer Word.
   ["volet.js",
+   "  if (styles_perimes || compter_paragraphes(texte) !== guet.paragraphes) {",
    "  if (compter_paragraphes(texte) !== guet.paragraphes) {",
+   "une lecture de styles ratee n'est jamais rejouee : la table reste DECALEE"
+   + " d'un paragraphe jusqu'au prochain changement de structure",
+   "volet"],
+
+  ["volet.js",
+   "  if (styles_perimes || compter_paragraphes(texte) !== guet.paragraphes) {",
    "  if (true) {",
    "les styles se relisent a chaque tic : deux secondes et demie de lecture"
    + " toutes les deux secondes",

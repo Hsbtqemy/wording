@@ -43,6 +43,7 @@ function monter_hote({ plafond = 109, url = "C:/These/chapitre1.docx",
     dialogues: [],
     tic: null,
     casser: false,
+    styles_cassent: false,
     lectures_de_style: 0,
     stockage: new Map(),
   };
@@ -149,6 +150,7 @@ function monter_hote({ plafond = 109, url = "C:/These/chapitre1.docx",
                 // savoir qu'elle ne part pas a chaque tic est tout l'interet.
                 if (String(quoi || "").includes("style")) {
                   etat.lectures_de_style += 1;
+                  if (etat.styles_cassent) throw new Error("styles illisibles");
                 }
                 this.items = etat.paras.map((p) => proxyPara(p.id));
               },
@@ -400,6 +402,29 @@ suite.push(["un tic qui leve n'arrete pas les suivants", async () => {
 // Le style appartient au paragraphe, et la lecture qui le donne est CHERE : un
 // objet Office.js par paragraphe. Elle ne doit partir que quand la structure
 // bouge, jamais pendant qu'on tape dans un paragraphe existant.
+// Une relecture ratee laisse la table DECALEE, pas seulement vieille. Sans
+// memoire de cet echec, le compte de paragraphes correspondrait des le tic
+// suivant et la table ne serait plus jamais relue.
+suite.push(["une lecture de styles ratee se rejoue au tic suivant", async () => {
+  const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
+  await demarrer(etat);
+  const depart = etat.lectures_de_style;
+
+  etat.styles_cassent = true;
+  etat.ajouter("Un paragraphe neuf, dont on ne pourra pas lire le style.");
+  await etat.tic();                       // la structure bouge, la lecture echoue
+  egal(etat.lectures_de_style, depart + 1, "la relecture a bien ete tentee");
+  vrai(etat.elements.paysage.innerHTML.includes("<svg"),
+       "et l'echec n'arrete pas le volet");
+
+  etat.styles_cassent = false;
+  await etat.tic();                       // rien n'a bouge : elle doit repartir
+  egal(etat.lectures_de_style, depart + 2,
+       "une table perimee doit etre relue meme sans changement de structure");
+  await etat.tic();
+  egal(etat.lectures_de_style, depart + 2, "puis se taire une fois rattrapee");
+}]);
+
 suite.push(["les styles ne se relisent que quand la structure bouge", async () => {
   const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
   await demarrer(etat);

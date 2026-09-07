@@ -49,6 +49,12 @@ let aEcrire = false;
 // La table des styles, un par paragraphe. Relue seulement quand le nombre de
 // paragraphes change — voir lire_corps().
 let styles = [];
+// ⚠️ Une relecture qui a echoue laisse la table DECALEE, pas seulement vieille :
+// la structure a bouge et la table ne l'a pas suivie. Sans ce drapeau, le compte
+// de paragraphes correspondrait des le tic suivant et on ne la relirait plus
+// jamais — les styles resteraient de travers jusqu'au prochain changement de
+// structure, sans que rien ne le signale.
+let styles_perimes = false;
 
 // --------------------------------------------------------------------------
 // Les deux magasins (decision 16)
@@ -154,12 +160,15 @@ async function lire_styles() {
  */
 async function lire_corps() {
   const texte = await lire_texte();
-  if (compter_paragraphes(texte) !== guet.paragraphes) {
+  if (styles_perimes || compter_paragraphes(texte) !== guet.paragraphes) {
     try {
       styles = await lire_styles();
+      styles_perimes = false;
     } catch {
-      // Une table qu'on n'a pas pu relire vaut mieux qu'un tic qui leve : le
-      // guet retombe sur « Normal », et le style se rattrape au tic suivant.
+      // Une table qu'on n'a pas pu relire vaut mieux qu'un tic qui leve. Mais
+      // on RETIENT qu'elle est perimee : sinon le compte correspondrait des le
+      // tic suivant et elle ne serait plus jamais relue.
+      styles_perimes = true;
     }
   }
   return texte;
