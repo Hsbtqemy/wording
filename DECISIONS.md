@@ -393,7 +393,15 @@ Un cadeau adossé à un serveur meurt le jour où l'hébergement n'est plus pay�
 JavaScript soit mécanique.
 
 Hébergement statique HTTPS quand même nécessaire (le manifeste pointe vers une
-URL) : GitHub Pages, Netlify, Cloudflare Pages.
+URL). C'est **GitHub Pages**, servi depuis le dépôt lui-même :
+`https://hsbtqemy.github.io/wording/addin/`. Gratuit tant que le dépôt est
+public, et rien de plus à administrer.
+
+⚠️ **L'adresse est aussi l'identité du magasin**, et ça n'avait pas été vu. Le
+paysage vit dans le `localStorage`, qui est indexé par *origine* : changer
+d'hébergeur, ou passer à un domaine propre, perdrait le jardin. Pour un cadeau
+censé durer le temps d'une thèse, c'est la mauvaise dépendance — voir le point
+ouvert 13.
 
 Cible ≈ 30–40 Ko : pas de framework, pas de bibliothèque d'icônes ni
 d'animation, polices système. Moins pour la vitesse que pour la durabilité — un
@@ -896,6 +904,23 @@ le mécanisme n'exige rien de personne. Mais il ne remplace personne non plus.
     cadeau, c'est le seul instant où l'organisme change de nature sous les yeux
     de la personne — et c'est peut-être bien ainsi : c'est une naissance, pas un
     fondu. À regarder en vrai avant de trancher.
+
+---
+
+**13. Sortir le paysage du `localStorage`.** Il est indexé par origine, donc lié
+à l'hébergeur. `Office.context.document.settings` est rangé **dans le .docx
+lui-même** et voyage avec le fichier — copie, sauvegarde, autre machine, autre
+hébergeur. Mesuré : une thèse de 143 000 mots fait 78 Ko d'état sérialisé (37 de
+registre, 41 de segments), ce qui n'est rien dans un document Word.
+
+Le `localStorage` resterait le magasin de travail, parce qu'il est au niveau du
+*dossier* — ce que le point 11 demande, et qu'un fichier ne peut pas être. Mais
+chaque document en garderait une copie. À l'ouverture : si le `localStorage` est
+vide et que le document porte une copie, on restaure ; si les deux existent, on
+prend celui qui a le plus d'empreintes. Le point 1 dit que rien ne recule jamais,
+donc la règle est monotone et ne peut pas se tromper.
+
+Couvre l'origine qui change, la machine neuve, et les données de site vidées.
 
 ---
 

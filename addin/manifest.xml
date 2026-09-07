@@ -7,11 +7,17 @@
   ~/Library/Containers/com.microsoft.Word/Data/Documents/wef, on redemarre Word.
   Sur Windows, un dossier partage declare comme catalogue de confiance.
 
-  L'URL ci-dessous doit pointer vers un hebergement statique HTTPS. Le projet
-  n'a pas de serveur — un cadeau adosse a un serveur meurt le jour ou
-  l'hebergement n'est plus paye — mais Word exige que le volet vienne d'une
-  URL. GitHub Pages, Netlify, Cloudflare Pages : n'importe lequel, et le jour
-  ou il ferme, on change cette ligne.
+  Les URL pointent vers GitHub Pages. Le projet n'a pas de serveur — un cadeau
+  adosse a un serveur meurt le jour ou l'hebergement n'est plus paye — mais Word
+  exige que le volet vienne d'une URL, et Pages est gratuit tant que le depot
+  est public.
+
+  ⚠️ CETTE ADRESSE EST AUSSI L'IDENTITE DU MAGASIN. Le paysage vit dans le
+  localStorage, qui est indexe par ORIGINE : changer d'hebergeur, ou passer a un
+  domaine propre, perdrait le jardin. C'est la seule dependance qui reste a un
+  tiers, et le point ouvert 13 dit comment on compte s'en defaire — une copie de
+  l'etat dans les Settings du document, qui sont ranges dans le .docx lui-meme
+  et voyagent donc avec le fichier.
 
   ⚠️ AUCUNE contrainte <Requirements> n'est declaree, alors que le code a besoin
   de WordApi 1.6 pour les evenements de paragraphe. C'est deliberé : une
@@ -31,12 +37,12 @@
   <DefaultLocale>fr-FR</DefaultLocale>
   <DisplayName DefaultValue="Paysage" />
   <Description DefaultValue="Un paysage qui pousse pendant qu'on ecrit." />
-  <IconUrl DefaultValue="https://exemple.invalid/paysage/icone-32.png" />
-  <HighResolutionIconUrl DefaultValue="https://exemple.invalid/paysage/icone-80.png" />
+  <IconUrl DefaultValue="https://hsbtqemy.github.io/wording/addin/icone-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://hsbtqemy.github.io/wording/addin/icone-80.png" />
   <SupportUrl DefaultValue="https://github.com/Hsbtqemy/wording" />
 
   <AppDomains>
-    <AppDomain>https://exemple.invalid</AppDomain>
+    <AppDomain>https://hsbtqemy.github.io</AppDomain>
   </AppDomains>
 
   <Hosts>
@@ -44,7 +50,7 @@
   </Hosts>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://exemple.invalid/paysage/volet.html" />
+    <SourceLocation DefaultValue="https://hsbtqemy.github.io/wording/addin/volet.html" />
   </DefaultSettings>
 
   <!--
@@ -99,12 +105,12 @@
 
     <Resources>
       <bt:Images>
-        <bt:Image id="Paysage.Icone16" DefaultValue="https://exemple.invalid/paysage/icone-16.png" />
-        <bt:Image id="Paysage.Icone32" DefaultValue="https://exemple.invalid/paysage/icone-32.png" />
-        <bt:Image id="Paysage.Icone80" DefaultValue="https://exemple.invalid/paysage/icone-80.png" />
+        <bt:Image id="Paysage.Icone16" DefaultValue="https://hsbtqemy.github.io/wording/addin/icone-16.png" />
+        <bt:Image id="Paysage.Icone32" DefaultValue="https://hsbtqemy.github.io/wording/addin/icone-32.png" />
+        <bt:Image id="Paysage.Icone80" DefaultValue="https://hsbtqemy.github.io/wording/addin/icone-80.png" />
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Paysage.Volet.Url" DefaultValue="https://exemple.invalid/paysage/volet.html" />
+        <bt:Url id="Paysage.Volet.Url" DefaultValue="https://hsbtqemy.github.io/wording/addin/volet.html" />
         <bt:Url id="Paysage.Aide" DefaultValue="https://github.com/Hsbtqemy/wording" />
       </bt:Urls>
       <bt:ShortStrings>

@@ -1,40 +1,37 @@
 # Installer le paysage
 
-Trois choses à faire, dans cet ordre. La troisième est la seule qui demande
-Word.
+Une seule chose à faire : déposer le manifeste. L'hébergement est déjà en
+place.
 
 ---
 
-## 1. Poser les fichiers sur un hébergement statique HTTPS
+## L'hébergement — déjà fait
 
 Word refuse de charger un add-in autrement : le manifeste pointe vers une URL,
-même si tout le code est local et sans dépendance. GitHub Pages, Netlify,
-Cloudflare Pages — n'importe lequel, et le jour où il ferme, on change une
-ligne du manifeste.
+même si tout le code est local et sans dépendance.
 
-Il faut y déposer :
+C'est **GitHub Pages**, servi depuis ce dépôt :
 
 ```
-volet.html
-apercu.html
-src/            (tous les .js)
-icone-16.png  icone-32.png  icone-80.png
+https://hsbtqemy.github.io/wording/addin/volet.html
 ```
 
-⚠️ **HTTPS obligatoire.** Word refuse le HTTP en clair, y compris en local.
+Gratuit tant que le dépôt est public, HTTPS par défaut — Word refuse le HTTP en
+clair, y compris en local. Un `.nojekyll` à la racine empêche Jekyll de traiter
+le dépôt et d'escamoter des fichiers.
 
-## 2. Remplacer l'URL dans le manifeste
+Chaque `git push` sur `main` republie le site, avec une minute de délai et un
+cache de dix minutes : après une modification, Word peut encore servir l'ancien
+fichier un moment.
 
-`manifest.xml` contient `https://exemple.invalid/paysage/` à six endroits.
-Toutes doivent pointer vers l'hébergement de l'étape 1 — y compris
-`<AppDomain>`, sans lequel le dialogue d'aperçu ne s'ouvrira pas.
+⚠️ **Cette adresse est aussi l'identité du magasin.** Le paysage vit dans le
+`localStorage`, qui est indexé par *origine*. Changer d'hébergeur — ou passer à
+un domaine propre — perdrait le jardin. C'est la seule dépendance qui reste à un
+tiers ; le point ouvert 13 dit comment on compte s'en défaire.
 
-```bash
-sed -i 's|https://exemple.invalid/paysage|https://VOTRE-URL|g' manifest.xml
-sed -i 's|https://exemple.invalid|https://VOTRE-URL|g' manifest.xml
-```
+## Charger le manifeste dans Word
 
-## 3. Charger le manifeste dans Word
+Rien à modifier dans `manifest.xml` : les URL y sont déjà.
 
 **Mac** — déposer `manifest.xml` dans :
 
