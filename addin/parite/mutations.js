@@ -129,6 +129,75 @@ const MUTATIONS = [
    "        || d.version !== VERSION_ETAT) return new Paysage();",
    "        || false) return new Paysage();",
    "depuis() accepte n'importe quel schema : un vieil etat se relit comme neuf"],
+
+  // ---------------------------------------------------------------- grammaire
+  // La geometrie est l'endroit ou une erreur de portage se voit le moins : la
+  // figure reste plausible quoi qu'il arrive. C'est justement pour ca qu'il
+  // faut la comparer segment par segment.
+  ["grammaire.js",
+   "  ton = mod(ton, 5);",
+   "  ton = ton % 5;",
+   "le modulo de JavaScript redevient signe : un ton negatif sort de la palette"],
+
+  ["grammaire.js",
+   "    const v = Math.trunc(a + (b - a) * f);",
+   "    const v = Math.round(a + (b - a) * f);",
+   "le fondu arrondit au lieu de tronquer : int() de Python tronque"],
+
+  ["grammaire.js",
+   "    this.n_tons = 1 + Math.trunc(Math.min(1.0, Math.max(0.0, diversite)) * 4);",
+   "    this.n_tons = 1 + Math.round(Math.min(1.0, Math.max(0.0, diversite)) * 4);",
+   "le nombre de tons arrondit : un texte monotone tire dans deux tons"],
+
+  // L'ORDRE DES TIRAGES. Deux lignes echangees, aucune erreur visible : la
+  // figure reste un arbre, ce n'est simplement plus le meme arbre.
+  ["grammaire.js",
+   "  const angle0 = -Math.PI / 2 + rng.uniform(-0.16, 0.16);\n"
+   + "  const lg0 = SEGMENT * (1.4 + tr.longueur * 0.7) * rng.uniform(0.85, 1.18);",
+   "  const lg0 = SEGMENT * (1.4 + tr.longueur * 0.7) * rng.uniform(0.85, 1.18);\n"
+   + "  const angle0 = -Math.PI / 2 + rng.uniform(-0.16, 0.16);",
+   "l'inclinaison et la vigueur du tronc sont tirees dans l'autre ordre"],
+
+  // Decision 9 : la couleur ne touche jamais la structure. Marquee dans la
+  // donnee, la regle est verifiable ; sans le drapeau, elle redevient une
+  // intention dans un commentaire.
+  ["grammaire.js",
+   "    t.trait(x, y, x2, y2, m, null, true);          // squelette",
+   "    t.trait(x, y, x2, y2, m, null, false);         // squelette",
+   "le squelette du vegetal n'est plus marque comme structure"],
+
+  ["grammaire.js",
+   "  const contour = gauche.concat(droite.slice().reverse());",
+   "  const contour = gauche.concat(droite);",
+   "le contour de la creature ne se referme plus : droite[::-1] mal porte"],
+
+  // Celle-ci est la panne rencontree en ecrivant ce portage. Elle ne touche
+  // qu'un caractere sur trente mille.
+  ["grammaire.js",
+   '  if (v === 0 && (x < 0 || Object.is(x, -0))) return "-" + (0).toFixed(n);',
+   "  if (false) return \"\";",
+   "le signe du zero se perd au formatage : Python ecrit -0.0, pas 0.0"],
+
+  // Une frontiere de saison fermee des deux cotes ne mordrait sur RIEN, et le
+  // verificateur aurait tort de le signaler : a la frontiere, melange(A,B,0.5)
+  // et melange(B,A,0.5) donnent tous deux le milieu. Mesure : 0 couleur
+  // changee sur 1 825. C'est une propriete du fondu, pas un trou dans le
+  // cahier. On mute donc la ligne d'a cote, celle qui replace janvier dans la
+  // fenetre de l'hiver — un « + 365 » qu'on oublie facilement en portant.
+  ["grammaire.js",
+   "  if (nom === \"hiver\" && j < 80) j += 365;   // on se replace dans la fenetre",
+   "  if (false) j += 365;",
+   "janvier ne se replace plus dans la fenetre de l'hiver"],
+
+  ["grammaire.js",
+   "    return _melange(couleur, PALETTES[_precedente(nom)][ton], f);",
+   "    return _melange(couleur, PALETTES[_suivante(nom)][ton], f);",
+   "le fondu d'entree de saison melange vers la saison suivante"],
+
+  ["grammaire.js",
+   "  return parseInt(blake2s_hex(nom, 4), 16);",
+   "  return parseInt(blake2s_hex(nom, 4).slice(0, 6), 16);",
+   "la graine du document perd un octet : meme document, autre figure"],
 ];
 
 if (!existsSync(CAS)) {

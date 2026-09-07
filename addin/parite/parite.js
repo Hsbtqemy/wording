@@ -23,6 +23,10 @@ import {
   Paysage, empreinte, normaliser, TABLES as TABLES_PAYSAGE,
 } from "../src/paysage.js";
 import { Alea } from "../src/alea.js";
+import {
+  palette, Teinte, Toile, dessiner, germe, creature, depuis_plant,
+  graine_du_document, TABLES as TABLES_GRAMMAIRE,
+} from "../src/grammaire.js";
 
 const TOLERANCE = 1e-9;
 
@@ -110,6 +114,51 @@ function titre(nom) {
   console.log(`\n${nom}`);
 }
 
+// Les vecteurs et les teintes du cahier, nommes plutot que recopies : le cahier
+// porte les NOMS, pas les valeurs, pour qu'on ne puisse pas les faire deriver
+// d'un cote sans l'autre.
+const VECTEURS = {
+  neutre: null,
+  zero: {}, un: {},
+  prose: {
+    longueur: 0.82, rythme: 0.21, subordination: 0.77, regularite: 0.34,
+    structure: 0.05, dialogue: 0.02, interrogation: 0.11, diversite: 0.63,
+    ponctuation_rare: 0.29,
+  },
+  rapport: {
+    longueur: 0.19, rythme: 0.28, subordination: 0.12, regularite: 0.88,
+    structure: 0.91, dialogue: 0.0, interrogation: 0.03, diversite: 0.31,
+    ponctuation_rare: 0.08,
+  },
+};
+for (const k of Object.keys(TABLES_GRAMMAIRE.TRAITS_NEUTRES)) {
+  VECTEURS.zero[k] = 0.0;
+  VECTEURS.un[k] = 1.0;
+}
+function vecteurDeNom(n) { return VECTEURS[n]; }
+
+function teinteDeNom(n) {
+  if (n === "jour") return Teinte.du_jour(110, 14, 0.7);
+  if (n === "nuit") return Teinte.du_jour(200, 3, 0.7);
+  return new Teinte([[20, 300], [110, 900], [300, 40]], false, 0.9);
+}
+
+function comparerFigure(nom, attendu, t) {
+  // Le nombre de segments d'abord : c'est lui qui bouge quand l'ordre des
+  // tirages a change, et le comparer en premier evite d'aligner deux listes de
+  // longueurs differentes segment par segment.
+  if (!meme(`${nom} : nombre de segments`, attendu.segments.length, t.segments.length)) return;
+  memeProfond(`${nom} segments`, attendu.segments, t.segments);
+  memeProfond(`${nom} noeuds`, attendu.noeuds, t.noeuds);
+  memeProfond(`${nom} bbox`, attendu.bbox, t.bbox());
+  // La boite vient du cas, jamais d'une constante ecrite ici : les deux
+  // valeurs se sont deja desynchronisees une fois, et le verificateur a
+  // accuse le portage d'un ecart qui venait de lui.
+  const [bx, by, bw, bh] = attendu.boite;
+  meme(`${nom} svg`, attendu.svg, t.svg(bx, by, bw, bh));
+  meme(`${nom} pose`, attendu.pose, t.pose(100, 300, 0.75));
+}
+
 // --------------------------------------------------------------------------
 const chemin = process.argv[2];
 if (!chemin) {
@@ -171,8 +220,10 @@ titre("generateur de nombres");
 titre("tables litterales");
 memeProfond("traits", cahier.tables.traits, TABLES_TRAITS);
 memeProfond("paysage", cahier.tables.paysage, TABLES_PAYSAGE);
+memeProfond("grammaire", cahier.tables.grammaire, TABLES_GRAMMAIRE);
 console.log(`  ${Object.keys(cahier.tables.traits).length}`
-  + ` + ${Object.keys(cahier.tables.paysage).length} tables`);
+  + ` + ${Object.keys(cahier.tables.paysage).length}`
+  + ` + ${Object.keys(cahier.tables.grammaire).length} tables`);
 
 // --------------------------------------------------------------------------
 // 2. Ce qu'une relecture ratee doit rendre
@@ -357,6 +408,109 @@ const q = new Paysage({ identifiant: "rattache", cle_dossier: "rattache" });
 q.rattacher(r.entree, r.jour, r.heure);
 memeProfond("rattachement", r.etat, q.etat());
 console.log(`  ${r.entree.length} paragraphes, ${q.segments.length} plants`);
+
+// --------------------------------------------------------------------------
+// 11. La couleur
+// --------------------------------------------------------------------------
+// Exhaustif : 365 jours x 5 tons x jour/nuit. Assez petit pour ne pas
+// echantillonner, et c'est exactement le genre d'arithmetique — modulo,
+// troncature, frontieres de saison — ou une panne se cache onze mois sur douze.
+titre("couleur");
+{
+  let n = 0;
+  for (const [jour, ton, nuit, attendu] of cahier.couleur.tons) {
+    if (palette(jour, ton, nuit) !== attendu) {
+      comparaisons += 1;
+      ecart(`palette(${jour}, ${ton}, ${nuit})`, attendu, palette(jour, ton, nuit));
+    } else {
+      comparaisons += 1;
+    }
+    n += 1;
+  }
+  // Hors bornes : le modulo de Python n'est jamais negatif, celui de
+  // JavaScript si — et un jour negatif tombe dans une saison inexistante.
+  for (const [jour, ton, attendu] of cahier.couleur.limites) {
+    meme(`palette(${jour}, ${ton}) hors bornes`, attendu, palette(jour, ton));
+    n += 1;
+  }
+  console.log(`  ${n} couleurs`);
+}
+
+titre("teinte");
+for (const c of cahier.teinte) {
+  const t = new Teinte(c.dates.length ? c.dates : null, c.nuit, c.diversite);
+  meme(`Teinte(${JSON.stringify(c.dates)}).n_tons`, c.n_tons, t.n_tons);
+  meme(`Teinte(${JSON.stringify(c.dates)})._total`, c.total, t._total);
+  const rng = new Alea(4242);
+  const tirages = [];
+  for (let i = 0; i < c.tirages.length; i++) tirages.push([t.jour(rng), t.ton(rng)]);
+  memeProfond(`Teinte(${JSON.stringify(c.dates)}) tirages`, c.tirages, tirages);
+}
+console.log(`  ${cahier.teinte.length} teintes`);
+
+// La graine du document determine la FIGURE : contrairement a l'empreinte d'un
+// paragraphe, elle ne peut pas diverger. C'est pour elle que blake2s a ete
+// porte.
+titre("graine du document");
+for (const [nom, attendu] of cahier.graines) {
+  meme(`graine_du_document(${JSON.stringify(nom.slice(0, 24))})`, attendu,
+       graine_du_document(nom));
+}
+console.log(`  ${cahier.graines.length} noms`);
+
+// --------------------------------------------------------------------------
+// 12. Les figures
+// --------------------------------------------------------------------------
+// La liste de segments AVANT le SVG : un ecart de coordonnee se lit alors sur
+// le segment fautif, au lieu d'apparaitre comme deux chaines de trente mille
+// caracteres qui different quelque part. Le SVG vient ensuite, parce que c'est
+// lui le livrable.
+titre("figures");
+{
+  let segments = 0;
+  let debutF = Date.now();
+  for (const c of cahier.figures) {
+    const t = new Toile();
+    let nom;
+    if (c.quoi === "famille") {
+      nom = `${c.famille}/${c.vecteur}/${c.teinte}/e${c.extension}m${c.maturite}`;
+      const u = dessiner(c.famille, c.extension, c.maturite, c.graine,
+                         teinteDeNom(c.teinte), vecteurDeNom(c.vecteur));
+      comparerFigure(nom, c, u);
+    } else if (c.quoi === "etoffage") {
+      nom = `creature/etoffage corps=${c.corps}`;
+      creature(t, 0.7, 0.8, 777, teinteDeNom("jour"), null,
+               { tete: 0.4, corps: c.corps, membres: 1.0 });
+      comparerFigure(nom, c, t);
+    } else {
+      nom = `germe/${c.pressentie}/t${c.taille}i${c.inflexion}`;
+      germe(t, c.taille, c.inflexion, c.pressentie, 313, teinteDeNom("jour"));
+      comparerFigure(nom, c, t);
+    }
+    segments += c.segments.length;
+  }
+  console.log(`  ${cahier.figures.length} figures, ${segments} segments,`
+    + ` ${Date.now() - debutF} ms`);
+}
+
+// --------------------------------------------------------------------------
+// 13. Le contact entre l'etat et le rendu
+// --------------------------------------------------------------------------
+// depuis_plant() sur les plants REELS du journal — dont celui de nuit, celui au
+// stade germe et celui au stade indices, qu'il a fallu fabriquer expres pour
+// que ce chemin soit emprunte.
+titre("depuis_plant");
+{
+  const plants = {};
+  for (const p of cahier.etat.plants) plants[p.rang] = p;
+  for (const c of cahier.depuis_plant) {
+    const t = depuis_plant(plants[c.rang], c.graine);
+    memeProfond(`plant ${c.rang} segments`, c.segments, t.segments);
+    memeProfond(`plant ${c.rang} noeuds`, c.noeuds, t.noeuds);
+    meme(`plant ${c.rang} svg`, c.svg, t.svg(0, 0, 200, 200));
+  }
+  console.log(`  ${cahier.depuis_plant.length} plants rendus`);
+}
 
 // --------------------------------------------------------------------------
 console.log("\n" + "=".repeat(78));

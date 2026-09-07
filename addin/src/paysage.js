@@ -79,20 +79,31 @@ export function normaliser(paragraphe) {
  * MurmurHash3 32 bits sur les unites UTF-16. Deux graines, 48 bits gardes.
  *
  * C'EST LE SEUL ENDROIT OU LE PORTAGE N'EST PAS MECANIQUE. Le Python prend
- * blake2s(digest_size=6). JavaScript n'a pas de hachage synchrone dans le
- * navigateur : SubtleCrypto est asynchrone, et attendre une promesse par
- * paragraphe dans un tick de 100 ms n'est pas tenable.
+ * blake2s(digest_size=6).
  *
- * Ce n'est pas grave, parce que rien ici ne demande un condensat cryptographique
- * ni un condensat PARTAGE : les deux implementations ne relisent jamais le
- * registre l'une de l'autre. La seule propriete utile est celle d'une table de
- * hachage — meme texte, meme cle ; textes differents, cles differentes sauf
- * accident. On garde donc la largeur du Python, 48 bits, 12 caracteres
- * hexadecimaux : c'est elle qui porte les 17 Ko pour 1 450 paragraphes annonces
- * a la decision 3, et elle qui fixe le risque de collision (moins de 2 chances
- * sur 10 millions sur 10 000 paragraphes). parite.js verifie que les deux
- * fonctions decoupent le meme document en le meme nombre d'empreintes
- * distinctes — c'est la seule chose que le reste du systeme observe d'elles.
+ * Le motif d'abord invoque ici etait qu'un navigateur n'a pas de hachage
+ * synchrone. C'est faux, et blake2s.js le prouve deux fichiers plus loin — il a
+ * fallu l'ecrire pour graine_du_document(), qui ne peut PAS diverger. Le vrai
+ * motif est le cout, mesure : sur 1 450 paragraphes, murmur3 prend 3,6 ms et
+ * blake2s 29,6 ms. Ce n'est pas dans un tick que ca se voit — un tick ne hache
+ * qu'un ou deux paragraphes — mais au scan complet de la decision 11, a chaque
+ * ouverture du fichier, ou le budget est de 100 ms et ou une these de 2 400
+ * paragraphes passerait de 21 a 64 ms pour rien.
+ *
+ * Pour rien, parce que rien ici ne demande un condensat cryptographique ni un
+ * condensat PARTAGE : les deux implementations ne relisent jamais le registre
+ * l'une de l'autre. La seule propriete utile est celle d'une table de hachage —
+ * meme texte, meme cle ; textes differents, cles differentes sauf accident. On
+ * garde donc la largeur du Python, 48 bits, 12 caracteres hexadecimaux : c'est
+ * elle qui porte les 17 Ko pour 1 450 paragraphes annonces a la decision 3, et
+ * elle qui fixe le risque de collision (moins de 2 chances sur 10 millions sur
+ * 10 000 paragraphes). parite.js verifie que les deux fonctions decoupent le
+ * meme document en le meme nombre d'empreintes distinctes — c'est la seule
+ * chose que le reste du systeme observe d'elles.
+ *
+ * La graine du document, elle, est un autre cas : elle determine la FIGURE, et
+ * une figure differente d'un cote a l'autre ferait mentir les planches. Elle
+ * passe donc par le vrai blake2s.
  */
 function _murmur(texte, graine) {
   let h = graine >>> 0;

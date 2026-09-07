@@ -393,15 +393,17 @@ aucune API Word, aucun DOM, aucun `localStorage` : ils prennent du texte et des
 événements, ils rendent des nombres et un état. Aller chercher le texte dans
 Word sera le travail du volet, et de lui seul.
 
-`addin/src/alea.js` — le générateur de Python, refait à l'identique. Voir
-plus bas pourquoi.
+`addin/src/alea.js` — le générateur de Python, refait à l'identique.
+`addin/src/blake2s.js` — pour la graine du document, qui ne peut pas diverger.
+`addin/src/grammaire.js` — la couleur, la primitive, les quatre familles, le
+germe. Les planches restent en Python : elles sont le banc d'essai.
 
-**Reste à porter :** la grammaire, la composition, le message, les phrases —
-puis la coquille Word elle-même (manifeste, volet, câblage des événements).
+**Reste à porter :** la composition, le message, les phrases — puis la
+coquille Word elle-même (manifeste, volet, câblage des événements).
 
 **La parité se vérifie, elle ne se suppose pas.** `jardin/parite.py` fabrique un
 cahier de cas *avec les réponses du Python* ; `addin/parite/parite.js` le rejoue
-et compare. 7 271 comparaisons, dont le verdict de chaque appel d'une rédaction
+et compare. 163 754 comparaisons, dont le verdict de chaque appel d'une rédaction
 de 30 000 mots, pris un par un — un écart est situé au paragraphe près, et pas
 constaté à la fin sur un total qui ne dit pas où il s'est formé.
 
@@ -463,15 +465,28 @@ toujours ses sept bits de poids faible à zéro. Vérifié plutôt que raisonné
 pas un trou dans le cahier ; c'est un mauvais test, et le dire est la seule
 manière de ne pas maquiller un 16/17 en 17/17.
 
-**Une seule divergence assumée : l'empreinte.** Le Python prend
-`blake2s(digest_size=6)` ; le navigateur n'a pas de hachage synchrone, et
-attendre une promesse par paragraphe dans un tick de 100 ms n'est pas tenable.
-Le JavaScript prend donc MurmurHash3, deux graines, 48 bits gardés — la largeur
-du Python, donc les 17 Ko du point 3 et le même risque de collision. Ce n'est
-pas grave parce que les deux registres ne se relisent jamais : la seule
-propriété demandée est celle d'une table de hachage. La parité ne compare donc
-pas les clés, mais ce que le reste du système observe d'elles — le même document
-se découpe en le même nombre d'empreintes distinctes des deux côtés.
+**Une seule divergence assumée : l'empreinte d'un paragraphe.** Le Python prend
+`blake2s(digest_size=6)`, le JavaScript MurmurHash3 — deux graines, 48 bits
+gardés, la largeur du Python, donc les 17 Ko du point 3 et le même risque de
+collision.
+
+Le motif d'abord invoqué était qu'un navigateur n'a pas de hachage synchrone.
+**C'était faux**, et `blake2s.js` le prouve : il a fallu l'écrire pour
+`graine_du_document()`, qui ne peut pas diverger. Le vrai motif est le coût,
+mesuré : sur 1 450 paragraphes, murmur3 prend 3,6 ms et blake2s 29,6 ms. Ça ne
+se voit pas dans un tick — un tick ne hache qu'un ou deux paragraphes — mais au
+scan complet du point 11, à chaque ouverture, où le budget est de 100 ms et où
+une thèse de 2 400 paragraphes passerait de 21 à 64 ms. Pour rien : les deux
+registres ne se relisent jamais, et la seule propriété demandée est celle d'une
+table de hachage. La parité ne compare donc pas les clés mais ce que le reste du
+système observe d'elles — le même document se découpe en le même nombre
+d'empreintes distinctes des deux côtés.
+
+**La graine du document, elle, ne peut pas diverger.** Elle détermine la figure
+entière ; deux paysages différents pour le même document feraient mentir les
+planches, qui sont les preuves du projet. Elle passe donc par un vrai BLAKE2s —
+cent lignes, vérifiées contre `hashlib` et contre le vecteur de la RFC 7693, et
+appelées une fois par document.
 
 **Les pièges du portage sont presque tous le même.** Les classes de caractères
 de JavaScript sont de l'ASCII là où celles de Python sont de l'Unicode : `\w`
@@ -479,7 +494,7 @@ ne connaît pas les lettres accentuées, `\d` ne connaît pas les chiffres arabe
 `.length` compte des unités UTF-16 quand `len()` compte des points de code.
 Aucune de ces erreurs ne fait planter quoi que ce soit — le texte se découpe un
 peu autrement, la famille bascule un peu plus tôt, et personne ne s'en aperçoit.
-`addin/parite/mutations.js` les réintroduit une par une : 17 sur 17 sont vues.
+`addin/parite/mutations.js` les réintroduit une par une : 27 sur 27 sont vues.
 
 Cinq choses sont sorties du portage. **Aucune des cinq n'était dans le
 JavaScript** : porter un programme, c'est le relire une fois de plus, et par
@@ -545,6 +560,41 @@ ou écrasé dans les Settings de Word levait au chargement, là où il n'y a
 personne pour rattraper — le volet serait resté noir. Le JavaScript, lui,
 passait : le portage était sur ce point plus robuste que sa propre
 spécification. Corrigé du bon côté, celui du Python.
+
+### Ce que la géométrie a demandé de plus
+
+Le dessin se compare **segment par segment avant le SVG** : un écart de
+coordonnée se lit alors sur le segment fautif, au lieu d'apparaître comme deux
+chaînes de trente mille caractères qui diffèrent quelque part. 268 figures,
+18 443 segments, et les SVG identiques caractère par caractère.
+
+**La trigonométrie n'est pas garantie, elle est mesurée.** Ni Python ni
+JavaScript ne promettent le dernier bit sur `cos` et `sin`. Sur les 71 944
+coordonnées comparées, 98,4 % sont identiques au bit et l'écart maximal est de
+**1,14 × 10⁻¹³**, accumulé à travers la récursion des branches. Le SVG reste
+identique parce qu'on formate à une décimale : il y a onze ordres de grandeur
+entre l'écart observé et le demi-pas d'arrondi. C'est une marge, pas une
+garantie — et la dire est plus honnête que d'annoncer une exactitude qu'on n'a
+pas.
+
+**Le signe du zéro.** Une branche qui repart à l'horizontale donne un y de
+−0,02 ; Python écrit `-0.0`. Le portage écrivait `0.0` — non pas parce que
+`toFixed` se trompe, mais parce qu'il passait par un nombre intermédiaire, et
+que `toFixed` appelé sur le zéro négatif rend `0.0`. Un caractère d'écart sur
+trente mille, et les deux figures ne sont plus comparables.
+
+**Deux mutations ont échappé, et les deux avaient tort.** Le bit 0 du masque de
+trempe du générateur ne peut rien changer — `y << 7` a toujours ses sept bits de
+poids faible à zéro : 0 cas sur 4 999. Et une frontière de saison fermée des deux
+côtés ne change aucune couleur — 0 sur 1 825 — parce qu'à la frontière
+`mélange(A, B, 0,5)` et `mélange(B, A, 0,5)` donnent tous deux le milieu. Dans
+les deux cas la mutation était un mauvais test, pas le cahier un mauvais cahier.
+Mesuré plutôt que raisonné, et remplacé par une mutation qui mord.
+
+**Et un défaut du vérificateur, qui accusait le portage.** La boîte de cadrage
+était écrite en dur des deux côtés — 200 × 200 ici, 250 × 240 là pour la planche
+des membres. Le vérificateur comparait deux cadrages différents et signalait un
+écart de SVG qui n'existait pas. La boîte voyage maintenant avec le cas.
 
 Et un détail qui n'en est pas un : `rattacher()` acceptait un couple
 `(texte, style)` sous forme de tuple, pas de liste. JSON n'a que des tableaux,
@@ -767,6 +817,8 @@ deux divergent, c'est le JavaScript qui a un bug.
 | Fichier | Rôle |
 |---|---|
 | `src/alea.js` | le générateur de Python, refait à l'identique |
+| `src/blake2s.js` | BLAKE2s, pour la graine du document |
+| `src/grammaire.js` | portage de `grammaire.py`, sans les planches |
 | `src/traits.js` | portage de `traits.py` |
 | `src/paysage.js` | portage de `paysage.py` |
 | `parite/parite.js` | rejoue le cahier et compare — **code de sortie** |

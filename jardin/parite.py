@@ -54,6 +54,7 @@ import sys
 from pathlib import Path
 
 import corpus
+import grammaire
 import traits
 import paysage as paysage_mod
 from paysage import Paysage, empreinte, normaliser
@@ -408,6 +409,165 @@ def cas_journal() -> tuple[list, list, int]:
     return journal, plants, p
 
 
+def cas_couleur() -> dict:
+    """
+    La palette, exhaustivement.
+
+    365 jours x 5 tons x jour/nuit, soit 3 650 couleurs : c'est assez petit pour
+    ne pas echantillonner. Les frontieres de saison et les fondus de douze jours
+    des deux cotes sont exactement le genre d'arithmetique ou un modulo negatif
+    ou un int() qui arrondit au lieu de tronquer passe inapercu onze mois sur
+    douze.
+    """
+    tons = []
+    for jour in range(365):
+        for ton in range(5):
+            tons.append([jour, ton, False, grammaire.palette(jour, ton, False)])
+            tons.append([jour, ton, True, grammaire.palette(jour, ton, True)])
+    # Hors bornes des deux cotes : le modulo de Python n'est jamais negatif,
+    # celui de JavaScript si.
+    limites = []
+    for jour in (-400, -366, -365, -1, 0, 364, 365, 366, 800):
+        for ton in (-7, -1, 0, 4, 5, 12):
+            limites.append([jour, ton, grammaire.palette(jour, ton, False)])
+    return {"tons": tons, "limites": limites}
+
+
+def cas_teinte() -> list:
+    """Teinte : le nombre de tons, et le tirage d'une date au poids des mots."""
+    sortie = []
+    cas = [
+        ([[200, 1]], False, 0.0),
+        ([[200, 1]], False, 1.0),
+        ([[200, 1]], True, 0.5),
+        ([[20, 300], [110, 900], [300, 40]], False, 0.7),
+        ([[355, 5], [356, 5], [80, 5], [79, 5]], False, 0.25),
+        ([[1, 1], [2, 1], [3, 1]], True, 0.99),
+        ([], False, 0.5),
+    ]
+    for dates, nuit, div in cas:
+        t = grammaire.Teinte(dates or None, nuit, div)
+        rng = random.Random(4242)
+        tirages = [[t.jour(rng), t.ton(rng)] for _ in range(40)]
+        sortie.append({"dates": dates, "nuit": nuit, "diversite": div,
+                       "n_tons": t.n_tons, "total": t._total,
+                       "tirages": tirages})
+    return sortie
+
+
+def cas_graines() -> list:
+    """graine_du_document : elle determine la FIGURE, elle ne peut pas diverger."""
+    noms = ["", "these", "these.docx", "Chapitres", "Memoire — chapitre 3",
+            "c:/Dev/Wording/these.docx", "œuvre", "\U0001f331",
+            "un nom tres long " * 20]
+    return [[n, grammaire.graine_du_document(n)] for n in noms]
+
+
+def cas_figures() -> list:
+    """
+    Les quatre familles et le germe, segment par segment.
+
+    On compare la LISTE DE SEGMENTS avant le SVG : un ecart de coordonnee se
+    lit alors sur le segment fautif, au lieu d'apparaitre comme deux chaines de
+    trente mille caracteres qui different quelque part. Le SVG est compare
+    ensuite, parce que c'est lui le livrable.
+
+    Les vecteurs de traits vont jusqu'aux extremes (tout a zero, tout a un) :
+    au milieu, une correspondance trait -> geometrie qu'on aurait inversee
+    donnerait presque la meme figure.
+    """
+    vecteurs = {
+        "neutre": None,
+        "zero": {k: 0.0 for k in grammaire.TRAITS_NEUTRES},
+        "un": {k: 1.0 for k in grammaire.TRAITS_NEUTRES},
+        "prose": {"longueur": 0.82, "rythme": 0.21, "subordination": 0.77,
+                  "regularite": 0.34, "structure": 0.05, "dialogue": 0.02,
+                  "interrogation": 0.11, "diversite": 0.63,
+                  "ponctuation_rare": 0.29},
+        "rapport": {"longueur": 0.19, "rythme": 0.28, "subordination": 0.12,
+                    "regularite": 0.88, "structure": 0.91, "dialogue": 0.0,
+                    "interrogation": 0.03, "diversite": 0.31,
+                    "ponctuation_rare": 0.08},
+    }
+    teintes = {
+        "jour": grammaire.Teinte.du_jour(110, 14, 0.7),
+        "nuit": grammaire.Teinte.du_jour(200, 3, 0.7),
+        "etale": grammaire.Teinte([[20, 300], [110, 900], [300, 40]], False, 0.9),
+    }
+    sortie = []
+    for famille in grammaire.FAMILLES:
+        for nom_v, tr in vecteurs.items():
+            for e, m in ((0.0, 0.0), (0.15, 0.15), (0.55, 0.55), (1.0, 0.92)):
+                for nom_t in ("jour", "nuit", "etale"):
+                    graine = 500 + len(sortie) * 17
+                    t = grammaire.dessiner(famille, e, m, graine,
+                                           teintes[nom_t], tr)
+                    sortie.append({
+                        "quoi": "famille", "famille": famille, "vecteur": nom_v,
+                        "teinte": nom_t, "extension": e, "maturite": m,
+                        "graine": graine,
+                        "segments": [list(s) for s in t.segments],
+                        "noeuds": [list(n) for n in t.noeuds],
+                        "bbox": list(t.bbox()),
+                        # La boite voyage AVEC le cas. Elle etait ecrite en
+                        # dur des deux cotes, et l'etoffage la voulait plus
+                        # grande : le verificateur comparait alors deux
+                        # cadrages differents et accusait le portage.
+                        "boite": [0, 0, 200, 200],
+                        "svg": t.svg(0, 0, 200, 200),
+                        "pose": t.pose(100, 300, 0.75),
+                    })
+
+    # La creature avec un etoffage impose : le chemin que depuis_plant n'emprunte
+    # pas, et celui que la planche des membres a servi a corriger.
+    for cp in (0.10, 0.5, 1.0):
+        t = grammaire.Toile()
+        grammaire.creature(t, 0.7, 0.8, 777, teintes["jour"],
+                           etoffage={"tete": 0.4, "corps": cp, "membres": 1.0})
+        sortie.append({"quoi": "etoffage", "corps": cp,
+                       "segments": [list(s) for s in t.segments],
+                       "noeuds": [list(n) for n in t.noeuds],
+                       "bbox": list(t.bbox()),
+                       "boite": [0, 0, 250, 240],
+                       "svg": t.svg(0, 0, 250, 240),
+                       "pose": t.pose(100, 300, 0.75)})
+
+    # Le germe : les cinq cas de la decision 6, aux deux stades.
+    for pressentie in (None, "vegetal", "architecture", "creature", "abstrait"):
+        for taille, inflexion in ((0.05, 0.0), (0.25, 0.0), (0.5, 0.4),
+                                  (0.8, 0.8), (1.0, 1.0)):
+            t = grammaire.Toile()
+            grammaire.germe(t, taille, inflexion, pressentie, 313,
+                            teintes["jour"])
+            sortie.append({"quoi": "germe", "pressentie": pressentie,
+                           "taille": taille, "inflexion": inflexion,
+                           "segments": [list(s) for s in t.segments],
+                           "noeuds": [list(n) for n in t.noeuds],
+                           "bbox": list(t.bbox()),
+                           "boite": [0, 0, 200, 200],
+                           "svg": t.svg(0, 0, 200, 200),
+                           "pose": t.pose(100, 300, 0.75)})
+    return sortie
+
+
+def cas_depuis_plant(plants) -> list:
+    """
+    Le seul point de contact entre l'etat et le rendu.
+
+    On rejoue les plants REELS du journal — dont celui de nuit, celui au stade
+    germe et celui au stade indices, qu'on a du fabriquer expres.
+    """
+    sortie = []
+    for p in plants:
+        graine = 900 + p["rang"] * 977
+        t = grammaire.depuis_plant(p, graine)
+        sortie.append({"rang": p["rang"], "graine": graine,
+                       "segments": [list(s) for s in t.segments],
+                       "noeuds": [list(n) for n in t.noeuds],
+                       "svg": t.svg(0, 0, 200, 200)})
+    return sortie
+
+
 def cas_alea() -> dict:
     """
     Le generateur de Python, tirage par tirage.
@@ -475,6 +635,18 @@ def cas_tables() -> dict:
             "FAMILLES": list(traits.POIDS),
             "POIDS": {k: [list(t) for t in v] for k, v in traits.POIDS.items()},
             "NOMS": dict(traits.NOMS),
+        },
+        "grammaire": {
+            "PALETTES": {k: list(v) for k, v in grammaire.PALETTES.items()},
+            "SAISONS": [list(s) for s in grammaire.SAISONS],
+            "FONDU": grammaire.FONDU,
+            "HEURE_NUIT": list(grammaire.HEURE_NUIT),
+            "TRAIT": grammaire.TRAIT,
+            "FOND": grammaire.FOND,
+            "EPAISSEUR": grammaire.EPAISSEUR,
+            "SEGMENT": grammaire.SEGMENT,
+            "BUDGET_FEUILLAGE": grammaire.BUDGET_FEUILLAGE,
+            "TRAITS_NEUTRES": dict(grammaire.TRAITS_NEUTRES),
         },
         "paysage": {
             "STYLES_TITRE": sorted(paysage_mod.STYLES_TITRE),
@@ -547,6 +719,11 @@ def fabriquer() -> dict:
     textes = [e[1] for e in journal if e[0] == "absorber"]
     return {
         "alea": cas_alea(),
+        "couleur": cas_couleur(),
+        "teinte": cas_teinte(),
+        "graines": cas_graines(),
+        "figures": cas_figures(),
+        "depuis_plant": cas_depuis_plant(p.etat()["plants"]),
         "tables": cas_tables(),
         "relectures": cas_relectures(),
         "arrondis": cas_arrondis(),
