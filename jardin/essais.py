@@ -601,6 +601,163 @@ def _():
 
 
 # ==========================================================================
+# guet.py
+# ==========================================================================
+@essai("guet / Entree et Maj+Entree donnent les memes lignes")
+def _():
+    from guet import decouper
+    par_entree = decouper("un\rdeux\rtrois")
+    par_saut = decouper("un\x0bdeux\x0btrois")
+    assert par_entree == par_saut == ["un", "deux", "trois"], (par_entree, par_saut)
+    # Le document reel qui a motive tout ceci : 1119 sauts, zero retour chariot.
+    melange = decouper("a\rb\x0bc\nd")
+    assert melange == ["a", "b", "c", "d"], melange
+    return "point 14 : l'unite est la ligne ecrite, pas le paragraphe de Word"
+
+
+@essai("guet / le premier instantane ne fait rien pousser")
+def _():
+    from guet import Guet
+    g = Guet()
+    lignes = g.amorcer("Alpha\x0bBeta\x0bGamma")
+    assert lignes == ["Alpha", "Beta", "Gamma"], lignes
+    assert g.relever("Alpha\x0bBeta\x0bGamma") == [], "un instantane egal doit etre muet"
+    return "decision 11 : le capital de depart n'est pas une pousse"
+
+
+@essai("guet / inserer au milieu ne decale aucune identite")
+def _():
+    from guet import Guet
+    g = Guet()
+    g.amorcer("A\x0bB\x0bC")
+    avant = list(g.ids)
+    faits = g.relever("A\x0bX\x0bB\x0bC")
+    # LE cas du point 14. Identifier par le rang aurait rendu trois retouches
+    # et une naissance : de l'extension prise pour de la maturite.
+    assert [f["type"] for f in faits] == ["nee"], [f["type"] for f in faits]
+    assert g.ids[0] == avant[0] and g.ids[2] == avant[1] and g.ids[3] == avant[2], \
+        f"les voisines ont perdu leur identifiant : {avant} -> {g.ids}"
+    return "une insertion reste une naissance, pas une pluie de retouches"
+
+
+@essai("guet / une ligne deplacee ne rend aucun verdict")
+def _():
+    from guet import Guet
+    g = Guet()
+    g.amorcer("A\x0bB\x0bC\x0bD")
+    avant = list(g.ids)
+    faits = g.relever("A\x0bC\x0bB\x0bD")
+    # Decision 3 : un deplacement est gratuit. L'appariement par rang en aurait
+    # fait deux retouches, donc de la maturite inventee sans que personne
+    # n'ait rien recrit.
+    assert faits == [], [f["type"] for f in faits]
+    assert g.ids == [avant[0], avant[2], avant[1], avant[3]], (avant, g.ids)
+    return "decision 3 : l'identifiant suit son texte, et rien n'est signale"
+
+
+@essai("guet / une retouche rend le texte d'avant")
+def _():
+    from guet import Guet
+    g = Guet()
+    g.amorcer("A\x0bB\x0bC")
+    faits = g.relever("A\x0bBis\x0bC")
+    assert len(faits) == 1, faits
+    # paysage.retoucher() a besoin des DEUX textes : sans l'ancien, il ne peut
+    # pas distinguer une reprise d'une premiere redaction.
+    assert faits[0]["type"] == "retouchee", faits[0]
+    assert faits[0]["ancien"] == "B" and faits[0]["texte"] == "Bis", faits[0]
+    assert faits[0]["id"] == g.ids[1], "l'identifiant doit survivre a la retouche"
+    return "l'ancien texte voyage avec la retouche"
+
+
+@essai("guet / supprimer une ligne compacte les identifiants")
+def _():
+    from guet import Guet
+    g = Guet()
+    g.amorcer("A\x0bB\x0bC")
+    avant = list(g.ids)
+    faits = g.relever("A\x0bC")
+    assert [f["type"] for f in faits] == ["disparue"], faits
+    assert faits[0]["id"] == avant[1] and faits[0]["ancien"] == "B", faits[0]
+    assert g.ids == [avant[0], avant[2]], (avant, g.ids)
+    return "la disparition nomme la ligne partie, les autres ne bougent pas"
+
+
+@essai("guet / un collage rend autant de naissances que de lignes")
+def _():
+    from guet import Guet
+    g = Guet()
+    g.amorcer("A\x0bB")
+    faits = g.relever("A\x0bP1\x0bP2\x0bP3\x0bB")
+    # C'est ce nombre que le debit de la decision 4 mesure : un bloc arrive
+    # d'un coup, et c'est le bloc qu'il faut voir, pas une ligne a la fois.
+    assert [f["type"] for f in faits] == ["nee"] * 3, [f["type"] for f in faits]
+    assert [f["texte"] for f in faits] == ["P1", "P2", "P3"], faits
+    return "trois lignes d'un bloc, trois naissances dans un seul releve"
+
+
+@essai("guet / la visite se ferme apres le silence, et une seule fois")
+def _():
+    from guet import Guet
+    g = Guet(silence=3)
+    g.amorcer("A\x0bB")
+    g.relever("A\x0bBb")                       # on ecrit : la visite s'ouvre
+    vus = []
+    for _tour in range(6):
+        vus.append([f["type"] for f in g.relever("A\x0bBb")])
+    # Sans cette fermeture, revenir sur une ligne une semaine plus tard reste la
+    # meme visite : plant.reprises ne monte jamais et l'element cesse de MURIR.
+    assert vus == [[], [], ["visite_finie"], [], [], []], vus
+    return "une seule fermeture, au bon tour, puis plus rien"
+
+
+@essai("guet / ecrire ailleurs ne demande aucune fermeture")
+def _():
+    from guet import Guet
+    g = Guet(silence=3)
+    g.amorcer("A\x0bB")
+    g.relever("Aa\x0bB")
+    faits = g.relever("Aa\x0bBb")
+    # _actif n'a qu'une case : ecrire ailleurs la deplace, et revenir tombe
+    # forcement dans la branche « reprise ». Le guet n'a rien a emettre.
+    assert [f["type"] for f in faits] == ["retouchee"], faits
+    assert g.visitee == g.ids[1], (g.visitee, g.ids)
+    return "changer de ligne ferme la visite tout seul, dans paysage.py"
+
+
+@essai("guet / le compte de silence repart des qu'on ecrit")
+def _():
+    from guet import Guet
+    g = Guet(silence=3)
+    g.amorcer("A")
+    g.relever("Aa")
+    g.relever("Aa")
+    g.relever("Aa")                             # deux tours de calme
+    assert g.calme == 2, g.calme
+    g.relever("Aaa")                            # on reprend : le compte tombe
+    assert g.calme == 0 and g.visitee is not None, (g.calme, g.visitee)
+    types = [f["type"] for f in g.relever("Aaa")]
+    assert types == [], types
+    return "une pause de deux tours ne ferme rien"
+
+
+@essai("guet / mille lignes, un tic n'en signale qu'une")
+def _():
+    from guet import Guet
+    lignes = [f"Ligne numero {i}, avec assez de texte pour ressembler a une phrase."
+              for i in range(1000)]
+    g = Guet()
+    g.amorcer("\x0b".join(lignes))
+    lignes[500] += " Et un ajout."
+    faits = g.relever("\x0b".join(lignes))
+    # C'est tout l'interet du rognage : sur une these, un releve ne rend pas
+    # mille verdicts, il en rend un.
+    assert len(faits) == 1 and faits[0]["type"] == "retouchee", len(faits)
+    assert faits[0]["id"] == g.ids[500], "la bonne ligne doit etre nommee"
+    return "1000 lignes, 1 verdict"
+
+
+# ==========================================================================
 def main(filtre=None):
     print("=" * LARGEUR)
     print("ESSAIS — paysage")

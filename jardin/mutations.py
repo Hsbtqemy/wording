@@ -72,6 +72,72 @@ MUTATIONS = [
      "        queue = set(_paquet(tour - 1, corpus)[-garde:])",
      "        queue = set()",
      "point ouvert 10 : le raccord du paquet ne porte plus"),
+
+    # ------------------------------------------------------------------ guet
+    # Le guet remplace les evenements de paragraphe, absents de la machine
+    # cible (point ouvert 15). Aucune de ces regressions ne fait planter quoi
+    # que ce soit : elles decalent des identifiants, et le paysage pousse de
+    # travers sans que rien ne le dise.
+    ("guet.py",
+     r'SEPARATEURS = ("\r", "\x0b", "\n")',
+     r'SEPARATEURS = ("\r", "\n")',
+     "point 14 : le saut de ligne cesse de separer, 35 pages font un paragraphe"),
+
+    ("guet.py",
+     """    deplacees = {}                       # j -> i
+    pris = set()
+    for j in fenetre_b:
+        libres = par_texte.get(nouvelles[j])
+        while libres:
+            i = libres.pop(0)
+            if i not in pris:
+                deplacees[j] = i
+                pris.add(i)
+                break""",
+     """    deplacees = {}
+    pris = set()""",
+     "les lignes egales ne se reconnaissent plus : un deplacement devient"
+     " deux retouches, donc de la maturite inventee"),
+
+    ("guet.py",
+     "        self.lignes = decouper(texte)\n"
+     "        self.ids = [self._neuf() for _ in self.lignes]",
+     "        self.lignes = []\n"
+     "        self.ids = []",
+     "decision 11 : le capital de depart est declare NE, une these entiere"
+     " pousse d'un coup a l'ouverture"),
+
+    ("guet.py",
+     '                faits.append({"type": "retouchee", "id": self.ids[i],\n'
+     '                              "texte": nouvelles[j], "ancien": self.lignes[i]})',
+     '                faits.append({"type": "retouchee", "id": self.ids[i],\n'
+     '                              "texte": nouvelles[j], "ancien": None})',
+     "la retouche perd son ancien texte : paysage.retoucher ne peut plus"
+     " distinguer une reprise d'une premiere redaction"),
+
+    ("guet.py",
+     "            elif genre == \"retouchee\":\n                ids[j] = self.ids[i]",
+     "            elif genre == \"retouchee\":\n                ids[j] = self._neuf()",
+     "une ligne retouchee change d'identifiant : chaque frappe devient une"
+     " ligne neuve"),
+
+    ("guet.py",
+     "    disparues = restants_a[len(restants_b):]",
+     "    disparues = []",
+     "une ligne supprimee ne disparait plus : le miroir garde un fantome"),
+
+    ("guet.py",
+     "            if self.calme >= self.silence:",
+     "            if self.calme >= 1:",
+     "la visite se ferme au premier releve calme : une pause pour reflechir"
+     " devient une reprise, et l'extension s'effondre"),
+
+    ("guet.py",
+     "            self.visitee = remuees[-1]\n            self.calme = 0",
+     "            self.visitee = remuees[-1]",
+     "le compte de silence ne repart pas : la visite se ferme en pleine"
+     " ecriture"),
+
 ]
 
 

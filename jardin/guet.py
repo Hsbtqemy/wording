@@ -102,26 +102,28 @@ def rapprocher(anciennes, nouvelles):
         ("nee",       None, j)  la ligne j n'existait pas
         ("disparue",    i, None) la ligne i n'existe plus
 
-    LA METHODE : ROGNER LES BOUTS.
+    CE QUI PROTEGE L'INVARIANT CARDINAL : L'APPARIEMENT PAR TEXTE EGAL.
 
-    Ecrire ne change qu'une region locale. On retire donc la tete et la queue
-    identiques, et il ne reste presque toujours qu'une ou deux lignes a
-    reconcilier.
+    Identifier les lignes par leur RANG est la faute a ne pas commettre :
+    inserer une ligne au milieu decalerait toutes les suivantes, le miroir les
+    verrait toutes changer, et une insertion se lirait comme une pluie de
+    retouches — de l'extension prise pour de la maturite, l'erreur centrale du
+    projet. On apparie donc d'abord ce qui est EGAL. Une ligne qui n'a pas
+    bouge, ou qui a seulement change de place, retrouve son identifiant et ne
+    rend aucun verdict : c'est aussi ce que le point 3 promet d'un deplacement.
 
-    ⚠️ C'EST CE ROGNAGE QUI PROTEGE L'INVARIANT CARDINAL. Identifier les lignes
-    par leur RANG serait la faute a ne pas commettre : inserer une ligne au
-    milieu decalerait toutes les suivantes, le miroir les verrait toutes
-    changer, et une insertion se lirait comme une pluie de retouches — de
-    l'extension prise pour de la maturite, l'erreur centrale du projet. Apres
-    rognage, une insertion laisse une fenetre VIDE du cote ancien : elle ne peut
-    donc pas se confondre avec une retouche.
+    ⚠️ Ecrit ici parce que la premiere version de ce commentaire attribuait la
+    protection au ROGNAGE ci-dessous, et c'etait faux : retirer le rognage
+    laisse tous les essais passer, retirer l'appariement par texte les fait
+    tomber. Un commentaire qui designe la mauvaise piece est pire que pas de
+    commentaire — on finit par retirer la bonne.
 
-    DANS LA FENETRE, LES LIGNES IDENTIQUES SE RECONNAISSENT D'ABORD.
+    LE ROGNAGE, LUI, N'EST QU'UNE ACCELERATION.
 
-    Un deplacement est gratuit (point 3), et l'appariement par rang en aurait
-    fait des retouches : echanger deux lignes aurait invente de la maturite sans
-    que personne n'ait rien recrit. On apparie donc d'abord ce qui est egal, et
-    la ligne deplacee garde son identifiant sans rendre le moindre verdict.
+    Ecrire ne change qu'une region locale. Retirer la tete et la queue
+    identiques laisse une fenetre d'une ou deux lignes, et evite de construire
+    l'index de mille cinq cents chaines a chaque releve. Le resultat est le
+    meme ; seul le travail change.
 
     CE QUI RESTE S'APPARIE PAR RANG, et c'est assume.
 
