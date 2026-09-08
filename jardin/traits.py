@@ -277,7 +277,7 @@ def extraire(texte: str, reecriture: float = 0.0) -> Traits:
     # On compte les OCCURRENCES pour cent mots, pas les types presents.
     # Compter les types (len(formes & CONNECTEURS)) etait une couverture de
     # vocabulaire : elle croit avec la longueur et sature vers 1 100 mots, donc
-    # a l'echelle d'un segment de 5 000 mots tout texte francais valait 1,00 et
+    # a l'echelle d'un segment de 2 500 mots tout texte francais valait 1,00 et
     # la composante ne distinguait plus rien. C'est exactement la derive
     # mecanique reprochee au TTR brut, par une autre porte.
     occurrences = sum(1 for m in mots

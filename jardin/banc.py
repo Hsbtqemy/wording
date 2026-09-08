@@ -26,7 +26,7 @@ from traits import en_mots
 from corpus import paragraphe, these, PROFILS
 from paysage import (
     Paysage, empreinte, resume,
-    MOTS_PAR_PLANT, PARAGRAPHES_PAR_PLANT, SEUIL_COLLAGE,
+    MOTS_PAR_PLANT, SEUIL_COLLAGE, MOTS_MINIMUM_VERROU,
 )
 
 LARGEUR = 74
@@ -134,23 +134,41 @@ def essai_3():
 
     # Exactement le scenario de la decision 5 : de la prose, puis un rapport
     # structure. Sans verrou par segment, la famille bascule vers 500 mots.
+    # ⚠️ 1 100 MOTS CHACUN, ET LA SOMME DOIT TENIR DANS UN PLANT.
+    #
+    # C'etait 3 000 et 3 000, quand un plant en valait 5 000 : le rapport
+    # tombait donc pour moitie dans le plant 0, et la derive s'y lisait. A
+    # 2 500 mots par plant, le plant 0 se fermait avant la premiere ligne du
+    # rapport — l'essai ne testait plus le verrou, il testait le debordement,
+    # et il a echoue en annoncant une influence vide.
+    #
+    # Ce que la decision 5 demande de montrer, c'est UN MEME PLANT qui recoit
+    # les deux textes et ne renie pas le premier. Les deux moities doivent donc
+    # rentrer dans un plant, quel que soit le nombre de mots qu'il vaut.
+    # Les deux longueurs sont des FRACTIONS DE PLANT, et chacune porte une des
+    # trois choses que l'essai doit montrer. La prose remplit deux cinquiemes
+    # du plant : assez pour verrouiller, pas assez pour le fermer. Le rapport
+    # en vaut un entier : il finit donc de remplir le plant 0 — c'est la que la
+    # derive se lit — puis DEBORDE, et la ville pousse a cote en plant neuf.
+    prose_cible = MOTS_PAR_PLANT * 2 // 5
+    rapport_cible = MOTS_PAR_PLANT
     prose = []
-    while sum(len(en_mots(t)) for t in prose) < 3000:
+    while sum(len(en_mots(t)) for t in prose) < prose_cible:
         prose.append(paragraphe(rng, "vegetal")[0])
     rapport = []
-    while sum(len(en_mots(t)) for t in rapport) < 3000:
+    while sum(len(en_mots(t)) for t in rapport) < rapport_cible:
         rapport.append(paragraphe(rng, "architecture")[0])
 
     jalons = []
     for t in prose:
         p.absorber(t, jour=30)
     plant = p.segments[0]
-    jalons.append(("apres 3 000 mots de prose", plant.famille, plant.mots))
+    jalons.append((f"apres {prose_cible} mots de prose", plant.famille, plant.mots))
     famille_verrouillee = plant.famille
 
     for t in rapport:
         p.absorber(t, style="Normal", jour=200)
-    jalons.append(("apres 3 000 mots de rapport", plant.famille, plant.mots))
+    jalons.append((f"apres {rapport_cible} mots de rapport", plant.famille, plant.mots))
 
     for lab, fam, mots in jalons:
         print(f"  {lab:<30} plant 0 : {str(fam).upper():<13} ({mots} mots)")
@@ -260,19 +278,30 @@ def essai_5(doc):
 
     ok = verdict(len(p.registre) == len({empreinte(t) for t, *_ in doc}),
                  "aucune collision d'empreinte sur la these entiere")
-    # La decision 6 annonce 27 plants pour 137 500 mots. Ce chiffre suppose
-    # des paragraphes de ~95 mots : le plant se ferme au premier des deux
-    # plafonds, donc quelqu'un qui ecrit court obtient PLUS de plants, tous
-    # complets. Le rapport a verifier n'est pas le nombre, c'est la coherence
-    # des deux plafonds entre eux.
-    attendu = max(mots / MOTS_PAR_PLANT, len(doc) / PARAGRAPHES_PAR_PLANT)
+    # La decision 6 annonce 27 plants pour 137 500 mots, et depuis que le plant
+    # se mesure en MOTS SEULS ce chiffre ne depend plus du style : quelqu'un qui
+    # ecrit en lignes d'une phrase obtient le meme paysage que quelqu'un qui
+    # ecrit des paragraphes de 250 mots. C'etait tout l'objet du changement —
+    # avec l'ancien plafond en paragraphes, un vrai document en donnait 250.
+    attendu = mots / MOTS_PAR_PLANT
     ok &= verdict(abs(plants - attendu) / attendu < 0.25,
-                  f"le nombre de plants suit les deux plafonds"
+                  f"le nombre de plants suit les mots ecrits"
                   f" ({plants} obtenus, {attendu:.0f} attendus)")
-    ok &= verdict(max(s.nouveaux for s in p.segments) <= PARAGRAPHES_PAR_PLANT,
-                  f"aucun plant ne depasse {PARAGRAPHES_PAR_PLANT} paragraphes")
-    ok &= verdict(verrouilles >= plants - 2,
-                  "tous les plants pleins ont trouve leur famille")
+    # ⚠️ UNE REGLE, PAS UN EFFECTIF. C'etait « verrouilles >= plants - 2 »,
+    # qui tenait tant qu'il y avait trente-deux plants et huit frontieres de
+    # chapitre. A cinquante-neuf plants les moignons de fin de chapitre sont
+    # plus nombreux — trois au lieu de deux — et l'essai a echoue sans qu'aucune
+    # regle soit violee. Le nombre suivait la constante, pas le comportement.
+    #
+    # Ce que l'essai veut dire ne depend d'aucun effectif : un plant qui a
+    # atteint le seuil du verrou A une famille. Ceux qui n'en ont pas sont les
+    # moignons, et c'est leur definition meme.
+    orphelins = [s for s in p.segments
+                 if s.mots >= MOTS_MINIMUM_VERROU and not s.verrouille]
+    ok &= verdict(not orphelins,
+                  f"tous les plants pleins ont trouve leur famille"
+                  f" ({len(orphelins)} au-dela de {MOTS_MINIMUM_VERROU} mots"
+                  f" sans famille)")
     ok &= verdict(len(familles) >= 3,
                   "le paysage est melange, pas monochrome")
     ok &= verdict(max(s.mots for s in p.segments) <= MOTS_PAR_PLANT + 400,
@@ -317,7 +346,7 @@ def essai_6(doc):
     t_tick = (time.perf_counter() - t0) * 1000 / 400
 
     print(f"  extraction complete ({tr.mots} mots) : {t_complet:>8.0f} ms")
-    print(f"  segment actif (5 000 mots)          : {t_segment:>8.1f} ms")
+    print(f"  segment actif (2 500 mots)          : {t_segment:>8.1f} ms")
     print(f"  un paragraphe                       : {t_para:>8.2f} ms")
     print(f"  un tick reel (absorber + relecture) : {t_tick:>8.2f} ms")
 

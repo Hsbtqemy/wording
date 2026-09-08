@@ -46,6 +46,21 @@ let graine = 1;
 let dialogue = null;
 let aEcrire = false;
 
+/**
+ * Combien de temps entre deux ecritures dans le dossier.
+ *
+ * ⚠️ localStorage EST SYNCHRONE. Le point 12 le dit depuis le debut : un
+ * JSON.stringify de l'etat complet toutes les deux secondes bloque le fil qui
+ * gere la frappe, et il prescrit une ecriture amortie a trente secondes. Le
+ * portage ne l'avait jamais appliquee — on ecrivait a chaque tic ou quelque
+ * chose avait pousse.
+ *
+ * Ce qu'on risque a attendre : trente secondes de pousse, et seulement si le
+ * volet se ferme entre deux ecritures. La copie dans le document, elle, est
+ * deja bien plus espacee.
+ */
+const AMORTI = 30000;
+
 // La table des styles, un par paragraphe. Relue seulement quand le nombre de
 // paragraphes change — voir lire_corps().
 let styles = [];
@@ -190,8 +205,13 @@ function dessiner() {
   const hote = document.getElementById("paysage");
   if (!hote || !paysage) return;
   const plants = paysage.etat().plants;
-  hote.innerHTML = vue_de_travail(plants, graine, hote.clientWidth || 340,
-                                  hote.clientHeight || 430);
+  const svg = vue_de_travail(plants, graine, hote.clientWidth || 340,
+                             hote.clientHeight || 430);
+  // Poser innerHTML fait reparser tout le document SVG. Sur un paysage mur
+  // c'est le poste le plus cher du tic, et il est le plus souvent inutile.
+  if (svg === dernier_svg) return;
+  dernier_svg = svg;
+  hote.innerHTML = svg;
 }
 
 function dire(texte) {
@@ -204,6 +224,13 @@ function dire(texte) {
 // --------------------------------------------------------------------------
 let dernier = Date.now();
 let occupe = false;
+let dernier_rangement = 0;      // 0 : la premiere ecriture part tout de suite
+// Le dernier SVG pose dans le volet. Le point 12 veut que les plants acheves
+// soient rasterises une fois et jamais retouches ; en attendant, on evite au
+// moins de RE-POSER un dessin identique. Le vegetal ne change de forme que
+// quatre fois sur toute la vie d'un plant, donc la plupart des tics
+// reconstruisaient le meme document pour rien.
+let dernier_svg = "";
 
 async function tic() {
   if (occupe) return;             // un tic en retard ne doit pas en doubler un autre
@@ -219,8 +246,11 @@ async function tic() {
       dessiner();
       aEcrire = true;
     }
-    if (aEcrire) {
+    // ⚠️ AMORTI, et non a chaque tic. aEcrire reste vrai tant que l'ecriture
+    // n'a pas eu lieu : rien ne se perd, tout attend.
+    if (aEcrire && maintenant - dernier_rangement >= AMORTI) {
       ranger();
+      dernier_rangement = maintenant;
       // Et la copie dans le document, qui se retient elle-meme : au plus une
       // toutes les cinq minutes, et jamais si rien n'a pousse.
       await magasin.copier(paysage);

@@ -185,7 +185,7 @@ philosophie, qui était à deux millièmes de devenir une Créature.
 
 ## 6. L'échelle
 
-**Décidé :** un nouveau plant au Titre 1 **ou** à 5 000 mots, au premier des deux.
+**Décidé :** un nouveau plant au Titre 1 **ou** à 2 500 mots, au premier des deux.
 
 La limite technique n'est pas le problème (≈ 7 000 éléments SVG pour une thèse,
 un navigateur en tient 10 000). Le mur est perceptif, et il y en a deux :
@@ -198,11 +198,116 @@ un navigateur en tient 10 000). Le mur est perceptif, et il y en a deux :
 plus tôt que la croissance linéaire qu'elle corrigeait. Le mécanisme mourrait
 pile dans le tunnel du milieu.
 
-Des cycles de 5 000 mots plafonnent à 52 paragraphes, soit 1,92 % par
-paragraphe, indéfiniment.
-
-500 pages ≈ 137 500 mots ≈ 1 450 paragraphes ≈ 27 plants. Trois niveaux :
+500 pages ≈ 137 500 mots ≈ **55 plants**. Trois niveaux :
 paysage → parcelles (fichiers/chapitres) → plants.
+
+⚠️ L'extension se mesure en **mots, et en mots seuls**. Elle prenait le plus
+avancé de deux comptes — les paragraphes rapportés à 52, les mots rapportés au
+plant — et 52 n'était pas une quantité indépendante : c'était 5 000 / 96, le
+plant exprimé dans une longueur de paragraphe **supposée**. La décision 17 a
+fait de la ligne l'unité du paysage, et un vrai document a montré ce que la
+constante y devenait : trente-cinq pages écrites en lignes d'une phrase, onze
+mots chacune, donc 52 lignes = 570 mots. Un plant toutes les 1,6 page au lieu
+d'une tous les douze, et deux cent cinquante plants pour une thèse.
+
+### Ce qu'un article a montré
+
+**Reconsidéré, et changé : 5 000 → 2 500.**
+
+5 000 avait été calibré sur une thèse et sur rien d'autre. Un article de 8 000
+mots — vingt pages — en fait **1,6 plant** : un germe et un arbre. Pas un
+paysage, une plante en pot. Et à l'autre bout, l'auteur a posé la vraie
+question : en écriture scientifique, douze pages et demie de texte fini peuvent
+demander un mois. Un objet dont l'unité est le mois n'accompagne pas une
+journée de travail.
+
+Le réflexe — descendre franchement, vers 1 000 ou moins — est **faux**, et
+c'est mesuré. Le plancher ne se déplace pas : il faut 800 mots pour que le
+style de quelqu'un soit lisible, donc pour qu'un plant ait une famille. Plus le
+plant est petit, plus ces 800 mots en mangent la vie. Compté paragraphe par
+paragraphe sur une thèse de 146 000 mots, en regardant à chaque pas ce que le
+volet montrait :
+
+| mots par plant | part du temps en germe | plants | la vue d'ensemble |
+|---|---|---|---|
+| 5 000 | 18 % | 32 | lisible, huit massifs |
+| **2 500** | **33 %** | **59** | **lisible, plus dense** |
+| 1 000 | 78 % | 139 | une traînée |
+
+À 1 000, la personne regarde une tache sans forme **plus de trois quarts du
+temps**, et la vue d'ensemble n'a plus d'objets dedans — les plants deviennent
+de la texture. 2 500 est le point où l'arbre de la première semaine est deux
+fois plus fourni qu'à 5 000 (extension 0,48 contre 0,24) sans que rien ne se
+perde.
+
+⚠️ **Une piste écartée par la mesure : fermer le plant sur le rythme de
+travail** plutôt que sur un compteur — un plant par session, dès qu'il a ses
+800 mots. Elle donnait des plants inégaux qui auraient raconté *comment* on
+avait travaillé, ce qui est séduisant. Mesurée, elle donne 123 plants et
+surtout **0 %** : un plant fermé en fin de session n'atteint jamais son
+extension pleine, donc **aucun plant n'est jamais achevé**. Elle produisait
+exactement la frustration qu'elle devait guérir.
+
+⚠️ Et une chose qu'aucun réglage ne change : « plant complet » n'est un état
+que 1 à 6 % du temps, à toutes les valeurs. Le plant se referme dans la
+seconde où il se remplit. **Terminer n'est pas un endroit où l'on se pose,
+c'est un seuil qu'on franchit** — le sentiment que ça avance aujourd'hui ne
+peut pas venir de là. Il vient du grain de l'extension, ci-dessous.
+
+### Le grain : la profondeur devient fractionnaire
+
+**Décidé :** l'extension entre dans le végétal de façon **continue**.
+
+Elle n'y entrait que par une ligne — `prof_max = 4 + int(extension * 3.0)` — un
+entier, donc **quatre formes** sur toute la vie d'un plant. À 2 500 mots, un
+changement visible toutes les 625 : deux pages et demie, parfois une semaine de
+travail. La créature en offrait onze fois plus, pour la même écriture.
+
+On ne peut pas ajouter des niveaux, ils doublent le nombre de branches. On
+ouvre donc le **dernier**, rameau par rameau : la partie entière donne les
+niveaux pleins, la décimale la proportion du dernier qui est sortie. Un rameau
+pas encore sorti reste un **bourgeon** — un bouquet de feuilles — au lieu de
+disparaître, donc la couronne n'a jamais de trou et pousser consiste à ouvrir
+un bourgeon en rameau. Aux quatre valeurs entières, l'arbre est exactement
+celui d'avant : le changement raffine l'entre-deux, il ne redessine pas.
+
+Mesuré : **83 formes distinctes** sur la vie d'un plant, un changement tous les
+30 mots, contre 4 et 625.
+
+⚠️ L'ordre d'apparition est le **bit inversé** (van der Corput), pas l'ordre
+naturel des lignées. Dans l'ordre naturel, le compte des traits est le même à
+chaque pas — mais à mi-pousse une moitié de la couronne est garnie et l'autre
+nue : l'arbre pousse d'un côté. Ni la monotonie ni le grain ne voient la
+différence ; il a fallu un essai qui regarde l'ordre lui-même.
+
+### Le feuillage reculait d'un tiers, et c'était ancien
+
+Le remède évident au grain — subdiviser plus fin — peut faire **reculer** la
+forme, ce qu'interdit le point 1. C'est arrivé, et la mesure a montré que le
+défaut était **antérieur**.
+
+Le feuillage se partageait `BUDGET_FEUILLAGE // pointes` : le même nombre de
+feuilles pour chaque bouquet. Un quotient entier n'est pas monotone — 52
+pointes à 4 feuilles font 208 traits, 53 pointes à 3 en font 159. Sur la vie
+d'un plant : **271 → 223, 300 → 235, 331 → 230**. Un tiers de la couronne perdu
+en gagnant un rameau. La version entière le faisait déjà au dernier cran de
+chaque plant (192 traits à la profondeur 6, 128 à la profondeur 7) :
+**l'arbre s'éclaircissait exactement en s'achevant.** C'est très probablement
+ce qu'on voyait dans le vrai Word et qu'on prenait pour un rapetissement.
+
+Le budget se **répartit** désormais au lieu de se diviser : chaque pointe reçoit
+sa part entière, et une feuille de plus à la fraction des pointes que le rang de
+pousse désigne — le même ordre que les rameaux, pour que le supplément soit
+dispersé. Pire recul mesuré après correction : **2,2 %** des traits.
+
+⚠️ **Point ouvert, mesuré et non corrigé.** Il reste un flottement : le
+générateur est consommé séquentiellement, donc ouvrir un rameau décale toutes
+les valeurs tirées après lui et les longueurs bougent d'un pas à l'autre.
+L'encombrement du plant varie ainsi de ±10 % d'un pas au suivant. La silhouette
+tient — c'est le même arbre qui s'épaissit — mais la décision 1 demande zéro. Le
+corriger demande de tirer les perturbations de l'arbre entier avant de dessiner,
+indexées par lignée, pour que la géométrie d'un rameau ne dépende plus de
+l'extension. Ce n'est pas fait.
 
 **Décidé :** le germe se dessine. `traits.py` prévoyait trois stades depuis le
 début — germe, indices, divergence — et rien n'en dessinait les deux premiers.
@@ -778,14 +883,21 @@ soumise à l'exigence de retour.
 
 ⚠️ **Le dézoom progressif est la croissance logarithmique du point 6,
 transposée d'un cran.** Si tout doit tenir dans le cadre, un paragraphe déplace
-1,92 % / n de ce qu'on regarde :
+3,84 % / n de ce qu'on regarde :
 
 | plants | mots | dézoom pour tout tenir | vue du plant seul |
 |---|---|---|---|
-| 5 | 25 000 | 0,384 % | 1,92 % |
-| **14** | **70 000** | **0,137 %** | 1,92 % |
-| 27 | 135 000 | 0,071 % | 1,92 % |
-| 52 | 260 000 | 0,037 % | 1,92 % |
+| 10 | 25 000 | 0,384 % | 3,84 % |
+| **28** | **70 000** | **0,137 %** | 3,84 % |
+| 55 | 137 500 | 0,070 % | 3,84 % |
+| 104 | 260 000 | 0,037 % | 3,84 % |
+
+⚠️ Ce calcul **ne dépend pas de la taille d'un plant** : le rapport
+paragraphe / plant et le nombre de plants se compensent exactement. Passer de
+5 000 à 2 500 mots par plant a doublé les deux colonnes de gauche — 1,92 % à
+14 plants, 3,84 % à 28 — et laissé 0,137 % inchangé. La conclusion tient donc
+quelle que soit l'échelle. Ça n'allait pas de soi, et ça a été revérifié le jour
+où la constante a bougé.
 
 Le seuil de mort donné au point 6 est 0,14 % par paragraphe, atteint à
 70 000 mots. Le dézoom l'atteint à 14 plants — **soit 70 000 mots**. Le même
@@ -837,6 +949,43 @@ parcelles respirent entre elles. Mesuré sur une thèse de 146 000 mots :
 49 plants, 4 parcelles, **12 803 px en bande linéaire contre 4 826 en massifs
 (38 %)**. Et ça se lit comme un paysage au lieu d'une rangée. Voir
 `planche_apercu.png`.
+
+### Le recul de la caméra : un exposant, pas des paliers
+
+**Décidé :** la taille apparente du plant en cours vaut
+
+> apparente = (taille / finale) ** `RECUL_CAMERA`, avec `RECUL_CAMERA` = 0,5
+
+et non `taille / finale`.
+
+Le cadre valait la taille **finale** du plant, pour que la croissance reste
+visible — un cadre qui suit la taille du moment rend un plant jeune
+indiscernable d'un plant achevé. Mais l'autre bout du raisonnement n'avait pas
+été regardé : un plant dont la taille vaut 5 % de sa taille finale occupe alors
+**5 % du volet**, c'est-à-dire un cheveu. Et la personne regarde un plant sans
+famille **33 % du temps** (point 6). Voir `planche_alpha.png` : à α = 1, les
+colonnes 5 % et 20 % sont vides ; à α = 0,5, c'est une tige avec son bourgeon.
+
+⚠️ **Ce qui fait tenir le point 1 ici, c'est la monotonie, pas la valeur.** La
+proposition rivale était des **paliers** de dézoom : très zoomé au départ, on
+recule d'un cran quand le plant devient grand, puis encore. Elle donne la même
+présence au germe — et chaque palier est un **rétrécissement visible**, trois ou
+quatre fois par plant. On rachèterait avec la caméra ce qu'on venait de corriger
+dans le dessin. Un exposant n'a pas de palier : le cadre ne fait que grandir
+tant que le plant grandit.
+
+⚠️ **Et il amortit le flottement**, ce qui n'est pas une chance mais une
+propriété de la puissance. Le point ouvert du point 6 mesure un flottement de
+l'encombrement : sur un plant de 2 500 mots, **38 reculs, un tous les 66 mots**,
+dont 6 dépassent 5 % et 1 dépasse 10 %. Élevé à 0,5, un recul de 10,8 % de la
+taille n'en fait plus que **5,5 %** de l'apparence, et les six reculs de plus de
+5 % deviennent des reculs de 2,5 %. C'est la raison pour laquelle le flottement
+reste consigné et non corrigé : le remède coûterait une réécriture du modèle
+aléatoire du dessin, et l'exposant en enlève la moitié pour rien.
+
+⚠️ Une porte de plus, trouvée en regardant la planche : `gabarit()` anticipe
+aussi la **maturité** (il suppose 0,85). Un plant jamais repris ne remplit donc
+jamais son cadre, quel que soit l'exposant. Non traité.
 
 **Conséquence pour l'add-in :** le volet Word est une colonne étroite et haute
 (~320-450 px). Une bande horizontale y est le pire format possible. La vue de

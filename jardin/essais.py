@@ -526,6 +526,127 @@ def _():
     return "creux vide -> repli, aucune exception"
 
 
+@essai("grammaire / le vegetal pousse sans jamais reculer (decision 1)")
+def _():
+    import grammaire
+    from paysage import MOTS_PAR_PLANT
+
+    """
+    Deux choses a la fois, parce qu'elles se contredisent si on n'y prend garde.
+
+    GRANULARITE. L'extension n'entrait dans l'arbre que par
+    « 4 + int(extension * 3.0) » : QUATRE formes sur toute la vie d'un plant,
+    donc un changement visible toutes les 625 mots — deux pages et demie
+    d'ecriture scientifique, parfois une semaine. La profondeur est devenue
+    fractionnaire : les rameaux du dernier niveau sortent un par un.
+
+    MONOTONIE. Le remede evident a la granularite — subdiviser plus fin —
+    peut faire RECULER la forme, ce qu'interdit la decision 1. C'est arrive :
+    le feuillage se partageait « BUDGET // pointes », le meme compte pour
+    chaque bouquet. Un quotient entier n'est pas monotone (52 pointes a 4
+    feuilles font 208 traits, 53 pointes a 3 en font 159), et l'arbre perdait
+    un tiers de sa couronne en gagnant un rameau : mesure 271 -> 223,
+    300 -> 235, 331 -> 230. L'ancienne version entiere le faisait deja, au
+    dernier cran de chaque plant — l'arbre s'eclaircissait en s'achevant.
+
+    LE SEUIL DE 10 % N'EST PAS AJUSTE SUR LE CODE DU JOUR, et c'est
+    volontaire : un seuil colle au comportement actuel s'adapte a la panne au
+    lieu de la voir. En dessous de 10 % il reste un flottement connu, mesure
+    (au pire 6 % des traits, et l'encombrement varie de ±10 %) et NON corrige :
+    ouvrir un rameau decale toutes les valeurs tirees apres lui, donc les
+    longueurs bougent d'un pas a l'autre. Le corriger demande de tirer les
+    perturbations de l'arbre entier avant de dessiner ; c'est un point ouvert.
+    """
+    pire, formes = 0.0, set()
+    for graine in (7, 41, 903):
+        precedent = None
+        for mots in range(0, MOTS_PAR_PLANT + 1, 50):
+            t = grammaire.Toile()
+            grammaire.vegetal(t, min(1.0, mots / MOTS_PAR_PLANT), 0.35, graine,
+                              grammaire.Teinte.du_jour(120))
+            n = len(t.segments)
+            if graine == 7:
+                formes.add(repr(t.segments))
+            if precedent:
+                pire = max(pire, (precedent - n) / precedent)
+            precedent = n
+
+    assert pire < 0.10, (
+        f"le vegetal perd {pire * 100:.0f} % de ses traits en poussant :"
+        f" la forme recule, ce qu'interdit la decision 1")
+    assert len(formes) >= 30, (
+        f"seulement {len(formes)} formes distinctes sur la vie d'un plant :"
+        f" l'extension ne fait plus bouger l'arbre qu'a gros crans")
+    # Et L'ORDRE d'apparition, que ni la monotonie ni la granularite ne
+    # voient : avec les rameaux sortis dans l'ordre naturel des lignees, le
+    # compte des traits est exactement le meme a chaque pas — seulement, a
+    # mi-pousse, une moitie de la couronne est garnie et l'autre est nue.
+    # L'arbre pousse d'un cote. On regarde donc l'ordre lui-meme.
+    #
+    # Les huit lignees de GAUCHE du niveau 4 (16 a 23) doivent se repartir sur
+    # toute la duree de la pousse, pas se presser au debut.
+    gauche = [grammaire._rang_de_pousse(l) for l in range(16, 24)]
+    assert max(gauche) > 0.8, (
+        f"les huit rameaux de gauche du niveau 4 sortent tous en debut de"
+        f" pousse (rang maximum {max(gauche):.2f}) : l'arbre pousse d'un cote")
+
+    return (f"{len(formes)} formes distinctes, un changement tous les"
+            f" {MOTS_PAR_PLANT / (len(formes) - 1):.0f} mots ;"
+            f" pire recul {pire * 100:.1f} %")
+
+@essai("composition / la camera recule, et ne fait que reculer")
+def _():
+    import re
+    import composition
+    from paysage import Paysage, MOTS_PAR_PLANT
+    from corpus import paragraphe
+    import random
+
+    """
+    Deux proprietes, et la seconde est celle qui a failli manquer.
+
+    ELLE RECULE. Le cadre du volet valait la taille FINALE du plant : un plant
+    a 5 % de sa taille finale occupait 5 % du volet, un cheveu, et la personne
+    regarde un plant sans famille un tiers du temps. Le cadre interpole
+    desormais entre la taille du moment et la taille finale (RECUL_CAMERA).
+
+    ELLE NE FAIT QUE RECULER. C'est la seule chose qui fait tenir la decision 1
+    ici, et c'est ce qui separe un exposant de la proposition rivale — des
+    PALIERS de dezoom, ou chaque cran est un retrecissement visible. Un essai
+    qui ne verifierait que la premiere propriete accepterait les paliers.
+
+    ⚠️ On lit le cadre dans le viewBox du SVG, pas en le recalculant. Un essai
+    qui refait le calcul teste sa propre arithmetique, pas le code.
+    """
+    def cadre(plants):
+        svg = composition.vue_de_travail(plants, 1, 300, 380)
+        vb = re.search(r'viewBox="([-\d. ]+)"', svg).group(1).split()
+        return float(vb[3])
+
+    rng = random.Random(11)
+    p = Paysage(identifiant="camera")
+    p.absorber("Chapitre unique", "Titre 1", 0, 30, 14)
+    cadres, jalons = [], [0.05, 0.20, 0.50, 1.00]
+    while jalons:
+        p.absorber(paragraphe(rng, "vegetal")[0], jour=30, heure=14)
+        if p.segments[-1].mots / MOTS_PAR_PLANT >= jalons[0]:
+            jalons.pop(0)
+            cadres.append(cadre(p.etat()["plants"]))
+
+    # Elle recule : le cadre du germe est nettement plus serre que le final.
+    assert cadres[0] < cadres[-1] * 0.75, (
+        f"le cadre du plant jeune ({cadres[0]:.0f}) ne se distingue pas de"
+        f" celui du plant plein ({cadres[-1]:.0f}) : la camera ne bouge pas,"
+        f" et un germe reste un cheveu dans un grand cadre")
+
+    # Et elle ne fait que reculer, ce qui exclut les paliers.
+    for avant, apres in zip(cadres, cadres[1:]):
+        assert apres >= avant - 1e-9, (
+            f"le cadre est passe de {avant:.0f} a {apres:.0f} : la camera"
+            f" s'est rapprochee, donc le plant a retreci — decision 1")
+
+    return " -> ".join(f"{c:.0f}" for c in cadres)
+
 # ==========================================================================
 # composition.py
 # ==========================================================================

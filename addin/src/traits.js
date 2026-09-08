@@ -324,7 +324,7 @@ export function extraire(texte, reecriture = 0.0) {
   const virgules_par_phrase = compter(texte, ",") / phrases.length;
   // On compte les OCCURRENCES pour cent mots, pas les types presents.
   // Compter les types etait une couverture de vocabulaire : elle croit avec la
-  // longueur et sature vers 1 100 mots, donc a l'echelle d'un segment de 5 000
+  // longueur et sature vers 1 100 mots, donc a l'echelle d'un segment de 2 500
   // mots tout texte francais valait 1,00 et la composante ne distinguait plus
   // rien. C'est exactement la derive mecanique reprochee au TTR brut, par une
   // autre porte.

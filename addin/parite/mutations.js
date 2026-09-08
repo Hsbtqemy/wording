@@ -517,6 +517,58 @@ const MUTATIONS = [
    "le temps ecoule n'est plus plafonne : un collage vu une minute trop tard"
    + " passe pour de l'ecriture"],
 
+
+  // ------------------------------------------------- le point 12, applique
+  // Deux prescriptions du point 12 que le portage n'avait jamais suivies. Ni
+  // l'une ni l'autre ne casse quoi que ce soit : elles font ramer Word, ce que
+  // personne ne rapporte comme un bug — et un tic lent dilue le debit, donc
+  // affaiblit la garde contre le collage.
+  ["volet.js",
+   "    if (aEcrire && maintenant - dernier_rangement >= AMORTI) {",
+   "    if (aEcrire) {",
+   "l'etat complet est serialise a CHAQUE tic, en synchrone, sur le fil qui gere"
+   + " la frappe",
+   "volet"],
+
+  ["volet.js",
+   "  if (svg === dernier_svg) return;",
+   "  if (false) return;",
+   "le SVG entier est repose a chaque tic, meme identique : un reparse complet"
+   + " du document toutes les deux secondes",
+   "volet"],
+
+
+  // ------------------------------------------- la pousse du vegetal (point 1)
+  // La profondeur fractionnaire et la repartition du feuillage. Aucune des
+  // trois ne casse le dessin : elles le rendent plus grossier, ou le font
+  // reculer — et seule une comparaison au point pres les voit.
+  ["grammaire.js",
+   "  const part = BUDGET_FEUILLAGE / pointes;",
+   "  const part = Math.floor(BUDGET_FEUILLAGE / pointes);",
+   "decision 1 : le feuillage se divise au lieu de se repartir"],
+
+  ["grammaire.js",
+   "  const prof_max = 4.0 + extension * 3.0;",
+   "  const prof_max = 4.0 + Math.trunc(extension * 3.0);",
+   "la profondeur redevient entiere : quatre formes sur la vie d'un plant"],
+
+  ["grammaire.js",
+   "  for (let i = 0; i < niveau; i++) inverse = (inverse << 1) | ((index >> i) & 1);",
+   "  inverse = index;",
+   "les rameaux sortent de gauche a droite au lieu d'etre disperses"],
+
+
+  ["composition.js",
+   "export const RECUL_CAMERA = 0.5;",
+   "export const RECUL_CAMERA = 1.0;",
+   "le cadre du volet revient a la taille finale : un germe redevient un cheveu"],
+
+  ["composition.js",
+   "  gl = Math.max(t.largeur(), 1.0) ** (1 - RECUL_CAMERA) * gl ** RECUL_CAMERA;",
+   "  gl = gl ** RECUL_CAMERA;",
+   "le cadre n'interpole plus qu'en hauteur : une creature deployee se fait"
+   + " rogner sur les cotes"],
+
 ];
 
 if (!existsSync(CAS)) {

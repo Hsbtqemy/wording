@@ -331,6 +331,27 @@ export const MEMBRES_PROPORTIONNELS = true;
 // --------------------------------------------------------------------------
 // Vegetal — il se ramifie
 // --------------------------------------------------------------------------
+/**
+ * Dans quel ordre ce rameau sort, entre 0 et 1.
+ *
+ * Le bit INVERSE (van der Corput). Pris dans l'ordre naturel, les rameaux
+ * apparaitraient de gauche a droite et l'arbre pousserait d'un cote ; tires au
+ * hasard, ils changeraient de place a chaque redessin. Le bit inverse les
+ * disperse dans toute la couronne ET fixe l'ordre une fois pour toutes.
+ *
+ * C'est cette fixite qui compte : un rameau sorti ne rentre jamais quand
+ * l'extension monte, donc la forme ne peut que croitre — decision 1.
+ */
+function _rang_de_pousse(lignee) {
+  // 31 - clz32 est le bit_length de Python, moins un.
+  const niveau = 31 - Math.clz32(lignee);
+  if (niveau <= 0) return 0.0;
+  const index = lignee - (1 << niveau);
+  let inverse = 0;
+  for (let i = 0; i < niveau; i++) inverse = (inverse << 1) | ((index >> i) & 1);
+  return inverse / (1 << niveau);
+}
+
 export function vegetal(t, extension, maturite, graine, teinte = null, traits = null) {
   const rng = new Alea(graine);
   const m = maturite;
@@ -342,15 +363,63 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
   const dissymetrie = (1.0 - tr.regularite) * 0.30;
   // Des phrases longues font de longues entre-noeuds.
   const entre_noeuds = 0.72 + tr.longueur * 0.34;
-  const prof_max = 4 + Math.trunc(extension * 3.0);
-  const par_bouquet = Math.max(1, Math.min(3 + Math.trunc(m * 3),
-    Math.floor(BUDGET_FEUILLAGE / 2 ** prof_max)));
+  // ⚠️ LA PROFONDEUR EST FRACTIONNAIRE, et c'est tout le sujet.
+  //
+  //   Elle valait « 4 + int(extension * 3.0) » : un entier, donc QUATRE formes sur
+  //   toute la vie d'un plant. L'extension n'entrait dans l'arbre que par la, et
+  //   entre deux crans, ecrire ne changeait rien du tout. A 2 500 mots par plant
+  //   cela faisait un changement visible toutes les 625 — deux pages — la ou la
+  //   creature en offre onze fois plus.
+  //
+  //   On ne peut pas ajouter des niveaux : ils doublent le nombre de branches. On
+  //   ouvre donc le DERNIER, rameau par rameau. La partie entiere donne les niveaux
+  //   pleins, la decimale la proportion du dernier qui est sortie.
+  //
+  //   Un rameau pas encore sorti reste un BOURGEON — un bouquet de feuilles — au
+  //   lieu de disparaitre : la couronne n'a jamais de trou, et pousser consiste a
+  //   ouvrir un bourgeon en rameau, ce qui est monotone.
+  //
+  //   Aux quatre valeurs entieres l'arbre est EXACTEMENT celui d'avant : le
+  //   changement raffine l'entre-deux, il ne redessine pas ce qui existait.
+  const prof_max = 4.0 + extension * 3.0;
+  // Le compte des pointes, qui donne le budget de feuillage. En ENTIERS :
+  // 2 ** un flottant n'a pas forcement la meme derniere decimale en Python
+  // et en JavaScript, et la parite se joue exactement la.
+  const niveaux = Math.trunc(prof_max);
+  const reste = prof_max - niveaux;
+  const pointes = (1 << niveaux) + Math.trunc(reste * (1 << niveaux));
+  // ⚠️ LE BUDGET SE REPARTIT, IL NE SE DIVISE PAS.
+  //
+  //   C'etait « BUDGET_FEUILLAGE // pointes », le meme nombre de feuilles pour
+  //   chaque bouquet. Un quotient entier n'est pas monotone : 52 pointes a 4
+  //   traits font 208 traits, 53 pointes a 3 traits en font 159. Le feuillage
+  //   RECULAIT donc au moment ou l'arbre gagnait un rameau — mesure sur la vie
+  //   d'un plant : 271 -> 223, 300 -> 235, puis 331 -> 230 traits, soit un tiers
+  //   de la couronne perdu d'un seul pas.
+  //
+  //   C'est la decision 1 violee, et ce n'est pas la profondeur fractionnaire qui
+  //   l'a introduit : la version entiere reculait deja au dernier cran de chaque
+  //   plant, 192 traits a la profondeur 6 contre 128 a la profondeur 7. L'arbre
+  //   s'eclaircissait exactement quand il s'achevait. C'est vraisemblablement ce
+  //   qu'on voyait dans le vrai Word et qu'on prenait pour un rapetissement.
+  //
+  //   On donne donc a chaque pointe sa part ENTIERE du budget, et une feuille de
+  //   plus a la fraction des pointes que le rang de pousse designe — le meme ordre
+  //   que celui des rameaux, pour que le supplement soit disperse et non groupe
+  //   d'un cote. Le total suit le budget au lieu de sauter par paliers.
+  const part = BUDGET_FEUILLAGE / pointes;
+  const plafond = 3 + Math.trunc(m * 3);
   const noeuds = [];
 
   function branche(x, y, angle, lg, prof, lignee) {
+    // Le dernier niveau est fractionnaire : ce rameau-ci n'est peut-etre pas
+    // encore sorti. Il reste alors un bourgeon.
+    if (prof > 0.0 && prof < 1.0 && _rang_de_pousse(lignee) >= prof) prof = 0.0;
     if (prof <= 0 || lg < 3.0) {
-      for (let i = 0; i < par_bouquet; i++) {
-        const a = angle + (i - par_bouquet / 2) * 0.40 + rng.uniform(-0.1, 0.1);
+      const n_feuilles = Math.max(1, Math.min(plafond, Math.trunc(part)
+        + (_rang_de_pousse(lignee) < part - Math.trunc(part) ? 1 : 0)));
+      for (let i = 0; i < n_feuilles; i++) {
+        const a = angle + (i - n_feuilles / 2) * 0.40 + rng.uniform(-0.1, 0.1);
         const r = lg * (1.3 + 0.8 * m);
         t.trait(x, y, x + Math.cos(a) * r, y + Math.sin(a) * r, m * 0.55, tt.ton(rng));
       }

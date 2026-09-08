@@ -268,8 +268,13 @@ class Toile:
 # Plafond GLOBAL du feuillage. Le correctif de la v4 bornait chaque bouquet
 # (3 + m*3 traits), mais le NOMBRE de bouquets croit en 2^profondeur : le
 # feuillage densifiait quand meme et fusionnait en aplat, masquant l'anastomose
-# qu'on venait d'ajouter. Meme remede que les cycles de 5 000 mots — plafonner
-# le total et le repartir, jamais l'unite locale.
+# qu'on venait d'ajouter. Meme remede que les cycles de plant — plafonner le
+# total et le repartir, jamais l'unite locale.
+#
+# ⚠️ « ET LE REPARTIR » a ete ecrit ici et pas fait pendant longtemps : le code
+# DIVISAIT, « BUDGET_FEUILLAGE // pointes », le meme compte pour chaque
+# bouquet. Un quotient entier n'est pas monotone, et la couronne perdait un
+# tiers de ses traits en gagnant un rameau. Voir vegetal() et la decision 6.
 BUDGET_FEUILLAGE = 210
 
 # Interrupteur de comparaison, comme BUDGET_FEUILLAGE. A False, les membres
@@ -286,7 +291,7 @@ MEMBRES_PROPORTIONNELS = True
 # depuis les v4-v5, mais rien ne les alimentait : `etoffage` et `traits`
 # tombaient sur leurs valeurs par defaut a chaque appel. Toutes les creatures
 # etaient donc la meme creature, tous les abstraits le meme cristal — un
-# paysage de vingt-sept plants n'aurait montre que quatre formes repetees, ce
+# paysage de cinquante-cinq plants n'aurait montre que quatre formes repetees, ce
 # qui aurait ruine la decision 7 (un paysage, pas un fourre-tout) sans qu'on
 # comprenne pourquoi.
 #
@@ -307,6 +312,28 @@ def _traits(traits):
     return t
 
 
+def _rang_de_pousse(lignee: int) -> float:
+    """
+    Dans quel ordre ce rameau sort, entre 0 et 1.
+
+    Le bit INVERSE (van der Corput). Pris dans l'ordre naturel, les rameaux
+    apparaitraient de gauche a droite et l'arbre pousserait d'un cote ; tires au
+    hasard, ils changeraient de place a chaque redessin. Le bit inverse les
+    disperse dans toute la couronne ET fixe l'ordre une fois pour toutes.
+
+    C'est cette fixite qui compte : un rameau sorti ne rentre jamais quand
+    l'extension monte, donc la forme ne peut que croitre — decision 1.
+    """
+    niveau = lignee.bit_length() - 1
+    if niveau <= 0:
+        return 0.0
+    index = lignee - (1 << niveau)
+    inverse = 0
+    for i in range(niveau):
+        inverse = (inverse << 1) | ((index >> i) & 1)
+    return inverse / (1 << niveau)
+
+
 def vegetal(t: Toile, extension, maturite, graine, teinte=None,
             traits=None):
     rng = random.Random(graine)
@@ -319,14 +346,64 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
     dissymetrie = (1.0 - tr["regularite"]) * 0.30
     # Des phrases longues font de longues entre-noeuds.
     entre_noeuds = 0.72 + tr["longueur"] * 0.34
-    prof_max = 4 + int(extension * 3.0)
-    par_bouquet = max(1, min(3 + int(m * 3), BUDGET_FEUILLAGE // (2 ** prof_max)))
+    # ⚠️ LA PROFONDEUR EST FRACTIONNAIRE, et c'est tout le sujet.
+    #
+    #   Elle valait « 4 + int(extension * 3.0) » : un entier, donc QUATRE formes sur
+    #   toute la vie d'un plant. L'extension n'entrait dans l'arbre que par la, et
+    #   entre deux crans, ecrire ne changeait rien du tout. A 2 500 mots par plant
+    #   cela faisait un changement visible toutes les 625 — deux pages — la ou la
+    #   creature en offre onze fois plus.
+    #
+    #   On ne peut pas ajouter des niveaux : ils doublent le nombre de branches. On
+    #   ouvre donc le DERNIER, rameau par rameau. La partie entiere donne les niveaux
+    #   pleins, la decimale la proportion du dernier qui est sortie.
+    #
+    #   Un rameau pas encore sorti reste un BOURGEON — un bouquet de feuilles — au
+    #   lieu de disparaitre : la couronne n'a jamais de trou, et pousser consiste a
+    #   ouvrir un bourgeon en rameau, ce qui est monotone.
+    #
+    #   Aux quatre valeurs entieres l'arbre est EXACTEMENT celui d'avant : le
+    #   changement raffine l'entre-deux, il ne redessine pas ce qui existait.
+    prof_max = 4.0 + extension * 3.0
+    # Le compte des pointes, qui donne le budget de feuillage. En ENTIERS :
+    # 2 ** un flottant n'a pas forcement la meme derniere decimale en Python
+    # et en JavaScript, et la parite se joue exactement la.
+    niveaux = int(prof_max)
+    reste = prof_max - niveaux
+    pointes = (1 << niveaux) + int(reste * (1 << niveaux))
+    # ⚠️ LE BUDGET SE REPARTIT, IL NE SE DIVISE PAS.
+    #
+    #   C'etait « BUDGET_FEUILLAGE // pointes », le meme nombre de feuilles pour
+    #   chaque bouquet. Un quotient entier n'est pas monotone : 52 pointes a 4
+    #   traits font 208 traits, 53 pointes a 3 traits en font 159. Le feuillage
+    #   RECULAIT donc au moment ou l'arbre gagnait un rameau — mesure sur la vie
+    #   d'un plant : 271 -> 223, 300 -> 235, puis 331 -> 230 traits, soit un tiers
+    #   de la couronne perdu d'un seul pas.
+    #
+    #   C'est la decision 1 violee, et ce n'est pas la profondeur fractionnaire qui
+    #   l'a introduit : la version entiere reculait deja au dernier cran de chaque
+    #   plant, 192 traits a la profondeur 6 contre 128 a la profondeur 7. L'arbre
+    #   s'eclaircissait exactement quand il s'achevait. C'est vraisemblablement ce
+    #   qu'on voyait dans le vrai Word et qu'on prenait pour un rapetissement.
+    #
+    #   On donne donc a chaque pointe sa part ENTIERE du budget, et une feuille de
+    #   plus a la fraction des pointes que le rang de pousse designe — le meme ordre
+    #   que celui des rameaux, pour que le supplement soit disperse et non groupe
+    #   d'un cote. Le total suit le budget au lieu de sauter par paliers.
+    part = BUDGET_FEUILLAGE / pointes
+    plafond = 3 + int(m * 3)
     noeuds = []
 
     def branche(x, y, angle, lg, prof, lignee):
+        # Le dernier niveau est fractionnaire : ce rameau-ci n'est peut-etre
+        # pas encore sorti. Il reste alors un bourgeon.
+        if 0.0 < prof < 1.0 and _rang_de_pousse(lignee) >= prof:
+            prof = 0.0
         if prof <= 0 or lg < 3.0:
-            for i in range(par_bouquet):
-                a = angle + (i - par_bouquet / 2) * 0.40 + rng.uniform(-0.1, 0.1)
+            n_feuilles = max(1, min(plafond, int(part) + (
+                1 if _rang_de_pousse(lignee) < part - int(part) else 0)))
+            for i in range(n_feuilles):
+                a = angle + (i - n_feuilles / 2) * 0.40 + rng.uniform(-0.1, 0.1)
                 r = lg * (1.3 + 0.8 * m)
                 t.trait(x, y, x + math.cos(a) * r, y + math.sin(a) * r,
                         m * 0.55, tt.ton(rng))
@@ -578,9 +655,9 @@ def abstrait(t: Toile, extension, maturite, graine, teinte=None,
 # Le germe — ce qui pousse avant qu'une famille soit connue
 # --------------------------------------------------------------------------
 # traits.py prevoit trois stades depuis le debut — germe, indices, divergence —
-# et rien n'en dessinait les deux premiers. C'est 16 % de CHAQUE cycle de
-# 5 000 mots, donc vingt-sept fois sur une these ; et la premiere de ces
-# vingt-sept fois, ce sont les 800 premiers mots ecrits avec le cadeau
+# et rien n'en dessinait les deux premiers. C'est 32 % de CHAQUE cycle de
+# 2 500 mots, donc cinquante-cinq fois sur une these ; et la premiere de ces
+# cinquante-cinq fois, ce sont les 800 premiers mots ecrits avec le cadeau
 # installe. Un volet vide, ce jour-la, est le pire accueil possible.
 #
 # Ce qu'on dessine : la PRIMITIVE AVANT SON ASSEMBLAGE. Les quatre familles
@@ -722,6 +799,99 @@ def planche_etat():
             o.append(dessiner(cle, e, m, 500 + i * 17,
                               Teinte.du_jour(200, 14, 0.7)).svg(
                 MG + j * CW, y0, CW, CH))
+    return "\n".join(o) + '</g></svg>'
+
+
+def planche_pousse():
+    """La courbe de pousse, et ce que la longueur des lignes y change.
+
+    Trois questions posees devant le vrai add-in, auxquelles aucune batterie ne
+    repond : a quel moment ca pousse vite, est-ce que la vitesse de frappe y
+    entre, et est-ce qu'on veut un paysage dense.
+
+    LA VITESSE DE FRAPPE N'Y ENTRE PAS. Le debit ne sert qu'a distinguer un
+    collage — quinze mots par intervalle de deux secondes, soit 450 mots par
+    minute. C'est un portillon, pas un debit : ecrire a 30 ou a 200 mots par
+    minute fait pousser exactement la meme chose. Cette planche n'a donc qu'un
+    axe, les mots ecrits.
+
+    CE QUI CHANGE TOUT, EN REVANCHE, C'EST LA LONGUEUR DES LIGNES.
+    L'extension VALAIT max(lignes / 52, mots / 5000) — le plus avance des deux
+    gagnait, pour ne pas fermer la forme de quelqu'un qui ecrit long avant
+    qu'elle ait fini de pousser. Mais 52 a ete calcule comme 5000 / 96 : il
+    suppose des lignes de 96 mots. Le premier vrai document ouvert avec
+    l'add-in en avait de ONZE. Les deux rangees montrent l'ecart.
+
+    La rangee APRES se lit sur MOTS_PAR_PLANT, qui vaut 2 500 depuis que la
+    decision 6 a ete confrontee a un article : elle bouge donc avec lui.
+    """
+    from paysage import MOTS_PAR_PLANT, PALIER_INDICES, PALIER_DIVERGENCE
+    ANCIEN = 52          # PARAGRAPHES_PAR_PLANT, retire depuis
+    ETAPES = [100, 200, 400, 600, 800, 1200, 2000, 3200, 5000]
+    # Les deux premieres rangees montrent l'AVANT, la troisieme l'APRES : une
+    # planche qui ne montre que l'etat corrige prouve que le mecanisme marche,
+    # pas que la correction change quelque chose.
+    STYLES = [("AVANT · PARAGRAPHES DE 96 MOTS", 96, True),
+              ("AVANT · LIGNES DE 11 MOTS", 11, True),
+              ("APRES · N'IMPORTE QUEL STYLE", 11, False)]
+    CW, CH, MG, TOP = 150, 200, 210, 96
+    W = MG + CW * len(ETAPES) + 20
+    H = TOP + (CH + 46) * len(STYLES) + 30
+    o = _entete(W, H)
+
+    o.append(f'<text x="20" y="30" font-size="13" fill="#2c3230">'
+             f'La courbe de pousse d\'un plant</text>')
+    o.append(f'<text x="20" y="52" font-size="10.5">'
+             f'avant : max(lignes / {ANCIEN}, mots / {MOTS_PAR_PLANT}) — '
+             f'apres : mots / {MOTS_PAR_PLANT}. '
+             f'La vitesse de frappe n\'y entre ni avant ni apres.'
+             f'</text>')
+    for j, m in enumerate(ETAPES):
+        o.append(f'<text x="{MG + j*CW + CW/2}" y="80" font-size="11" '
+                 f'text-anchor="middle" letter-spacing="1.2">{m} MOTS</text>')
+
+    for i, (nom, par_ligne, avant) in enumerate(STYLES):
+        y0 = TOP + i * (CH + 46)
+        o.append(f'<text x="20" y="{y0 + CH/2 - 8}" font-size="12" '
+                 f'fill="#2c3230">{nom}</text>')
+        plein = None
+        for j, m in enumerate(ETAPES):
+            lignes = max(1, m // par_ligne)
+            e = (min(1.0, max(lignes / ANCIEN, m / MOTS_PAR_PLANT)) if avant
+                 else min(1.0, m / MOTS_PAR_PLANT))
+            if e >= 1.0 and plein is None:
+                plein = m
+            x0 = MG + j * CW
+            # Sous le palier de divergence, c'est encore un germe : c'est la
+            # coupure du point ouvert 12, et elle doit se voir sur la planche.
+            if m < PALIER_DIVERGENCE:
+                t = Toile()
+                taille = min(1.0, m / PALIER_DIVERGENCE)
+                infl = max(0.0, min(1.0, (m - PALIER_INDICES)
+                                    / max(PALIER_DIVERGENCE - PALIER_INDICES, 1)))
+                germe(t, taille, infl, None, 500 + i * 17,
+                      Teinte.du_jour(200, 14, 0.7))
+                o.append(t.svg(x0, y0, CW, CH))
+                etat = "germe"
+            else:
+                o.append(dessiner("vegetal", e, 0.25, 500 + i * 17,
+                                  Teinte.du_jour(200, 14, 0.7)).svg(
+                    x0, y0, CW, CH))
+                etat = "vegetal"
+            o.append(f'<text x="{x0 + CW/2}" y="{y0 + CH + 14}" font-size="10" '
+                     f'text-anchor="middle">ext {e:.2f}</text>')
+            o.append(f'<text x="{x0 + CW/2}" y="{y0 + CH + 28}" font-size="9" '
+                     f'text-anchor="middle" fill="#9a938c">'
+                     f'{lignes} lignes · {etat}</text>')
+        # Le chiffre qui repond a la question de la densite.
+        if plein:
+            plants = 143000 // plein
+            o.append(f'<text x="20" y="{y0 + CH/2 + 12}" font-size="9.5" '
+                     f'fill="#9a938c">plein a {plein} mots</text>')
+            o.append(f'<text x="20" y="{y0 + CH/2 + 26}" font-size="9.5" '
+                     f'fill="#9a938c">these de 143 000 mots :</text>')
+            o.append(f'<text x="20" y="{y0 + CH/2 + 40}" font-size="9.5" '
+                     f'fill="#9a938c">~{plants} plants</text>')
     return "\n".join(o) + '</g></svg>'
 
 
@@ -921,7 +1091,8 @@ if __name__ == "__main__":
                     ("planche_feuillage", planche_feuillage),
                     ("planche_membres", planche_membres),
                     ("planche_dates", planche_dates),
-                    ("planche_germination", planche_germination)):
+                    ("planche_germination", planche_germination),
+                    ("planche_pousse", planche_pousse)):
         open(f"{nom}.svg", "w", encoding="utf-8").write(fn())
         print(f"{nom}.svg ecrit")
     print()

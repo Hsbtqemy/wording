@@ -13,7 +13,7 @@ Ce module implemente ce que jardin.py laissait de cote :
      3. le registre d'empreintes   deplacer / fusionner / copier / supprimer
      4. le collage                 ecriture, greffe, conversion
      5. le verrou par segment      800 mots ET 3 lectures espacees
-     6. l'echelle                  un plant au Titre 1 ou a 5 000 mots
+     6. l'echelle                  un plant au Titre 1 ou a 2 500 mots
     11. le perimetre               le paysage appartient au dossier
 
 Comme traits.py, ce fichier n'a aucune dependance externe : le portage vers
@@ -39,9 +39,39 @@ VERSION_ETAT = 2
 # Constantes. Chacune a sa raison dans DECISIONS.md ; les changer sans lire
 # l'entree correspondante casse quelque chose qui a ete paye cher.
 # --------------------------------------------------------------------------
-MOTS_PAR_PLANT = 5000          # decision 6 : au-dela, le retour se perd
-PARAGRAPHES_PAR_PLANT = 52     # 5 000 mots / ~96 mots, soit 1,92 % par paragraphe
-MOTS_MINIMUM_VERROU = 800      # decision 5 : 16 % du segment, pas 0,58 % de la these
+MOTS_PAR_PLANT = 2500          # decision 6 : au-dela, le retour se perd
+# ⚠️ 2 500 ET NON 5 000. La premiere valeur a ete calibree sur une these et
+# sur rien d'autre. Confrontee a un article de 8 000 mots — vingt pages — elle
+# en faisait 1,6 plant : un germe et un arbre, pas un paysage.
+#
+# Ce qu'on a mesure avant de changer, sur une these entiere de 146 000 mots,
+# en comptant paragraphe par paragraphe ce que le volet montrait :
+#
+#     mots/plant   part du temps en germe   plants   la these
+#        5 000              18 %              32     lisible
+#        2 500              33 %              59     lisible, plus dense
+#        1 000              78 %             139     une trainee
+#
+# Le plancher n'est pas negociable : il faut 800 mots pour que le style d'une
+# personne soit lisible, donc pour qu'un plant ait une famille. Plus le plant
+# est petit, plus ces 800 mots en mangent la vie — a 1 000, la personne
+# regarde une tache sans forme trois quarts du temps, et la vue d'ensemble
+# cesse d'avoir des objets dedans.
+#
+# 2 500 est le point ou l'arbre de la premiere semaine est deux fois plus
+# fourni qu'a 5 000 (extension 0,48 contre 0,24) sans que rien ne se perde.
+# ⚠️ PARAGRAPHES_PAR_PLANT A ETE RETIRE. Il valait 52, calcule comme
+# 5 000 / ~96 : ce n'etait pas une quantite independante mais le nombre de mots
+# exprime dans une longueur de paragraphe SUPPOSEE. La decision 17 a fait de la
+# LIGNE l'unite du paysage, et un vrai document a montre ce que la constante y
+# devenait — trente-cinq pages ecrites en lignes d'une phrase, onze mots
+# chacune, donc 52 lignes = 570 mots. Un plant tous les 1,6 page au lieu d'un
+# tous les douze, et deux cent cinquante plants pour une these au lieu de
+# vingt-neuf.
+#
+# Un plant se mesure donc en MOTS, et en mots seuls. La forme reflete ce qu'on a
+# ecrit, pas la facon dont on ponctue.
+MOTS_MINIMUM_VERROU = 800      # decision 5 : 32 % du plant, pas 0,58 % de la these
 LECTURES_CONCORDANTES = 3
 # Le verrou demande "3 lectures concordantes d'affilee". Espacees en MOTS, pas
 # en ticks : jardin.py comptait des appels a mettre_a_jour, donc dans un add-in
@@ -131,16 +161,27 @@ class Segment:
         """
         Combien de segments : ca pousse.
 
-        Les deux bornes de la decision 6 doivent aller ensemble. Mesurer
-        l'extension en paragraphes (52) pendant qu'on ferme le plant en mots
-        (5 000) laisse quelqu'un qui ecrit des paragraphes de 250 mots plafonner
-        a 0,38 d'extension pour toujours : sa forme se ferme avant d'avoir fini
-        de pousser. On prend donc la plus avancee des deux, et le plant se
-        ferme sur la meme condition — l'extension vaut exactement 1 au moment
-        ou le plant est plein, quelle que soit la longueur des paragraphes.
+        UNE SEULE MONNAIE, ET C'EST LE MOT. La version d'avant prenait le
+        plus avance de deux comptes — les paragraphes rapportes a 52, les mots
+        rapportes au plant — pour ne pas fermer la forme de quelqu'un qui ecrit
+        des paragraphes de 250 mots avant qu'elle ait fini de pousser. Le
+        remede etait bon tant que les deux nombres decrivaient la meme chose.
+
+        Ils ont cesse de le faire. La decision 17 a fait de la LIGNE l'unite du
+        paysage, et 52 supposait des paragraphes de 96 mots. Sur un vrai
+        document ecrit en lignes d'une phrase — onze mots — un plant se
+        remplissait en 570 mots, soit une page et demie au lieu de douze, et la
+        famille n'etait meme pas encore lisible : la forme restait une tige a
+        extension 1,00, puis devenait un arbre fini d'un seul coup, et ne
+        bougeait plus jamais.
+
+        Mesurer en mots seuls ne perd rien de ce que l'ancien remede defendait :
+        le plant se ferme aussi en mots, donc l'extension vaut exactement 1 au
+        moment ou il est plein, quelle que soit la longueur des lignes. Le
+        compte de lignes n'a pas disparu du projet pour autant — c'est lui qui
+        porte la maturite, en rapport reprises / paragraphes.
         """
-        return min(1.0, max(self.nouveaux / PARAGRAPHES_PAR_PLANT,
-                            self.mots / MOTS_PAR_PLANT))
+        return min(1.0, self.mots / MOTS_PAR_PLANT)
 
     @property
     def maturite(self) -> float:
@@ -182,8 +223,7 @@ class Segment:
 
     @property
     def plein(self) -> bool:
-        return (self.mots >= MOTS_PAR_PLANT
-                or self.nouveaux >= PARAGRAPHES_PAR_PLANT)
+        return self.mots >= MOTS_PAR_PLANT
 
     @property
     def verrouille(self) -> bool:
@@ -295,7 +335,7 @@ class Paysage:
         return self.segments[-1]
 
     def _nouveau_plant(self, jour: int, heure: int, titre: str = "") -> Segment:
-        # Un plant ouvert par debordement (5 000 mots) appartient encore au
+        # Un plant ouvert par debordement (2 500 mots) appartient encore au
         # chapitre en cours : il herite de la parcelle. Sans cet heritage, la
         # hierarchie du point 6 — paysage, parcelles, plants — n'existe que
         # pour les plants ouverts par un Titre 1, c'est-a-dire un sur trois.

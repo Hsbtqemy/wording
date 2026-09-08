@@ -63,8 +63,8 @@ python jardin/essais.py && python jardin/mutations.py \
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `53 passes, 0 en echec` · `28/28` · `aucun ecart` · `23 passes` ·
-`21 passes` · `73/73`.
+Attendu : `55 passes, 0 en echec` · `32/32` · `aucun ecart` · `23 passes` ·
+`23 passes` · `80/80`.
 
 `essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
 qu'aucune parité ne peut couvrir, faute de Python en face. Elle y a trouvé
@@ -86,10 +86,10 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **8 min 41**. Assez long pour donner
+Durée mesurée de l'enchaînement complet : **5 min 57**. Assez long pour donner
 envie de paralléliser, ce qu'il ne faut surtout pas faire — `mutations.py`
-relance `essais.py` vingt-six fois, et `mutations.js` relance la parité ou la
-batterie du volet soixante-dix fois.
+relance `essais.py` trente-deux fois, et `mutations.js` relance la parité ou la
+batterie du volet quatre-vingts fois.
 
 ⚠️ Pendant qu'une suite de mutations tourne, ne rien **modifier** dans
 `jardin/*.py` ni `addin/**/*.js` — elle garde en mémoire la version lue au

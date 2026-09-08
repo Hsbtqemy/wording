@@ -2,7 +2,7 @@
 La composition du paysage.
 
 C'etait le dernier trou de structure. Les decisions 6 et 7 posent trois
-niveaux — paysage, parcelles, plants — et annoncent vingt-sept objets melanges,
+niveaux — paysage, parcelles, plants — et annoncent cinquante-cinq objets melanges,
 mais rien ne dit OU un plant se pose. Sans reponse, le paysage est une rangee,
 c'est-a-dire une planche de test, pas un paysage. Et comme la reponse fixe le
 systeme de coordonnees, elle doit etre prise avant le portage, pas apres.
@@ -93,9 +93,9 @@ def composer(plants: list, hauteur=560, graine=1, marge=90):
         # taille du moment.
         #
         # Normaliser sur la taille courante ramenait tout plant a la meme
-        # hauteur : un plant a 800 mots et un plant a 5 000 apparaissaient
+        # hauteur : un plant a 800 mots et un plant a 2 500 apparaissaient
         # identiques, et L'EXTENSION DEVENAIT INVISIBLE DANS LE PAYSAGE. On
-        # aurait montre vingt-sept objets de meme taille pour une these dont
+        # aurait montre cinquante-cinq objets de meme taille pour une these dont
         # les chapitres n'ont rien a voir en volume. C'est exactement l'erreur
         # du volet, un cran plus haut.
         #
@@ -188,10 +188,17 @@ def _demonstration(mots=42000, graine=7):
 # --------------------------------------------------------------------------
 # Le dezoom progressif est la croissance logarithmique du point 6, transposee
 # d'un cran. Mesure : si tout doit tenir dans le cadre, un paragraphe deplace
-# 1,92 % / n de ce qu'on regarde. A 14 plants — 70 000 mots — cela fait
+# 3,84 % / n de ce qu'on regarde. A 28 plants — 70 000 mots — cela fait
 # 0,137 %, c'est-a-dire exactement le seuil ou le point 6 declare le mecanisme
-# mort, atteint exactement au meme nombre de mots. Les cycles de 5 000 mots
+# mort, atteint exactement au meme nombre de mots. Les cycles de plant
 # avaient rachete ce retour ; le dezoom le redepenserait.
+#
+# ⚠️ CE CALCUL NE DEPEND PAS DE LA TAILLE D'UN PLANT. Le rapport
+# paragraphe / plant et le nombre de plants se compensent exactement : passer
+# de 5 000 a 2 500 mots par plant double les deux — 1,92 % a 14 plants,
+# 3,84 % a 28 — et laisse 0,137 % inchange. La conclusion tient donc quelle
+# que soit l'echelle. Ca n'allait pas de soi, et ca a ete reverifie le jour ou
+# la constante a bouge.
 #
 # Une barre defilante a l'echelle constante garde le retour, mais perd
 # l'ensemble — or l'ensemble est ce pour quoi le cadeau existe, a la fin.
@@ -201,7 +208,7 @@ def _demonstration(mots=42000, graine=7):
 # plant en cours est vivant ; les plants acheves sont rasterises une fois ».
 #
 #   VUE DE TRAVAIL   le plant en cours, a taille pleine, dans le volet.
-#                    Retour intact, 1,92 % par paragraphe, indefiniment.
+#                    Retour intact, 0,04 % par mot, indefiniment.
 #                    Les plants acheves ne sont meme pas dessines.
 #
 #   VUE D'ENSEMBLE   le paysage entier, ouvert deliberement. Aucune exigence
@@ -213,6 +220,38 @@ def _demonstration(mots=42000, graine=7):
 # s'ouvre en fenetre large ; le volet garde la vue de travail.
 
 
+# ⚠️ LE RECUL DE LA CAMERA. La taille apparente du plant en cours vaut
+#
+#       apparente = (taille / finale) ** RECUL_CAMERA
+#
+#   et non taille / finale.
+#
+#   A 1,0 — ce qu'on a fait longtemps — le cadre EST la taille finale : un plant
+#   dont la taille vaut 5 % de sa taille finale occupe 5 % du volet, c'est-a-dire
+#   un cheveu. Or la personne regarde un plant sans famille 33 % du temps
+#   (decision 6). A 0,0 le cadre serait la taille du moment, ce que gabarit()
+#   refuse par ailleurs : un plant jeune et un plant acheve se ressembleraient et
+#   la croissance deviendrait invisible.
+#
+#   A 0,5, ce meme plant occupe 22 % du volet, et la croissance reste entierement
+#   lisible puisque la fonction est strictement croissante.
+#
+#   ⚠️ CE QUI FAIT TENIR LA DECISION 1, C'EST LA MONOTONIE, PAS LA VALEUR.
+#   L'autre proposition etait des PALIERS de dezoom — tres zoome au depart, on
+#   recule d'un cran quand le plant devient grand, puis encore. Elle donne la
+#   meme presence au germe, mais chaque palier est un retrecissement VISIBLE,
+#   trois ou quatre fois par plant : on rachete avec la camera ce qu'on venait de
+#   corriger dans le dessin. Un exposant n'a pas de palier — le cadre ne fait que
+#   grandir tant que le plant grandit, donc rien ne peut reculer.
+#
+#   EFFET DE BORD MESURE, et ce n'est pas un hasard heureux mais une propriete de
+#   la puissance : l'encombrement d'un plant flotte de +-10 % d'un pas au suivant
+#   (decision 6, point ouvert). Eleve a 0,5, un recul de 10,8 % de la taille n'en
+#   fait plus que 5,5 % de l'apparence. L'exposant amortit le flottement dans le
+#   meme mouvement qu'il rapproche la camera.
+RECUL_CAMERA = 0.5
+
+
 def gabarit(plant: dict, graine: int):
     """
     L'encombrement que CE plant atteindra une fois plein.
@@ -221,8 +260,9 @@ def gabarit(plant: dict, graine: int):
     toujours, un plant jeune et un plant acheve se ressemblent et la croissance
     devient invisible — on aurait detruit le retour par l'autre bout, en
     voulant le preserver. On cadre donc sur la taille FINALE : un plant jeune
-    occupe une fraction du volet, et chaque paragraphe en remplit 1,92 %, ce
-    qui est exactement la garantie de la decision 6.
+    occupe une fraction du volet, et chaque mot en remplit 0,04 % —
+    quelle que soit la facon dont on ponctue, ce qui est exactement la
+    garantie de la decision 6 depuis qu'elle se compte en mots seuls.
     """
     plein = dict(plant)
     plein["extension"] = 1.0
@@ -265,7 +305,7 @@ def vue_de_travail(plants: list, graine=1, largeur=360, hauteur=440,
 
       - le volet n'est JAMAIS vide. Le plant qui vient de naitre est presque
         rien, mais le precedent est juste derriere, qui deborde du cadre. On
-        avance dans le paysage au lieu de repartir de zero vingt-sept fois.
+        avance dans le paysage au lieu de repartir de zero cinquante-cinq fois.
 
       - le cadre est dimensionne sur la taille FINALE du plant en cours, jamais
         sur sa taille du moment. S'il remplissait toujours le volet, un plant
@@ -294,6 +334,11 @@ def vue_de_travail(plants: list, graine=1, largeur=360, hauteur=440,
     # deployee, un arbre — se ferait sinon rogner sur les cotes le jour ou il
     # arrive a maturite, c'est-a-dire au pire moment.
     gl, gh = gabarit(actif, graine + actif["rang"] * 977)
+    # Le cadre interpole entre la taille du moment et la taille finale — voir
+    # RECUL_CAMERA. Il contient toujours le plant : la taille finale est par
+    # construction superieure a la taille du moment, donc le cadre aussi.
+    gl = max(t.largeur(), 1.0) ** (1 - RECUL_CAMERA) * gl ** RECUL_CAMERA
+    gh = max(t.hauteur(), 1.0) ** (1 - RECUL_CAMERA) * gh ** RECUL_CAMERA
     vh = max(gh * k * 1.30, gl * k * 1.15 * hauteur / largeur, 1.0)
     vw = vh * largeur / hauteur
 
@@ -301,7 +346,7 @@ def vue_de_travail(plants: list, graine=1, largeur=360, hauteur=440,
     #
     # C'est la reponse a la seule chose que ce volet ne savait pas montrer :
     # un plant qui vient de naitre n'est presque rien, et centre dans son
-    # cadre il donne un volet vide — vingt-sept fois sur une these, dont la
+    # cadre il donne un volet vide — cinquante-cinq fois sur une these, dont la
     # premiere fois est celle des 800 premiers mots ecrits avec le cadeau.
     # Decale, il laisse voir le plant precedent qui sort par la gauche. On
     # avance dans le paysage au lieu de repartir de zero a chaque chapitre, et

@@ -44,6 +44,7 @@ function monter_hote({ plafond = 109, url = "C:/These/chapitre1.docx",
     tic: null,
     casser: false,
     styles_cassent: false,
+    ecritures: 0,
     lectures_de_style: 0,
     stockage: new Map(),
   };
@@ -169,7 +170,13 @@ function monter_hote({ plafond = 109, url = "C:/These/chapitre1.docx",
 
   globalThis.localStorage = {
     getItem: (k) => (etat.stockage.has(k) ? etat.stockage.get(k) : null),
-    setItem: (k, v) => { etat.stockage.set(k, String(v)); },
+    setItem: (k, v) => {
+      // On COMPTE les ecritures de l'etat. localStorage est synchrone, et le
+      // point 12 prescrit une ecriture amortie a trente secondes : savoir
+      // qu'elle ne part pas a chaque tic est tout l'interet.
+      if (k.startsWith("paysage:etat:")) etat.ecritures += 1;
+      etat.stockage.set(k, String(v));
+    },
     removeItem: (k) => { etat.stockage.delete(k); },
   };
 
@@ -245,16 +252,33 @@ async function pousser(etat, texte) {
 }
 
 /**
+ * Laisse partir l'ecriture en attente.
+ *
+ * Le volet amortit a trente secondes (point 12) : un essai qui lit le stockage
+ * juste apres avoir tape lit l'etat d'AVANT. C'est le comportement voulu, pas
+ * un contretemps — il faut donc le laisser passer explicitement.
+ */
+async function laisser_ranger(etat) {
+  const vraie = Date.now;
+  try {
+    Date.now = () => vraie() + 60000;
+    await etat.tic();
+  } finally {
+    Date.now = vraie;
+  }
+}
+
+/**
  * Ecrire en prenant son temps : chaque paragraphe dix minutes apres l'autre,
  * donc au-dela de ATTENTE_COPIE. Sans le saut, la copie dans le document se
  * retient — c'est justement ce qu'elle doit faire.
  */
-async function pousser_au_long(etat, textes) {
+async function pousser_au_long(etat, textes, pas = 10 * 60 * 1000) {
   const vraie = Date.now;
   let saut = vraie();
   try {
     for (const t of textes) {
-      saut += 10 * 60 * 1000;
+      saut += pas;
       Date.now = () => saut;
       // eslint-disable-next-line no-await-in-loop
       await pousser(etat, t);
@@ -285,6 +309,7 @@ suite.push(["un Word de 2021, sans les evenements, fait pousser le paysage",
     await pousser(etat, "Un paragraphe tape a la main, du premier au dernier mot.");
     vrai(etat.elements.paysage.innerHTML !== avant,
          "la forme doit avoir bouge");
+    await laisser_ranger(etat);
     const id = etat.reglages["paysage.identifiant"];
     const range = JSON.parse(etat.stockage.get(`paysage:etat:${id}`));
     vrai(range.segments[0].nouveaux >= 2,
@@ -379,6 +404,7 @@ suite.push(["le tic voit ce qui a change, sans que personne le previenne",
     // On tape un paragraphe neuf : Entree, puis le texte. AUCUN evenement n'est
     // envoye — le simulateur n'en offre plus. Le tic doit s'en apercevoir seul.
     await pousser(etat, "Quatre mots arrivent ici, puis quelques autres encore.");
+    await laisser_ranger(etat);
 
     const apres = JSON.parse(etat.stockage.get(`paysage:etat:${id}`)).segments[0].mots;
     vrai(apres > avant, `le paysage doit avoir pousse : ${avant} -> ${apres}`);
@@ -397,6 +423,67 @@ suite.push(["un tic qui leve n'arrete pas les suivants", async () => {
   vrai(etat.elements.paysage.innerHTML.includes("<svg"), "le volet dessine encore");
   const id = etat.reglages["paysage.identifiant"];
   vrai(etat.stockage.has(`paysage:etat:${id}`), "et range ce qui a pousse");
+}]);
+
+// ⚠️ localStorage EST SYNCHRONE. Le point 12 prescrit une ecriture amortie a
+// trente secondes depuis le debut, et le portage ne l'avait jamais appliquee :
+// on serialisait l'etat complet a chaque tic ou quelque chose avait pousse, sur
+// le fil qui gere la frappe. C'est ce qui faisait saccader le vrai add-in.
+suite.push(["l'etat ne se range pas a chaque tic", async () => {
+  const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
+  await demarrer(etat);
+  const depart = etat.ecritures;
+  await pousser(etat, "Un premier paragraphe, tape sans lever les mains.");
+  await pousser(etat, "Un second dans la foulee, quelques secondes apres.");
+  await pousser(etat, "Un troisieme, toujours dans la meme minute.");
+  egal(etat.ecritures, depart + 1,
+       "une seule ecriture pour trois pousses rapprochees");
+  // Rien ne se perd pour autant : l'ecriture attend, elle ne saute pas.
+  await laisser_ranger(etat);
+  egal(etat.ecritures, depart + 2, "et elle part des que le delai est passe");
+  const id = etat.reglages["paysage.identifiant"];
+  const range = JSON.parse(etat.stockage.get(`paysage:etat:${id}`));
+  vrai(range.segments[0].nouveaux >= 4,
+       `l'etat range doit porter les trois pousses, obtenu ${range.segments[0].nouveaux}`);
+}]);
+
+// Poser innerHTML fait reparser tout le SVG. Le point 12 veut que les plants
+// acheves soient rasterises une fois ; en attendant, on evite au moins de
+// re-poser un dessin identique — le vegetal ne change de forme que quatre fois
+// sur toute la vie d'un plant.
+//
+// ⚠️ La premiere version de cet essai faisait deux tics SANS RIEN TAPER et
+// verifiait que rien n'etait pose. Elle passait avec ou sans la garde :
+// dessiner() n'est appele QUE si le tic a releve des faits, donc un tic vide
+// ne pose jamais rien, garde ou pas. L'essai ne traversait pas le mecanisme
+// qu'il pretendait tenir, et la mutation qui supprime la garde lui a echappe.
+// C'est exactement le troisieme piege du LISEZMOI : un cahier qui a l'air
+// complet et ne traverse jamais le mecanisme surveille.
+//
+// Le vrai cas est celui-la : un fait arrive ET le dessin ne change pas. Word
+// cree un paragraphe VIDE a chaque Entree — c'est un fait, et il ne fait
+// pousser personne.
+suite.push(["un dessin identique n'est pas repose", async () => {
+  const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
+  await demarrer(etat);
+  const hote = etat.elements.paysage;
+  let poses = 0;
+  let valeur = hote.innerHTML;
+  Object.defineProperty(hote, "innerHTML", {
+    get() { return valeur; },
+    set(v) { poses += 1; valeur = v; },
+    configurable: true,
+  });
+
+  // Une Entree seule : le guet la releve, le paysage n'en tire rien.
+  const id = await entrer(etat);
+  egal(poses, 0, "une Entree seule ne doit rien reposer");
+
+  // Et le texte qui la remplit, lui, doit bien redessiner.
+  etat.paras.find((p) => p.id === id).text =
+    "Un paragraphe entier, tape jusqu'au point final.";
+  await etat.tic();
+  vrai(poses > 0, "mais une pousse doit bien redessiner");
 }]);
 
 // Le style appartient au paragraphe, et la lecture qui le donne est CHERE : un
@@ -519,12 +606,24 @@ suite.push(["le dossier perdu, le document rend le paysage", async () => {
   egal(b.reglages["paysage.identifiant"], id, "et sous la meme identite");
 }]);
 
+// ⚠️ UNE MINUTE entre les pousses, pas zero, et c'est tout l'essai.
+//
+// Depuis que le volet amortit l'ecriture a trente secondes, trois pousses
+// instantanees n'appellent copier() QU'UNE SEULE FOIS : le frein du volet
+// suffisait a donner le bon compte, et l'essai passait sans jamais atteindre
+// l'etranglement du magasin qu'il croyait tenir. La mutation qui supprime cet
+// etranglement lui a echappe le jour ou l'amortissement est arrive.
+//
+// Il faut donc laisser passer AMORTI (30 s) sans laisser passer ATTENTE_COPIE
+// (5 min) : trois appels a copier(), une seule copie.
 suite.push(["deux pousses rapprochees ne recopient qu'une fois", async () => {
   const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
   await demarrer(etat);
-  await pousser(etat, "Un premier paragraphe, tape sans lever les mains.");
-  await pousser(etat, "Un second dans la foulee, quelques secondes apres.");
-  await pousser(etat, "Un troisieme, toujours dans la meme minute.");
+  await pousser_au_long(etat, [
+    "Un premier paragraphe, tape sans lever les mains.",
+    "Un second dans la foulee, une minute apres.",
+    "Un troisieme, toujours dans le meme quart d'heure.",
+  ], 60 * 1000);
   egal(etat.sauvegardes, 1,
        "recopier 78 Ko dans le document a chaque tic marquerait le fichier"
      + " modifie mille huit cents fois par heure");

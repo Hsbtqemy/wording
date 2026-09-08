@@ -48,8 +48,41 @@ function _profondeur(plant) {
  * toujours, un plant jeune et un plant acheve se ressemblent et la croissance
  * devient invisible — on aurait detruit le retour par l'autre bout, en voulant
  * le preserver. On cadre donc sur la taille FINALE : chaque paragraphe en
- * remplit 1,92 %, ce qui est exactement la garantie de la decision 6.
+ * remplit 0,04 % — quelle que soit la facon dont on ponctue, ce qui est
+ * exactement la garantie de la decision 6 depuis qu'elle se compte en
+ * mots seuls.
  */
+// ⚠️ LE RECUL DE LA CAMERA. La taille apparente du plant en cours vaut
+//
+//       apparente = (taille / finale) ** RECUL_CAMERA
+//
+//   et non taille / finale.
+//
+//   A 1,0 — ce qu'on a fait longtemps — le cadre EST la taille finale : un plant
+//   dont la taille vaut 5 % de sa taille finale occupe 5 % du volet, c'est-a-dire
+//   un cheveu. Or la personne regarde un plant sans famille 33 % du temps
+//   (decision 6). A 0,0 le cadre serait la taille du moment, ce que gabarit()
+//   refuse par ailleurs : un plant jeune et un plant acheve se ressembleraient et
+//   la croissance deviendrait invisible.
+//
+//   A 0,5, ce meme plant occupe 22 % du volet, et la croissance reste entierement
+//   lisible puisque la fonction est strictement croissante.
+//
+//   ⚠️ CE QUI FAIT TENIR LA DECISION 1, C'EST LA MONOTONIE, PAS LA VALEUR.
+//   L'autre proposition etait des PALIERS de dezoom — tres zoome au depart, on
+//   recule d'un cran quand le plant devient grand, puis encore. Elle donne la
+//   meme presence au germe, mais chaque palier est un retrecissement VISIBLE,
+//   trois ou quatre fois par plant : on rachete avec la camera ce qu'on venait de
+//   corriger dans le dessin. Un exposant n'a pas de palier — le cadre ne fait que
+//   grandir tant que le plant grandit, donc rien ne peut reculer.
+//
+//   EFFET DE BORD MESURE, et ce n'est pas un hasard heureux mais une propriete de
+//   la puissance : l'encombrement d'un plant flotte de +-10 % d'un pas au suivant
+//   (decision 6, point ouvert). Eleve a 0,5, un recul de 10,8 % de la taille n'en
+//   fait plus que 5,5 % de l'apparence. L'exposant amortit le flottement dans le
+//   meme mouvement qu'il rapproche la camera.
+export const RECUL_CAMERA = 0.5;
+
 export function gabarit(plant, graine) {
   const plein = { ...plant };
   plein.extension = 1.0;
@@ -108,7 +141,7 @@ export function composer(plants, hauteur = 560, graine = 1, marge = 90) {
     const d = _profondeur(p);
     // L'echelle se calcule sur la taille FINALE du plant, jamais sur sa taille
     // du moment. Normaliser sur la taille courante ramenait tout plant a la
-    // meme hauteur : un plant a 800 mots et un plant a 5 000 apparaissaient
+    // meme hauteur : un plant a 800 mots et un plant a 2 500 apparaissaient
     // identiques, et L'EXTENSION DEVENAIT INVISIBLE DANS LE PAYSAGE.
     //
     // On normalise sur l'ENCOMBREMENT et non sur la seule hauteur : une
@@ -171,7 +204,7 @@ export function svg(plants, hauteur = 560, graine = 1) {
 // --------------------------------------------------------------------------
 // Le dezoom progressif est la croissance logarithmique du point 6, transposee
 // d'un cran. Mesure : si tout doit tenir dans le cadre, un paragraphe deplace
-// 1,92 % / n de ce qu'on regarde. A 14 plants — 70 000 mots — cela fait
+// 3,84 % / n de ce qu'on regarde. A 28 plants — 70 000 mots — cela fait
 // 0,137 %, exactement le seuil ou le point 6 declare le mecanisme mort, atteint
 // exactement au meme nombre de mots.
 //
@@ -209,13 +242,18 @@ export function vue_de_travail(plants, graine = 1, largeur = 360, hauteur = 440,
   // max() de Python garde le PREMIER maximum ; un > strict fait pareil.
   let pose = poses[0];
   for (const q of poses) if (q[1] > pose[1]) pose = q;
-  const [, cx, y, k] = pose;
+  const [, cx, y, k, t] = pose;
 
   // Taille FINALE de ce plant, dans les unites du monde. Le cadre doit la
   // contenir ENTIEREMENT : un plant plus large que haut — une creature
   // deployee, un arbre — se ferait sinon rogner sur les cotes le jour ou il
   // arrive a maturite, c'est-a-dire au pire moment.
-  const [gl, gh] = gabarit(actif, graine + actif.rang * 977);
+  let [gl, gh] = gabarit(actif, graine + actif.rang * 977);
+  // Le cadre interpole entre la taille du moment et la taille finale — voir
+  // RECUL_CAMERA. Il contient toujours le plant : la taille finale est par
+  // construction superieure a la taille du moment, donc le cadre aussi.
+  gl = Math.max(t.largeur(), 1.0) ** (1 - RECUL_CAMERA) * gl ** RECUL_CAMERA;
+  gh = Math.max(t.hauteur(), 1.0) ** (1 - RECUL_CAMERA) * gh ** RECUL_CAMERA;
   const vh = Math.max(gh * k * 1.30, gl * k * 1.15 * hauteur / largeur, 1.0);
   const vw = vh * largeur / hauteur;
 
@@ -223,7 +261,7 @@ export function vue_de_travail(plants, graine = 1, largeur = 360, hauteur = 440,
   //
   // C'est la reponse a la seule chose que ce volet ne savait pas montrer : un
   // plant qui vient de naitre n'est presque rien, et centre dans son cadre il
-  // donne un volet vide — vingt-sept fois sur une these, dont la premiere fois
+  // donne un volet vide — cinquante-cinq fois sur une these, dont la premiere fois
   // est celle des 800 premiers mots ecrits avec le cadeau. Decale, il laisse
   // voir le plant precedent qui sort par la gauche : on avance dans le paysage
   // au lieu de repartir de zero a chaque chapitre, et la naissance d'un plant

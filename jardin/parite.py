@@ -366,6 +366,27 @@ def cas_journal() -> tuple[list, list, int]:
                         210, 14, False,
                         p.retoucher(inchange, inchange.replace("'", "\u2019"), 210, 14)])
 
+    # Un chapitre qui DEBORDE, c'est-a-dire qui depasse a lui seul les 5 000
+    # mots d'un plant. Il ouvre le second plant par debordement et non par un
+    # Titre 1, ce qui est le seul moyen d'obtenir DEUX PLANTS SOUS LE MEME
+    # TITRE — donc une parcelle de plus d'un plant, donc le serrage du massif.
+    #
+    # Ce chemin etait traverse par accident tant que le plant se fermait aussi
+    # a 52 paragraphes : les chapitres de 3 800 mots du corpus franchissaient
+    # ce plafond-la. Le jour ou l'extension est passee aux seuls mots, plus
+    # aucun chapitre ne remplissait un plant, l'heritage de parcelle a cesse
+    # d'etre exerce, et la mutation qui defait le massif a echappe au cahier
+    # sans que rien ne le signale. On l'ecrit donc a la main, comme le reste de
+    # ce bloc.
+    #
+    # Depuis que le plant vaut 2 500 mots, les chapitres du corpus debordent a
+    # nouveau tout seuls et ce chapitre-ci n'est plus le seul massif du cahier.
+    # IL RESTE QUAND MEME, et c'est la lecon de la panne : une couverture qui
+    # tient par accident tombe silencieusement au prochain changement de
+    # constante. Celui-ci deborde quelle que soit la valeur du plant.
+    chapitre("Chapitre fleuve", 6400, "vegetal", jour=214, heure=15,
+             graine=904)
+
     # Deux plants jeunes, laisses jeunes. L'ordre compte : un Titre 1 sur un
     # plant de moins de 200 mots le RENOMME au lieu d'en ouvrir un neuf, donc le
     # chapitre lisible doit passer avant le chapitre germe.
@@ -439,13 +460,38 @@ def cas_composition(plants) -> dict:
         "vide": [],
         "un": plants[:1],
         "germe seul": [p for p in plants if p["stade"] == "germe"][:1],
-        "deux du meme chapitre": [p for p in plants[:2]],
         "tout": plants,
     }
+
+    # ⚠️ Cette vue s'appelait « deux du meme chapitre » et prenait plants[:2],
+    # qui sont deux chapitres DIFFERENTS. Elle portait donc le nom du cas sans
+    # le cas : composer() en faisait deux parcelles d'un plant chacune, le
+    # serrage ne valait jamais 0,46, et le supprimer ne changeait rien a aucune
+    # comparaison. On les CHERCHE, et on refuse de fabriquer le cahier s'il n'y
+    # en a pas — un cahier muet coute un cycle a diagnostiquer, une assertion
+    # coute une seconde.
+    #
+    # La regle est recopiee de composer() : les parcelles sont des SUITES de
+    # plants consecutifs de meme titre, et un plant sans famille n'est pas pose
+    # du tout.
+    suites: list = []
+    for q in plants:
+        if not q["famille"]:
+            continue
+        cle = q["titre"] or ""
+        if not suites or suites[-1][0] != cle:
+            suites.append((cle, []))
+        suites[-1][1].append(q)
+    massif = next((g for _c, g in suites if len(g) > 1), None)
+    if massif is None:
+        raise AssertionError(
+            "aucune parcelle ne porte deux plants : le serrage du massif"
+            " n'est traverse par aucune vue")
+    sous["deux du meme chapitre"] = massif[:2]
     # Deux plants de titres differents : la respiration de parcelle.
     titres = {}
-    for p in plants:
-        titres.setdefault(p["titre"], p)
+    for q in plants:
+        titres.setdefault(q["titre"], q)
     sous["deux chapitres"] = list(titres.values())[:2]
 
     vues = {}
@@ -723,7 +769,6 @@ def cas_tables() -> dict:
             "STYLES_IGNORES": sorted(paysage_mod.STYLES_IGNORES),
             "VARIANTES": {chr(k): v for k, v in paysage_mod._VARIANTES.items()},
             "MOTS_PAR_PLANT": paysage_mod.MOTS_PAR_PLANT,
-            "PARAGRAPHES_PAR_PLANT": paysage_mod.PARAGRAPHES_PAR_PLANT,
             "MOTS_MINIMUM_VERROU": paysage_mod.MOTS_MINIMUM_VERROU,
             "LECTURES_CONCORDANTES": paysage_mod.LECTURES_CONCORDANTES,
             "MOTS_ENTRE_LECTURES": paysage_mod.MOTS_ENTRE_LECTURES,

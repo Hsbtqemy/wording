@@ -63,6 +63,28 @@ MUTATIONS = [
      "        t.trait(x, y, x2, y2, m, tt.ton(rng), structure=True)",
      "decision 9 : la couleur deborde sur la structure"),
 
+    ("grammaire.py",
+     "    part = BUDGET_FEUILLAGE / pointes",
+     "    part = BUDGET_FEUILLAGE // pointes",
+     "decision 1 : le feuillage se divise au lieu de se repartir,"
+     " et la couronne perd un tiers de ses traits en gagnant un rameau"),
+
+    ("grammaire.py",
+     "    prof_max = 4.0 + extension * 3.0",
+     "    prof_max = 4.0 + int(extension * 3.0)",
+     "la profondeur redevient entiere : quatre formes sur la vie d'un plant"),
+
+    ("grammaire.py",
+     "        inverse = (inverse << 1) | ((index >> i) & 1)",
+     "        inverse = index",
+     "les rameaux sortent de gauche a droite au lieu d'etre disperses"),
+
+    ("composition.py",
+     "RECUL_CAMERA = 0.5",
+     "RECUL_CAMERA = 1.0",
+     "le cadre du volet revient a la taille finale : un germe redevient"
+     " un cheveu un tiers du temps"),
+
     ("message.py",
      "    t.cadre = cadre_de(phrase, corps, largeur, x0, y0)",
      "    t.cadre = None",
