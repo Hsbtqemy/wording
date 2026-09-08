@@ -236,13 +236,28 @@ export function vue_de_travail(plants, graine = 1, largeur = 360, hauteur = 440,
       + `<rect width="${largeur}" height="${hauteur}" fill="${FOND}"/></svg>`;
   }
 
-  // Le plant en cours est le dernier pose. On retrouve sa pose par son x.
-  const vivants = plants.filter((p) => p.famille || p.germe);
-  const actif = vivants[vivants.length - 1];
-  // max() de Python garde le PREMIER maximum ; un > strict fait pareil.
-  let pose = poses[0];
-  for (const q of poses) if (q[1] > pose[1]) pose = q;
-  const [, cx, y, k, t] = pose;
+  // ⚠️ LE PLANT QUI VIENT DE CHANGER, ET NON LE DERNIER.
+  //
+  //   C'etait vivants[-1] et max(poses) : le volet cadrait toujours le plant le
+  //   plus a droite, donc le plus recent. Revenir travailler sur le chapitre 1 ne
+  //   ramenait pas la camera dessus — et comme la reprise etait creditee au plant
+  //   courant, il n'y avait de toute facon rien a y voir.
+  //
+  //   Les deux moities se tiennent : depuis que le registre dit A QUI appartient
+  //   chaque paragraphe (point 3), retoucher fait murir le bon plant, et la camera
+  //   peut le montrer. Ecrire designe le plant courant, retoucher celui qui porte
+  //   le texte — une seule regle pour les deux axes du point 2.
+  //
+  //   Une pose ne porte pas son rang, donc on refait ici le filtre exact de
+  //   composer() pour retrouver l'indice. Si aucun plant n'est marque — un
+  //   sous-ensemble de plants, un etat d'avant — on retombe sur le dernier pose,
+  //   c'est-a-dire sur le comportement precedent.
+  const poses_de = plants.filter(
+    (q) => q.famille || (q.germe && q.germe.taille));
+  let i = poses_de.findIndex((q) => q.actif);
+  if (i === -1) i = poses_de.length - 1;
+  const actif = poses_de[i];
+  const [, cx, y, k, t] = poses[i];
 
   // Taille FINALE de ce plant, dans les unites du monde. Le cadre doit la
   // contenir ENTIEREMENT : un plant plus large que haut — une creature

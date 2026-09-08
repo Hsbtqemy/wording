@@ -324,10 +324,28 @@ def vue_de_travail(plants: list, graine=1, largeur=360, hauteur=440,
                 f'<rect width="{largeur}" height="{hauteur}" '
                 f'fill="{FOND}"/></svg>')
 
-    # Le plant en cours est le dernier pose. On retrouve sa pose par son x.
-    vivants = [p for p in plants if p.get("famille") or p.get("germe")]
-    actif = vivants[-1]
-    d, cx, y, k, t = max(poses, key=lambda q: q[1])
+    # ⚠️ LE PLANT QUI VIENT DE CHANGER, ET NON LE DERNIER.
+    #
+    #   C'etait vivants[-1] et max(poses) : le volet cadrait toujours le plant le
+    #   plus a droite, donc le plus recent. Revenir travailler sur le chapitre 1 ne
+    #   ramenait pas la camera dessus — et comme la reprise etait creditee au plant
+    #   courant, il n'y avait de toute facon rien a y voir.
+    #
+    #   Les deux moities se tiennent : depuis que le registre dit A QUI appartient
+    #   chaque paragraphe (point 3), retoucher fait murir le bon plant, et la camera
+    #   peut le montrer. Ecrire designe le plant courant, retoucher celui qui porte
+    #   le texte — une seule regle pour les deux axes du point 2.
+    #
+    #   Une pose ne porte pas son rang, donc on refait ici le filtre exact de
+    #   composer() pour retrouver l'indice. Si aucun plant n'est marque — un
+    #   sous-ensemble de plants, un etat d'avant — on retombe sur le dernier pose,
+    #   c'est-a-dire sur le comportement precedent.
+    poses_de = [q for q in plants
+                if q.get("famille") or (q.get("germe") or {}).get("taille")]
+    i = next((n for n, q in enumerate(poses_de) if q.get("actif")),
+             len(poses_de) - 1)
+    actif = poses_de[i]
+    d, cx, y, k, t = poses[i]
 
     # Taille FINALE de ce plant, dans les unites du monde. Le cadre doit la
     # contenir ENTIEREMENT : un plant plus large que haut — une creature

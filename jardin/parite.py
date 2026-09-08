@@ -406,6 +406,28 @@ def cas_journal() -> tuple[list, list, int]:
         verdict = p.absorber(texte, "Normal", 0, 300, 14)
         journal.append(["absorber", texte, "Normal", 0, 300, 14, verdict])
 
+    # ----------------------------------------------------------------------
+    # ⚠️ ON FINIT SUR UNE RETOUCHE D'UN VIEUX PARAGRAPHE, et c'est le seul
+    # endroit du cahier qui prouve quoi que ce soit sur l'attribution.
+    #
+    # Le registre dit desormais A QUI appartient chaque paragraphe, et
+    # retoucher() credite la reprise a ce plant-la. Sans ce bloc, toutes les
+    # retouches du cahier tombent sur du texte recent, donc sur le plant
+    # courant — c'est-a-dire exactement ce que faisait le code AVANT la
+    # correction, et la parite aurait passe sur les deux versions.
+    #
+    # Il porte aussi le plant ACTIF, que le volet cadre : en finissant par une
+    # retouche ancienne, l'actif n'est plus le dernier plant. C'est le seul cas
+    # du cahier ou vue_de_travail() cadre autre chose que le plant le plus a
+    # droite.
+    # ----------------------------------------------------------------------
+    p.quitter()
+    journal.append(["quitter"])
+    ancien = ecrits[2]
+    neuf = ancien + " Une precision ajoutee bien plus tard, sur le premier chapitre."
+    journal.append(["retoucher", ancien, neuf, 320, 15, False,
+                    p.retoucher(ancien, neuf, 320, 15)])
+
     # Un cahier qui n'emprunte pas tous les chemins a l'air complet sans
     # l'etre. On refuse de le fabriquer plutot que de le decouvrir plus tard.
     vus = {e[-1] for e in journal if e[0] != "quitter"}
@@ -414,6 +436,25 @@ def cas_journal() -> tuple[list, list, int]:
     manquants = attendus - vus
     if manquants:
         raise AssertionError(f"le journal n'emprunte pas : {sorted(manquants)}")
+
+    # ⚠️ L'ACTIF DOIT ETRE AILLEURS QUE SUR LE DERNIER PLANT. Sinon le cahier
+    # ne distingue pas « le plant qui vient de changer » de « le dernier
+    # plant », et la camera n'est comparee que dans le cas ou les deux
+    # coincident — c'est-a-dire jamais la ou elle a change.
+    plants_etat = p.etat()["plants"]
+    actifs = [q["rang"] for q in plants_etat if q["actif"]]
+    if actifs == [plants_etat[-1]["rang"]]:
+        raise AssertionError(
+            "le plant actif est le dernier : le cahier ne traverse pas la"
+            " camera qui revient sur un plant ancien")
+    # Et la reprise doit avoir atterri sur un plant qui n'est pas le dernier.
+    # On regarde les segments, pas etat() : les reprises sont un compte interne
+    # et n'apparaissent pas dans la vue rendue au dessin.
+    if not any(seg.reprises and seg.rang != p.segments[-1].rang
+               for seg in p.segments):
+        raise AssertionError(
+            "aucune reprise sur un plant ancien : le cahier ne prouve rien sur"
+            " l'attribution")
 
     # Et il doit laisser derriere lui au moins un plant de chaque sorte.
     stades = {s.stade() for s in p.segments}
@@ -439,6 +480,7 @@ def cas_journal() -> tuple[list, list, int]:
             "traits": dict(s.traits_courants),
             "scores": dict(s.scores_courants),
             "influences": s.influences(),
+            "actif": s.rang == p._rang_actif(),
         })
     return journal, plants, p
 
@@ -790,13 +832,27 @@ def cas_relectures() -> list:
     """
     cas = ["", "   ", "pas du json", "{}", "[]", "null",
            '{"version": 1, "segments": []}',
-           '{"version": 99, "identifiant": "x", "registre": [], "segments": []}']
+           '{"version": 99, "identifiant": "x", "registre": [], "segments": []}',
+           # ⚠️ LA VERSION 2 SE CONVERTIT, elle ne se jette pas : ses empreintes
+           # n'ont pas de proprietaire et prennent RANG_INCONNU. Un paysage de
+           # trois ans de these ne doit pas disparaitre parce qu'un champ est
+           # arrive. Les deux formes d'entree sont ici : nue, et avec un rang.
+           '{"version": 2, "identifiant": "v2", "cle_dossier": "d",'
+           ' "registre": ["aaaaaaaaaaaa", "bbbbbbbbbbbb"], "segments": []}',
+           '{"version": 3, "identifiant": "v3", "cle_dossier": "d",'
+           ' "registre": ["aaaaaaaaaaaa:0", "bbbbbbbbbbbb:-1"], "segments": []}',
+           # Un rang qui n'est pas un nombre : l'entree entiere fait empreinte.
+           '{"version": 3, "identifiant": "v3b", "registre": ["cccc:xx"],'
+           ' "segments": []}']
     sortie = []
     for brut in cas:
         r = Paysage.depuis(brut)
         sortie.append({"brut": brut, "identifiant": r.identifiant,
                        "plants": len(r.segments), "empreintes": len(r.registre),
-                       "version": r.version})
+                       "version": r.version,
+                       # Le proprietaire relu : c'est lui que la conversion
+                       # doit rendre, et il ne se voit nulle part ailleurs.
+                       "registre": sorted(r.registre.items())})
     return sortie
 
 

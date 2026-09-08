@@ -84,6 +84,43 @@ celui-ci non.
 
 Coût : 17 Ko pour 1 450 paragraphes, 59 Ko avec trois fois plus de reprises.
 
+### Le registre dit aussi **à qui**
+
+**Reconsidéré :** ce n'est plus un ensemble d'empreintes mais une table
+`empreinte → rang du plant`. Trois octets de plus par paragraphe, ~7 Ko sur une
+thèse de 2 400 paragraphes.
+
+**Pourquoi**, et c'est une panne de la décision 2, trouvée en vrai Word :
+`retoucher()` créditait la reprise à `_plant()`, c'est-à-dire toujours au
+**dernier** segment. Retravailler le chapitre 1 faisait mûrir le chapitre 8, et
+le chapitre 1 ne mûrissait jamais. Mesuré sur un paysage de 123 plants : cinq
+retouches sur un paragraphe du plant 0 donnaient **plant 0 maturité 0,000** et
+**plant 122 maturité 0,076**.
+
+Les conséquences, une fois qu'on les voit :
+
+- **un plant achevé ne pouvait plus jamais mûrir.** Il se ferme à 2 500 mots et
+  sa maturité est gelée pour toujours, quoi qu'on retravaille dedans ;
+- le plant courant mûrissait d'un travail fait sur du texte qu'il ne contient
+  pas ;
+- donc **la moitié du travail d'une thèse — la réécriture — était invisible**,
+  ou pire, attribuée à l'endroit où l'on se trouvait.
+
+⚠️ La cause n'était pas la négligence, c'était la persistance. `serialiser()`
+exclut les textes (`if k != "textes"`), donc à la réouverture **aucun plant ne
+sait plus ce qu'il contient**. Le registre gardait toutes les empreintes mais
+pas leur propriétaire : `retoucher()` prenait le seul plant qu'il pouvait
+nommer. Le registre les garde désormais, et l'attribution traverse les
+sessions.
+
+**Décidé, et écrit avant la version :** `depuis()` **convertit** un état de
+version 2 au lieu de le jeter. Il refusait tout ce qui n'était pas la version
+courante et rendait un paysage vide — monter la version aurait effacé un
+paysage de trois ans de thèse, **et sa copie de secours dans le `.docx` avec**,
+puisque les deux portent la même version. Les empreintes d'un état v2 prennent
+`RANG_INCONNU` : leur retouche retombe sur le plant courant, exactement comme
+avant, et tout ce qui s'écrit ensuite est correctement attribué.
+
 ### Une exception, trouvée en simulant Word
 
 La reconnaissance existe pour rendre un **déplacement** gratuit. Elle ne doit
@@ -1036,6 +1073,31 @@ aléatoire du dessin, et l'exposant en enlève la moitié pour rien.
 ⚠️ Une porte de plus, trouvée en regardant la planche : `gabarit()` anticipe
 aussi la **maturité** (il suppose 0,85). Un plant jamais repris ne remplit donc
 jamais son cadre, quel que soit l'exposant. Non traité.
+
+### La caméra suit ce qui change, pas ce qui est dernier
+
+**Décidé :** le volet cadre le plant qui vient de changer — **quel que soit
+l'axe**. Écrire désigne le plant courant, retoucher désigne celui qui porte le
+texte. Une seule règle pour les deux axes du point 2.
+
+C'était `vivants[-1]` et `max(poses)` : toujours le plant le plus à droite,
+donc le plus récent. Revenir travailler sur le chapitre 1 ne ramenait pas la
+caméra dessus — et comme la reprise était créditée au plant courant, il n'y
+avait de toute façon rien à y voir. Les deux moitiés se tenaient : c'est le
+registre qui dit désormais à qui appartient un paragraphe (point 3) qui rend
+cette règle possible.
+
+⚠️ **Le plant travaillé se sérialise, contrairement au curseur.** Les deux ne
+disent pas la même chose : le curseur (`_actif`, `_mode`) dit « ce paragraphe
+est en construction », ce qui devient faux dès qu'on ferme le document ; le
+plant travaillé dit « c'est là que je travaillais », ce qui reste vrai. Rouvrir
+son document et retrouver la caméra sur le chapitre qu'on révisait vaut mieux
+que de la voir sauter à la fin.
+
+C'est **la parité qui a trouvé l'écart** : le Python vivant disait « plant 0 »
+et le JavaScript relu disait « plant 21 », parce que l'un gardait l'état de
+session et l'autre pas. Sans elle, le volet aurait sauté au dernier plant à
+chaque réouverture sans que personne ne comprenne pourquoi.
 
 **Conséquence pour l'add-in :** le volet Word est une colonne étroite et haute
 (~320-450 px). Une bande horizontale y est le pire format possible. La vue de

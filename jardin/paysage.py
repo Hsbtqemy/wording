@@ -33,7 +33,14 @@ from traits import (
     MARGE_DOMINANCE, PALIER_INDICES, PALIER_DIVERGENCE,
 )
 
-VERSION_ETAT = 2
+VERSION_ETAT = 3
+# La 3 ajoute le PROPRIETAIRE de chaque empreinte. La 2 se relit et se convertit
+# — voir depuis(). Jeter un paysage parce qu'il vient d'une version d'avant
+# serait la pire chose que ce fichier puisse faire.
+
+# Une empreinte dont on ne sait pas a quel plant elle appartient : tout ce qui
+# vient d'un etat de version 2, ou d'un rang qui ne designe plus rien.
+RANG_INCONNU = -1
 
 # --------------------------------------------------------------------------
 # Constantes. Chacune a sa raison dans DECISIONS.md ; les changer sans lire
@@ -305,7 +312,21 @@ class Paysage:
     """
     identifiant: str = ""
     cle_dossier: str = ""
-    registre: set = field(default_factory=set)
+    # ⚠️ UNE TABLE, PAS UN ENSEMBLE : empreinte -> rang du plant qui la porte.
+    #
+    # C'etait un ensemble, et retoucher() creditait donc la reprise au plant
+    # COURANT, seul plant qu'il savait nommer. Retravailler le chapitre 1
+    # faisait murir le chapitre 8, et le chapitre 1 ne murissait jamais : un
+    # plant achevé voyait sa maturite gelee pour toujours, quoi qu'on
+    # retravaille dedans. La moitie du travail d'une these — la reecriture —
+    # etait donc invisible, et attribuee a l'endroit ou l'on se trouvait.
+    #
+    # La cause etait dans la persistance : serialiser() exclut les textes, donc
+    # a la reouverture aucun plant ne sait plus ce qu'il contient. Le registre
+    # gardait toutes les empreintes mais pas a qui elles appartenaient. Il les
+    # garde maintenant : trois octets de plus par paragraphe, environ 7 Ko sur
+    # une these de 2 400 paragraphes.
+    registre: dict = field(default_factory=dict)
     segments: list = field(default_factory=list)
     version: int = VERSION_ETAT
 
@@ -327,12 +348,32 @@ class Paysage:
     # passages la ou la decision 2 en attend cinq ou six.
     _actif: str = ""
     _mode: str = ""          # "frappe" ou "reprise"
+    # Le rang du plant qui a change en dernier, quel que soit l'axe : ecrire
+    # designe le plant courant, retoucher designe celui qui porte le texte.
+    # C'est lui que le volet cadre — sinon retravailler un vieux chapitre fait
+    # murir un plant qu'on ne regarde pas. Etat de session, jamais serialise :
+    # a la reouverture, rien n'a encore change.
+    _touche: int = RANG_INCONNU
 
     # ---------------------------------------------------------------- plants
     def _plant(self, jour: int, heure: int) -> Segment:
         if not self.segments:
             self.segments.append(Segment(rang=0, jour=jour, heure=heure))
         return self.segments[-1]
+
+    def _segment_de(self, e: str):
+        """
+        Le plant qui porte cette empreinte, ou None.
+
+        None couvre deux cas qu'il ne faut pas confondre avec une panne : une
+        empreinte inconnue, et une empreinte venue d'un etat de version 2, ou
+        le proprietaire n'etait pas enregistre. Dans les deux cas l'appelant
+        retombe sur le plant courant, c'est-a-dire sur le comportement d'avant.
+        """
+        rang = self.registre.get(e, RANG_INCONNU)
+        if 0 <= rang < len(self.segments):
+            return self.segments[rang]
+        return None
 
     def _nouveau_plant(self, jour: int, heure: int, titre: str = "") -> Segment:
         # Un plant ouvert par debordement (2 500 mots) appartient encore au
@@ -422,7 +463,8 @@ class Paysage:
         if plant.plein:
             plant = self._nouveau_plant(jour, heure)
 
-        self.registre.add(e)
+        self.registre[e] = plant.rang
+        self._touche = plant.rang
 
         # 3. Inconnue et arrivee d'un bloc : greffe, en attente.
         if mots_par_intervalle > SEUIL_COLLAGE:
@@ -475,9 +517,25 @@ class Paysage:
         if empreinte(ancien) == e:
             return "inchangee"
 
-        plant = self._plant(jour, heure)
-        self.registre.add(e)          # cette version-la existe maintenant
         vieille = empreinte(ancien)
+        # ⚠️ LE PLANT QUI PORTE LE TEXTE, PAS LE PLANT COURANT.
+        #
+        # C'etait self._plant(), donc toujours le dernier. Retravailler un
+        # paragraphe du chapitre 1 creditait la reprise au chapitre en cours :
+        # le chapitre 1 ne murissait jamais, et le plant courant murissait d'un
+        # travail fait sur du texte qu'il ne contient pas. Mesure sur un
+        # paysage de cent vingt-trois plants : cinq retouches sur un paragraphe
+        # du plant 0 donnaient plant 0 maturite 0,000 et plant 122 maturite
+        # 0,076.
+        #
+        # Un plant inconnu — empreinte jamais vue, ou etat de version 2 ou le
+        # proprietaire n'etait pas garde — retombe sur le plant courant, ce qui
+        # est exactement le comportement d'avant.
+        plant = self._segment_de(vieille) or self._plant(jour, heure)
+        # La nouvelle version appartient au meme plant : un paragraphe qu'on
+        # retravaille ne change pas de chapitre.
+        self.registre[e] = plant.rang
+        self._touche = plant.rang
         for i, t in enumerate(plant.textes):
             if empreinte(t) == vieille:
                 plant.textes[i] = nouveau
@@ -493,7 +551,6 @@ class Paysage:
             plant.relire()
             return "conversion"
 
-        vieille = empreinte(ancien)
         if vieille == self._actif and self._mode == "frappe":
             # Meme visite, premiere redaction : c'est encore de l'ecriture —
             # SAUF si ca arrive d'un bloc, auquel cas c'est une greffe, comme
@@ -557,12 +614,14 @@ class Paysage:
             e = empreinte(p)
             if e in self.registre:
                 continue
-            self.registre.add(e)
             if st in STYLES_TITRE:
                 self._nouveau_plant(jour, heure, titre=p.strip())
             plant = self._plant(jour, heure)
             if plant.plein:
                 plant = self._nouveau_plant(jour, heure)
+            # ⚠️ APRES avoir resolu le plant, pas avant : c'est son rang qu'on
+            # enregistre, et le Titre 1 vient peut-etre d'en ouvrir un neuf.
+            self.registre[e] = plant.rang
             plant.nouveaux += 1
             n = len(en_mots(p))
             plant.mots += n
@@ -596,6 +655,9 @@ class Paysage:
                             / max(PALIER_DIVERGENCE - PALIER_INDICES, 1))),
                     },
                     "influences": s.influences(),
+                    # Le plant que le volet doit cadrer : celui qui vient de
+                    # changer, par l'un ou l'autre axe.
+                    "actif": s.rang == self._rang_actif(),
                 }
                 for s in self.segments
             ],
@@ -603,13 +665,40 @@ class Paysage:
             "empreintes": len(self.registre),
         }
 
+    def _rang_actif(self) -> int:
+        """
+        Le plant que le volet cadre.
+
+        Celui qui a change en dernier — ecrire designe le plant courant,
+        retoucher celui qui porte le texte. Tant que rien n'a change, c'est le
+        dernier plant VIVANT : a la reouverture d'un document, on regarde ou on
+        en etait, pas un moignon invisible.
+        """
+        if 0 <= self._touche < len(self.segments):
+            return self._touche
+        for s in reversed(self.segments):
+            if s.famille or s.mots:
+                return s.rang
+        return len(self.segments) - 1
+
     # ----------------------------------------------------------- persistance
     def serialiser(self) -> str:
         return json.dumps({
             "version": self.version,
             "identifiant": self.identifiant,
             "cle_dossier": self.cle_dossier,
-            "registre": sorted(self.registre),
+            # « empreinte:rang ». Trie, pour qu'un meme paysage donne toujours
+            # le meme texte — sans quoi la copie dans le .docx repartirait a
+            # chaque tic (decision 16) et le fichier serait marque modifie.
+            # ⚠️ LE PLANT TOUCHE SE GARDE, contrairement au curseur (_actif,
+            # _mode) qui lui ne se serialise pas. Les deux ne disent pas la
+            # meme chose : le curseur dit « ce paragraphe est en construction »,
+            # ce qui est faux des qu'on ferme le document ; le plant touche dit
+            # « c'est la qu'on travaillait », ce qui reste vrai. Rouvrir son
+            # document et retrouver la camera sur le chapitre qu'on revisait
+            # vaut mieux que la voir sauter a la fin.
+            "touche": self._touche,
+            "registre": sorted(f"{e}:{r}" for e, r in self.registre.items()),
             "segments": [
                 {k: v for k, v in s.__dict__.items() if k != "textes"}
                 for s in self.segments
@@ -629,11 +718,33 @@ class Paysage:
         # tronque ou ecrase dans les Settings de Word faisait donc lever ici,
         # au chargement, la ou il n'y a personne pour rattraper — le volet
         # serait reste noir. Un paysage illisible repart vide, jamais en erreur.
-        if not isinstance(d, dict) or d.get("version") != VERSION_ETAT:
+        version = d.get("version") if isinstance(d, dict) else None
+        if not isinstance(d, dict) or not isinstance(version, int) \
+                or not 2 <= version <= VERSION_ETAT:
             return cls()
+
+        # ⚠️ ON CONVERTIT, ON NE JETTE PAS. Un paysage de version 2 est un
+        # paysage de trois ans de these : le refuser parce qu'il lui manque le
+        # proprietaire des empreintes serait la pire chose que ce fichier
+        # puisse faire. Ses empreintes gardent RANG_INCONNU, ce qui rend a
+        # celles-la — et a celles-la seules — le comportement d'avant : une
+        # retouche credite le plant courant. Tout ce qui s'ecrit ensuite est
+        # correctement attribue.
+        registre = {}
+        for entree in d.get("registre", []):
+            if not isinstance(entree, str):
+                continue
+            e, sep, rang = entree.rpartition(":")
+            if sep and rang.lstrip("-").isdigit():
+                registre[e] = int(rang)
+            else:
+                registre[entree] = RANG_INCONNU
+
         p = cls(identifiant=d.get("identifiant", ""),
                 cle_dossier=d.get("cle_dossier", ""),
-                registre=set(d.get("registre", [])))
+                registre=registre)
+        touche = d.get("touche", RANG_INCONNU)
+        p._touche = touche if isinstance(touche, int) else RANG_INCONNU
         for brut_s in d.get("segments", []):
             brut_s["jours"] = {int(k): v for k, v in brut_s.get("jours", {}).items()}
             p.segments.append(Segment(**brut_s))

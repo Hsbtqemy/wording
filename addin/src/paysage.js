@@ -27,7 +27,14 @@ import {
 
 export { NOMS, PALIER_INDICES, PALIER_DIVERGENCE };
 
-export const VERSION_ETAT = 2;
+export const VERSION_ETAT = 3;
+// La 3 ajoute le PROPRIETAIRE de chaque empreinte. La 2 se relit et se
+// convertit — voir depuis(). Jeter un paysage parce qu'il vient d'une version
+// d'avant serait la pire chose que ce fichier puisse faire.
+
+// Une empreinte dont on ne sait pas a quel plant elle appartient : tout ce qui
+// vient d'un etat de version 2, ou d'un rang qui ne designe plus rien.
+export const RANG_INCONNU = -1;
 
 // --------------------------------------------------------------------------
 // Constantes. Chacune a sa raison dans DECISIONS.md ; les changer sans lire
@@ -343,7 +350,13 @@ export class Paysage {
   constructor(champs = {}) {
     this.identifiant = "";
     this.cle_dossier = "";
-    this.registre = new Set();
+    // ⚠️ UNE TABLE, PAS UN ENSEMBLE : empreinte -> rang du plant qui la porte.
+    //
+    // C'etait un ensemble, et retoucher() creditait donc la reprise au plant
+    // COURANT, seul plant qu'il savait nommer. Retravailler le chapitre 1
+    // faisait murir le chapitre 8, et le chapitre 1 ne murissait jamais.
+    // Voir le commentaire du meme champ dans jardin/paysage.py.
+    this.registre = new Map();
     this.segments = [];
     this.version = VERSION_ETAT;
 
@@ -365,7 +378,24 @@ export class Paysage {
     // passages la ou la decision 2 en attend cinq ou six.
     this._actif = "";
     this._mode = "";          // "frappe" ou "reprise"
+    // Le rang du plant qui a change en dernier, quel que soit l'axe. C'est lui
+    // que le volet cadre. Etat de session, jamais serialise.
+    this._touche = RANG_INCONNU;
     Object.assign(this, champs);
+  }
+
+  /**
+   * Le plant qui porte cette empreinte, ou null.
+   *
+   * null couvre deux cas qu'il ne faut pas confondre avec une panne : une
+   * empreinte inconnue, et une empreinte venue d'un etat de version 2, ou le
+   * proprietaire n'etait pas enregistre. Dans les deux cas l'appelant retombe
+   * sur le plant courant, c'est-a-dire sur le comportement d'avant.
+   */
+  _segment_de(e) {
+    const rang = this.registre.has(e) ? this.registre.get(e) : RANG_INCONNU;
+    if (rang >= 0 && rang < this.segments.length) return this.segments[rang];
+    return null;
   }
 
   // ----------------------------------------------------------------- plants
@@ -455,7 +485,8 @@ export class Paysage {
     let plant = this._plant(jour, heure);
     if (plant.plein) plant = this._nouveau_plant(jour, heure);
 
-    this.registre.add(e);
+    this.registre.set(e, plant.rang);
+    this._touche = plant.rang;
 
     // 3. Inconnue et arrivee d'un bloc : greffe, en attente.
     if (mots_par_intervalle > SEUIL_COLLAGE) {
@@ -501,9 +532,15 @@ export class Paysage {
     const e = empreinte(nouveau);
     if (empreinte(ancien) === e) return "inchangee";
 
-    const plant = this._plant(jour, heure);
-    this.registre.add(e);          // cette version-la existe maintenant
     const vieille = empreinte(ancien);
+    // ⚠️ LE PLANT QUI PORTE LE TEXTE, PAS LE PLANT COURANT. C'etait _plant(),
+    // donc toujours le dernier : retravailler un paragraphe du chapitre 1
+    // creditait la reprise au chapitre en cours. Voir jardin/paysage.py.
+    const plant = this._segment_de(vieille) || this._plant(jour, heure);
+    // La nouvelle version appartient au meme plant : un paragraphe qu'on
+    // retravaille ne change pas de chapitre.
+    this.registre.set(e, plant.rang);
+    this._touche = plant.rang;
     for (let i = 0; i < plant.textes.length; i++) {
       if (empreinte(plant.textes[i]) === vieille) {
         plant.textes[i] = nouveau;
@@ -579,10 +616,12 @@ export class Paysage {
       if (STYLES_IGNORES.has(st)) continue;
       const e = empreinte(p);
       if (this.registre.has(e)) continue;
-      this.registre.add(e);
       if (STYLES_TITRE.has(st)) this._nouveau_plant(jour, heure, p.trim());
       let plant = this._plant(jour, heure);
       if (plant.plein) plant = this._nouveau_plant(jour, heure);
+      // ⚠️ APRES avoir resolu le plant, pas avant : c'est son rang qu'on
+      // enregistre, et le Titre 1 vient peut-etre d'en ouvrir un neuf.
+      this.registre.set(e, plant.rang);
       plant.nouveaux += 1;
       const n = en_mots(p).length;
       plant.mots += n;
@@ -617,6 +656,9 @@ export class Paysage {
             / Math.max(PALIER_DIVERGENCE - PALIER_INDICES, 1))),
         },
         influences: s.influences(),
+        // Le plant que le volet doit cadrer : celui qui vient de changer, par
+        // l'un ou l'autre axe.
+        actif: s.rang === this._rang_actif(),
       })),
       mots: this.segments.reduce((a, s) => a + s.mots, 0),
       empreintes: this.registre.size,
@@ -624,12 +666,40 @@ export class Paysage {
   }
 
   // ------------------------------------------------------------ persistance
+  /**
+   * Le plant que le volet cadre.
+   *
+   * Celui qui a change en dernier — ecrire designe le plant courant, retoucher
+   * celui qui porte le texte. Tant que rien n'a change, c'est le dernier plant
+   * VIVANT : a la reouverture d'un document, on regarde ou on en etait, pas un
+   * moignon invisible.
+   */
+  _rang_actif() {
+    if (this._touche >= 0 && this._touche < this.segments.length) {
+      return this._touche;
+    }
+    for (let i = this.segments.length - 1; i >= 0; i--) {
+      if (this.segments[i].famille || this.segments[i].mots) {
+        return this.segments[i].rang;
+      }
+    }
+    return this.segments.length - 1;
+  }
+
   serialiser() {
     return JSON.stringify({
       version: this.version,
       identifiant: this.identifiant,
       cle_dossier: this.cle_dossier,
-      registre: [...this.registre].sort(),
+      // ⚠️ LE PLANT TOUCHE SE GARDE, contrairement au curseur (_actif, _mode)
+      // qui lui ne se serialise pas. Le curseur dit « ce paragraphe est en
+      // construction », ce qui est faux des qu'on ferme le document ; le plant
+      // touche dit « c'est la qu'on travaillait », ce qui reste vrai.
+      touche: this._touche,
+      // « empreinte:rang ». Trie, pour qu'un meme paysage donne toujours le
+      // meme texte — sans quoi la copie dans le .docx repartirait a chaque tic
+      // (decision 16) et le fichier serait marque modifie.
+      registre: [...this.registre].map(([e, r]) => `${e}:${r}`).sort(),
       segments: this.segments.map((s) => {
         const brut = {};
         for (const [k, v] of Object.entries(s)) {
@@ -652,12 +722,32 @@ export class Paysage {
     // .version sur une liste ou sur null. Un paysage illisible repart vide,
     // jamais en erreur — au chargement il n'y a personne pour rattraper.
     if (!d || typeof d !== "object" || Array.isArray(d)
-        || d.version !== VERSION_ETAT) return new Paysage();
+        || !Number.isInteger(d.version)
+        || d.version < 2 || d.version > VERSION_ETAT) return new Paysage();
+
+    // ⚠️ ON CONVERTIT, ON NE JETTE PAS. Un paysage de version 2 est un paysage
+    // de trois ans de these : le refuser parce qu'il lui manque le
+    // proprietaire des empreintes serait la pire chose que ce fichier puisse
+    // faire. Ses empreintes gardent RANG_INCONNU, ce qui rend a celles-la — et
+    // a celles-la seules — le comportement d'avant.
+    const registre = new Map();
+    for (const entree of d.registre || []) {
+      if (typeof entree !== "string") continue;
+      const coupe = entree.lastIndexOf(":");
+      const rang = coupe === -1 ? "" : entree.slice(coupe + 1);
+      if (coupe !== -1 && rang !== "" && /^-?\d+$/.test(rang)) {
+        registre.set(entree.slice(0, coupe), parseInt(rang, 10));
+      } else {
+        registre.set(entree, RANG_INCONNU);
+      }
+    }
+
     const p = new Paysage({
       identifiant: d.identifiant || "",
       cle_dossier: d.cle_dossier || "",
-      registre: new Set(d.registre || []),
+      registre,
     });
+    p._touche = Number.isInteger(d.touche) ? d.touche : RANG_INCONNU;
     for (const brut_s of d.segments || []) {
       p.segments.push(new Segment(brut_s));
     }

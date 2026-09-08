@@ -85,6 +85,34 @@ MUTATIONS = [
      "le cadre du volet revient a la taille finale : un germe redevient"
      " un cheveu un tiers du temps"),
 
+    ("paysage.py",
+     "        plant = self._segment_de(vieille) or self._plant(jour, heure)",
+     "        plant = self._plant(jour, heure)",
+     "decision 2 : la reprise repart sur le plant courant, et un chapitre"
+     " ancien ne murit plus jamais"),
+
+    ("paysage.py",
+     "        self.registre[e] = plant.rang\n        self._touche = plant.rang\n"
+     "\n        # 3. Inconnue et arrivee d'un bloc : greffe, en attente.",
+     "        self.registre[e] = RANG_INCONNU\n        self._touche = plant.rang\n"
+     "\n        # 3. Inconnue et arrivee d'un bloc : greffe, en attente.",
+     "le registre n'enregistre plus le proprietaire : tout redevient inconnu"),
+
+    ("paysage.py",
+     "        if not isinstance(d, dict) or not isinstance(version, int) \\\n"
+     "                or not 2 <= version <= VERSION_ETAT:",
+     "        if not isinstance(d, dict) or not isinstance(version, int) \\\n"
+     "                or version != VERSION_ETAT:",
+     "un paysage de version 2 est jete au lieu d'etre converti :"
+     " trois ans de these effaces"),
+
+    ("composition.py",
+     "    i = next((n for n, q in enumerate(poses_de) if q.get(\"actif\")),\n"
+     "             len(poses_de) - 1)",
+     "    i = len(poses_de) - 1",
+     "le volet recadre toujours le dernier plant : revenir sur un vieux"
+     " chapitre ne ramene plus la camera"),
+
     ("message.py",
      "    t.cadre = cadre_de(phrase, corps, largeur, x0, y0)",
      "    t.cadre = None",

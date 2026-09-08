@@ -135,8 +135,13 @@ const MUTATIONS = [
    '  "av", "ap", "env", "p", "pp", "no", "fig", "art",',
    "une abreviation disparait d'un seul cote : « vol. » coupe une phrase en deux"],
 
+  // ⚠️ LE MOTIF A SUIVI LA VERSION 3. Il visait « d.version !== VERSION_ETAT »,
+  // qui n'existe plus : depuis() accepte maintenant une PLAGE de versions,
+  // parce qu'un etat de version 2 se convertit au lieu d'etre jete. Le
+  // controle prealable des motifs a signale la peremption avant de muter quoi
+  // que ce soit — c'est exactement ce pour quoi il existe.
   ["paysage.js",
-   "        || d.version !== VERSION_ETAT) return new Paysage();",
+   "        || d.version < 2 || d.version > VERSION_ETAT) return new Paysage();",
    "        || false) return new Paysage();",
    "depuis() accepte n'importe quel schema : un vieil etat se relit comme neuf"],
 
@@ -587,6 +592,35 @@ const MUTATIONS = [
    "    mot.textContent = \"\";",
    "une lecture impossible laisse une fenetre blanche au lieu de se dire",
    "volet"],
+
+
+  // ------------------------- l'attribution de la reprise (decisions 2 et 3)
+  ["paysage.js",
+   "    const plant = this._segment_de(vieille) || this._plant(jour, heure);",
+   "    const plant = this._plant(jour, heure);",
+   "decision 2 : la reprise repart sur le plant courant"],
+
+  ["paysage.js",
+   "    this.registre.set(e, plant.rang);\n    this._touche = plant.rang;\n"
+   + "\n    // 3. Inconnue et arrivee d'un bloc : greffe, en attente.",
+   "    this.registre.set(e, RANG_INCONNU);\n    this._touche = plant.rang;\n"
+   + "\n    // 3. Inconnue et arrivee d'un bloc : greffe, en attente.",
+   "le registre n'enregistre plus le proprietaire"],
+
+  ["paysage.js",
+   "        || d.version < 2 || d.version > VERSION_ETAT) return new Paysage();",
+   "        || d.version !== VERSION_ETAT) return new Paysage();",
+   "un paysage de version 2 est jete au lieu d'etre converti"],
+
+  ["paysage.js",
+   "      touche: this._touche,",
+   "      touche: RANG_INCONNU,",
+   "le plant travaille est oublie a la fermeture : la camera saute a la fin"],
+
+  ["composition.js",
+   "  let i = poses_de.findIndex((q) => q.actif);\n  if (i === -1) i = poses_de.length - 1;",
+   "  let i = poses_de.length - 1;",
+   "le volet recadre toujours le dernier plant"],
 
 ];
 

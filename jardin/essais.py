@@ -647,6 +647,170 @@ def _():
 
     return " -> ".join(f"{c:.0f}" for c in cadres)
 
+@essai("paysage / la reprise murit le plant qui PORTE le texte (decision 2)")
+def _():
+    import random
+    from corpus import paragraphe
+    from paysage import Paysage, MOTS_PAR_PLANT
+
+    """
+    ⚠️ CET ESSAI EST NE D'UNE PANNE MESUREE EN VRAI WORD.
+
+    retoucher() prenait _plant(), c'est-a-dire toujours le DERNIER segment —
+    le seul plant qu'il savait nommer, puisque serialiser() exclut les textes
+    et qu'a la reouverture aucun plant ne sait plus ce qu'il contient. Donc
+    retravailler le chapitre 1 faisait murir le chapitre 8, et le chapitre 1 ne
+    murissait jamais. Mesure sur cent vingt-trois plants : cinq retouches sur
+    un paragraphe du plant 0 donnaient plant 0 maturite 0,000 et plant 122
+    maturite 0,076. La moitie du travail d'une these — la reecriture — etait
+    attribuee a l'endroit ou l'on se trouvait.
+
+    Le registre porte desormais le rang du plant. On verifie les DEUX cotes :
+    le vieux plant murit, et le courant ne murit pas.
+    """
+    rng = random.Random(3)
+    p = Paysage(identifiant="attribution")
+    p.absorber("Chapitre premier", "Titre 1", 0, 10, 14)
+    premiers = []
+    while len(p.segments) < 2:
+        t = paragraphe(rng, "vegetal")[0]
+        p.absorber(t, jour=10)
+        premiers.append(t)
+    p.absorber("Chapitre second", "Titre 1", 0, 40, 14)
+    for _ in range(20):
+        p.absorber(paragraphe(rng, "architecture")[0], jour=40)
+
+    assert len(p.segments) >= 2, "il faut au moins deux plants pour que ca ait un sens"
+    courant = p.segments[-1]
+    vieux = p.segments[0]
+    assert courant.rang != vieux.rang
+
+    texte, avant_vieux, avant_courant = premiers[3], vieux.reprises, courant.reprises
+    for _ in range(5):
+        p.quitter()
+        suivant = texte + " Une precision ajoutee."
+        p.retoucher(texte, suivant, jour=41)
+        texte = suivant
+
+    assert vieux.reprises == avant_vieux + 5, (
+        f"le plant qui porte le texte doit recevoir les cinq reprises,"
+        f" obtenu {vieux.reprises - avant_vieux}")
+    assert courant.reprises == avant_courant, (
+        f"et le plant courant ne doit rien recevoir : il n'a pas ete touche,"
+        f" obtenu {courant.reprises - avant_courant} reprises")
+    assert vieux.maturite > 0, "le vieux plant doit murir"
+    assert courant.maturite == 0, "le plant courant ne doit pas murir"
+
+    # Et le volet doit cadrer le plant qui vient de changer, pas le dernier.
+    actifs = [q["rang"] for q in p.etat()["plants"] if q["actif"]]
+    assert actifs == [vieux.rang], (
+        f"la camera doit revenir sur le plant retouche {vieux.rang},"
+        f" obtenu {actifs}")
+
+    # Une empreinte inconnue retombe sur le plant courant : c'est ce qui rend
+    # leur comportement d'avant aux paysages de version 2.
+    p.quitter()
+    p.retoucher("Un texte que ce paysage n'a jamais vu passer, nulle part.",
+                "Le meme, retouche une fois.", jour=42)
+    assert courant.reprises == avant_courant + 1, (
+        "une empreinte sans proprietaire connu doit retomber sur le plant"
+        " courant")
+    return (f"vieux plant : {vieux.reprises} reprises, maturite"
+            f" {vieux.maturite:.3f} ; courant : {courant.reprises}")
+
+
+@essai("paysage / un etat de version 2 se convertit au lieu d'etre jete")
+def _():
+    import json
+    from paysage import Paysage, VERSION_ETAT, RANG_INCONNU
+
+    """
+    depuis() refusait tout ce qui n'etait pas la version courante et rendait un
+    paysage VIDE. Monter la version sans migration effacerait donc le paysage
+    de quelqu'un — et sa copie de secours dans le .docx avec, puisque les deux
+    portent la meme version. C'est la pire chose que ce fichier puisse faire.
+    """
+    p = Paysage(identifiant="migration")
+    p.absorber("Chapitre", "Titre 1", 0, 1, 14)
+    for i in range(6):
+        p.absorber(f"Un paragraphe numero {i}, ecrit a la main sans se presser.",
+                   jour=1)
+    d = json.loads(p.serialiser())
+    assert d["version"] == VERSION_ETAT
+
+    # La version 2 : les memes empreintes, sans proprietaire.
+    vieux = dict(d, version=2,
+                 registre=[e.rsplit(":", 1)[0] for e in d["registre"]])
+    r = Paysage.depuis(json.dumps(vieux, ensure_ascii=False))
+    assert len(r.registre) == len(p.registre), (
+        f"les empreintes doivent survivre : {len(r.registre)} sur"
+        f" {len(p.registre)}")
+    assert len(r.segments) == len(p.segments), "et les plants aussi"
+    assert set(r.registre.values()) == {RANG_INCONNU}, (
+        "leurs proprietaires sont inconnus, et c'est exact : la version 2 ne"
+        " les gardait pas")
+
+    # Et ce qui n'est pas une version connue reste refuse.
+    for mauvaise in (1, 99, "2", None):
+        assert not Paysage.depuis(json.dumps(dict(d, version=mauvaise))).segments, (
+            f"la version {mauvaise!r} ne doit rien rendre")
+    return f"{len(r.registre)} empreintes conservees, proprietaires inconnus"
+
+@essai("composition / le volet cadre le plant qui vient de changer")
+def _():
+    import re
+    import random
+    import composition
+    from corpus import paragraphe
+    from paysage import Paysage
+
+    """
+    ⚠️ IL NE SUFFIT PAS DE MARQUER LE PLANT ACTIF, IL FAUT QUE LE CADRE LE
+    SUIVE. Le premier essai de l'attribution verifiait le drapeau « actif »
+    rendu par etat(), et la mutation qui fait recadrer vue_de_travail() sur le
+    dernier plant lui a echappe : rien ne traversait le cadre lui-meme.
+
+    On lit donc le viewBox du SVG — pas un recalcul du cadre, qui testerait
+    l'arithmetique de l'essai — et on verifie que le plant retouche y est, et
+    que le dernier plant n'y est PAS. La seconde moitie est celle qui mord :
+    sans elle, un cadre assez large pour tout contenir passerait.
+    """
+    rng = random.Random(17)
+    p = Paysage(identifiant="camera")
+    ecrits = []
+    for c in range(6):
+        p.absorber(f"Chapitre {c + 1}", "Titre 1", 0, 10 + c * 5, 14)
+        while p.segments[-1].mots < 2000:
+            t = paragraphe(rng, "vegetal")[0]
+            p.absorber(t, jour=10 + c * 5)
+            if c == 0:
+                ecrits.append(t)
+    assert len(p.segments) >= 6, f"il faut plusieurs plants, obtenu {len(p.segments)}"
+
+    p.quitter()
+    p.retoucher(ecrits[2], ecrits[2] + " Une precision tardive.", jour=60)
+    plants = p.etat()["plants"]
+
+    poses, _ = composition.composer(plants, 560, 1)
+    poses_de = [q for q in plants
+                if q.get("famille") or (q.get("germe") or {}).get("taille")]
+    actifs = [n for n, q in enumerate(poses_de) if q["actif"]]
+    assert actifs == [0], f"le plant retouche est le premier, obtenu {actifs}"
+
+    svg = composition.vue_de_travail(plants, 1, 300, 380)
+    vx, _vy, vw, _vh = (float(v) for v in
+                        re.search(r'viewBox="([^"]+)"', svg).group(1).split())
+    cx_actif = poses[actifs[0]][1]
+    cx_dernier = poses[-1][1]
+    assert vx <= cx_actif <= vx + vw, (
+        f"le plant retouche (x={cx_actif:.0f}) doit etre dans le cadre"
+        f" [{vx:.0f}, {vx + vw:.0f}]")
+    assert not vx <= cx_dernier <= vx + vw, (
+        f"le dernier plant (x={cx_dernier:.0f}) ne doit PAS y etre : la camera"
+        f" est restee au bout au lieu de revenir")
+    return (f"cadre [{vx:.0f}, {vx + vw:.0f}] sur le plant 0 (x={cx_actif:.0f}),"
+            f" dernier a x={cx_dernier:.0f}")
+
 # ==========================================================================
 # composition.py
 # ==========================================================================
