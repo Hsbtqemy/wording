@@ -85,6 +85,31 @@ SILENCE = 60
 # specifier sans lui.
 INTERVALLE = 2000
 
+# Le temps ecoule au-dela duquel on cesse de croire ce qu'il dit.
+#
+# ⚠️ C'EST LA FAIBLESSE PROPRE AU GUET. Un evenement arrive QUAND la chose se
+# produit ; un instantane, lui, ne dit pas quand le texte est arrive, seulement
+# qu'il est la. Diviser par le temps ecoule etait juste tant qu'on etait
+# prevenu — un releve en retard signifiait alors que la personne avait tape
+# lentement. Le guet, lui, ne distingue pas « deux cents mots tapes en une
+# minute » de « deux cents mots colles, vus une minute trop tard ».
+#
+# Mesure sur un vrai Word : un collage de deux cents mots vu deux secondes plus
+# tard donne un debit de 200, donc une greffe ; vu soixante secondes plus tard,
+# un debit de 6,7, donc de l'ECRITURE. Deux cents mots comptes pour rien. C'est
+# par la qu'un vrai document est passe d'une tige a un arbre en trois collages.
+#
+# L'ASYMETRIE TRANCHE. Une greffe declaree a tort se rattrape toute seule : la
+# retravailler la convertit en ecriture (point 4). Une pousse declaree a tort
+# ne se rattrape JAMAIS, puisque le point 1 interdit de reculer. Dans le doute,
+# il faut donc lire un collage.
+#
+# Quatre intervalles, soit huit secondes. Personne ne tape soixante mots dans un
+# seul elan, donc le plafond ne peut pas transformer de la frappe honnete en
+# collage ; au-dela, on n'a de toute facon plus aucune idee de quand le texte
+# est arrive.
+PLAFOND_ECOULE = 4 * INTERVALLE
+
 
 def decouper_marque(texte):
     """Les lignes du corps, et le paragraphe d'ou chacune vient.
@@ -313,6 +338,10 @@ class Guet:
         cents et passeraient pour un collage. Elle ne peut donc que reduire le
         debit, jamais l'amplifier — panne trouvee en deroulant le volet contre
         un Office.js simule, ou tout s'enchaine sans attendre.
+
+        ⚠️ ET LE PLAFOND EST DE QUATRE INTERVALLES. Voir PLAFOND_ECOULE : au
+        dela, le temps ecoule ne dit plus rien de l'arrivee du texte, et
+        l'asymetrie des erreurs impose de lire un collage.
         """
         mots = 0
         for f in faits:
@@ -321,7 +350,8 @@ class Guet:
             elif f["type"] == "retouchee":
                 mots += max(0, compter_mots(f["texte"])
                             - compter_mots(f["ancien"]))
-        return mots * INTERVALLE / max(ecoule, INTERVALLE)
+        borne = min(max(ecoule, INTERVALLE), PLAFOND_ECOULE)
+        return mots * INTERVALLE / borne
 
     def nourrir(self, paysage, faits, jour=0, heure=14, debit=0.0):
         """Donne au paysage ce que le releve a vu, et rend les verdicts.
@@ -370,7 +400,7 @@ class Guet:
                                      heure, True)
             else:
                 v = paysage.retoucher(f["ancien"], f["texte"], jour, heure,
-                                      f["id"] in self.greffes)
+                                      f["id"] in self.greffes, debit)
             if v == "greffe":
                 self.greffes.add(f["id"])
             elif v in ("conversion", "ecriture"):

@@ -135,6 +135,28 @@ un brouillon se retravaille toujours, donc il se convertit seul.
 
 Filtre gratuit : un paragraphe en style Citation ne compte jamais.
 
+### La porte dérobée, trouvée au premier vrai usage
+
+⚠️ **Cette garde ne protégeait qu'`absorber()`.** `retoucher()` n'avait pas de
+paramètre de débit du tout, donc coller dans une ligne qu'on est *en train
+d'écrire* — même visite, mode `frappe` — ajoutait **tous les mots collés en
+extension**, sans le moindre contrôle.
+
+C'est par là qu'un vrai document est passé d'une tige à un arbre entier en trois
+collages, dans le premier Word où l'add-in ait jamais tourné. Le chemin des
+événements avait exactement le même trou : il est là depuis le début, et aucune
+batterie ne pouvait le voir puisque aucun cahier ne collait dans une ligne
+active.
+
+**La même arrivée ne peut pas compter différemment selon qu'elle tombe dans une
+ligne neuve ou dans une ligne en cours.** `retoucher()` reçoit donc le débit et
+rend `greffe` comme `absorber()`.
+
+Une imprécision assumée : convertir cette ligne plus tard recomptera le texte
+**entier**, y compris les mots écrits avant le collage. Le dépassement est borné
+par ce qu'on avait écrit soi-même, et le point 1 interdit de reculer — on
+préfère compter un peu deux fois que de retrancher.
+
 ---
 
 ## 5. Le verrou de famille
@@ -1053,6 +1075,23 @@ chaîne qu'on vient de recevoir. Taper dedans ne le change pas ; en ajouter un,
 si. La lecture chère ne part donc que quand la structure bouge.
 
 ### Ce que ça coûte
+
+⚠️ **Le guet ne sait pas QUAND le texte est arrivé.** Un événement se produit au
+moment de la chose ; un instantané dit seulement qu'elle est là. Diviser le
+débit par le temps écoulé était juste tant qu'on était prévenu — un relevé en
+retard signifiait alors que la personne avait tapé lentement.
+
+Mesuré : un collage de deux cents mots vu deux secondes plus tard donne un débit
+de **200**, donc une greffe ; vu soixante secondes plus tard, **6,7**, donc de
+l'**écriture**. Deux cents mots comptés pour rien.
+
+**L'asymétrie tranche.** Une greffe déclarée à tort se rattrape toute seule : la
+retravailler la convertit (point 4). Une pousse déclarée à tort ne se rattrape
+**jamais**, puisque le point 1 interdit de reculer. Dans le doute, il faut donc
+lire un collage — d'où `PLAFOND_ECOULE`, quatre intervalles. Personne ne tape
+soixante mots dans un seul élan, donc le plafond ne peut pas transformer de la
+frappe honnête en collage ; au-delà, on n'a de toute façon plus aucune idée de
+quand le texte est arrivé.
 
 ⚠️ **Le guet ne distingue plus la frappe d'un CO-AUTEUR.** Les événements
 portaient `args.source`, et le pont ignorait les modifications distantes. Un

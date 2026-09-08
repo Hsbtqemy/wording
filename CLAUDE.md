@@ -63,8 +63,8 @@ python jardin/essais.py && python jardin/mutations.py \
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `50 passes, 0 en echec` · `26/26` · `aucun ecart` · `23 passes` ·
-`20 passes` · `70/70`.
+Attendu : `53 passes, 0 en echec` · `28/28` · `aucun ecart` · `23 passes` ·
+`21 passes` · `73/73`.
 
 `essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
 qu'aucune parité ne peut couvrir, faute de Python en face. Elle y a trouvé
@@ -86,7 +86,7 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **8 min 13**. Assez long pour donner
+Durée mesurée de l'enchaînement complet : **8 min 41**. Assez long pour donner
 envie de paralléliser, ce qu'il ne faut surtout pas faire — `mutations.py`
 relance `essais.py` vingt-six fois, et `mutations.js` relance la parité ou la
 batterie du volet soixante-dix fois.
@@ -101,6 +101,13 @@ Reconstruire le cahier de parité pendant une passe de mutations l'a rempli avec
 les réponses d'un `guet.py` **muté** : tous les styles valaient « Normal », la
 parité a signalé quarante-six écarts, et le diagnostic a coûté un cycle entier
 avant qu'on comprenne que le code était bon et le cahier faux.
+
+⚠️ Les motifs de mutation sont **sensibles aux fins de ligne**, et git
+normalise en CRLF à chaque `checkout` sous Windows. Un motif multi-ligne cesse
+alors de mordre, et le contrôle préalable déclare tout le fichier périmé alors
+qu'aucun motif n'a vieilli — **un clone frais du dépôt refuserait de lancer les
+mutations**. Les deux harnais comparent donc sur une copie en LF et restaurent
+les octets d'origine ; ne pas défaire ça.
 
 `addin/parite/cas.json` et `jardin/planches.html` sont des produits de
 compilation, ignorés par git et régénérés en quelques secondes.

@@ -409,7 +409,8 @@ class Paysage:
         self._actif, self._mode = "", ""
 
     def retoucher(self, ancien: str, nouveau: str, jour: int = 0,
-                  heure: int = 14, etait_greffe: bool = False) -> str:
+                  heure: int = 14, etait_greffe: bool = False,
+                  mots_par_intervalle: float = 0) -> str:
         """
         Un paragraphe deja present change : c'est de la MATURITE, pas de
         l'extension. C'est la decision centrale du projet — reprendre quarante
@@ -419,6 +420,16 @@ class Paysage:
         Une greffe retouchee se convertit en ecriture : une citation ne se
         retouche jamais, un brouillon rapporte d'ailleurs se retravaille
         toujours. Le cas se resout seul, sans rien demander a personne.
+
+        ⚠️ LE DEBIT EST ARRIVE TARD, ET IL MANQUAIT. La decision 4 ne gardait
+        qu'absorber() : coller dans la ligne qu'on est EN TRAIN d'ecrire
+        ajoutait tous les mots colles en extension, sans le moindre controle.
+        C'est le trou par lequel un vrai document est passe d'une tige a un
+        arbre entier en trois collages, dans le premier Word ou l'add-in ait
+        jamais tourne. Le chemin des evenements avait exactement le meme.
+
+        La meme arrivee ne peut pas compter differemment selon qu'elle tombe
+        dans une ligne neuve ou dans une ligne en cours.
         """
         e = empreinte(nouveau)
         if empreinte(ancien) == e:
@@ -444,7 +455,20 @@ class Paysage:
 
         vieille = empreinte(ancien)
         if vieille == self._actif and self._mode == "frappe":
-            # Meme visite, premiere redaction : c'est encore de l'ecriture.
+            # Meme visite, premiere redaction : c'est encore de l'ecriture —
+            # SAUF si ca arrive d'un bloc, auquel cas c'est une greffe, comme
+            # dans absorber(). Les mots ne comptent pas, et la ligne est
+            # marquee pour que la retravailler la convertisse plus tard.
+            #
+            # Une imprecision assumee : la conversion recomptera la ligne
+            # ENTIERE, y compris les mots deja comptes avant le collage. Le
+            # depassement est borne par ce qu'on avait ecrit soi-meme, et le
+            # point 1 interdit de reculer — on prefere compter un peu deux fois
+            # que de retrancher quoi que ce soit.
+            if mots_par_intervalle > SEUIL_COLLAGE:
+                plant.greffes += 1
+                self._actif = e
+                return "greffe"
             # Les mots comptent, aucune reprise n'est enregistree.
             ajout = max(0, len(en_mots(nouveau)) - len(en_mots(ancien)))
             plant.mots += ajout

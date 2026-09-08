@@ -842,6 +842,13 @@ def cas_guet() -> dict:
     a[1][-1] = phrases[3]
     etapes.append([list(p) for p in a])
 
+    # 2bis. ON COLLE DANS LA LIGNE QU'ON VIENT D'ECRIRE. Elle est active et en
+    #       mode frappe : sans le controle de debit dans retoucher(), tous ces
+    #       mots compteraient en extension. C'est le trou par lequel un vrai
+    #       document est passe d'une tige a un arbre en trois collages.
+    a[1][-1] = phrases[3] + " " + " ".join("mot%d" % i for i in range(120))
+    etapes.append([list(p) for p in a])
+
     # 3. Une ligne inseree AU MILIEU : le cas qui tient l'invariant.
     a[1].insert(1, phrases[4])
     etapes.append([list(p) for p in a])

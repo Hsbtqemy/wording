@@ -959,6 +959,79 @@ def _():
     return "trois retouches d'affilee valent une reprise, la quatrieme en vaut deux"
 
 
+@essai("guet / coller dans la ligne qu'on ecrit ne la fait pas pousser")
+def _():
+    from guet import Guet
+    from paysage import Paysage, SEUIL_COLLAGE
+    p, g = Paysage(), Guet()
+    base = "Un debut de chapitre ecrit a la main."
+    p.rattacher(g.amorcer(base), 10, 14)
+
+    def tour(texte):
+        f = g.relever(texte)
+        return [v["verdict"] for v in g.nourrir(p, f, 10, 14, g.debit(f))]
+
+    tour(base + "\x0b")
+    assert tour(base + "\x0bUne ligne neuve tapee a la main.") == ["ecriture"]
+    avant = p.segments[0].mots
+
+    # LE TROU PAR LEQUEL UN VRAI DOCUMENT EST PASSE D'UNE TIGE A UN ARBRE.
+    # La decision 4 ne gardait qu'absorber() : coller dans la ligne qu'on est
+    # EN TRAIN d'ecrire ajoutait tous les mots, sans le moindre controle.
+    colle = " ".join("mot%d" % i for i in range(SEUIL_COLLAGE * 10))
+    assert tour(base + "\x0bUne ligne neuve tapee a la main. " + colle) == ["greffe"]
+    assert p.segments[0].mots == avant, \
+        f"un collage ne doit pas ajouter un mot : {avant} -> {p.segments[0].mots}"
+    assert p.segments[0].greffes == 1, "et il doit rester en attente"
+    return "la meme arrivee compte pareil dans une ligne neuve et dans une ligne en cours"
+
+
+@essai("guet / un collage vu tard reste un collage")
+def _():
+    from guet import Guet, INTERVALLE, PLAFOND_ECOULE
+    from paysage import Paysage, SEUIL_COLLAGE
+
+    def coller(ecoule):
+        p, g = Paysage(), Guet()
+        base = "Un debut de chapitre ecrit a la main."
+        p.rattacher(g.amorcer(base), 10, 14)
+        colle = " ".join("mot%d" % i for i in range(SEUIL_COLLAGE * 13))
+        f = g.relever(base + "\x0b" + colle)
+        d = g.debit(f, ecoule)
+        return [v["verdict"] for v in g.nourrir(p, f, 10, 14, d)], d, p.segments[0].mots
+
+    tot, d_tot, mots_tot = coller(INTERVALLE)
+    tard, d_tard, mots_tard = coller(60000)
+    assert tot == ["greffe"], tot
+    # Sans plafond, le meme collage vu une minute plus tard donnait un debit de
+    # 6,7 et passait pour de l'ECRITURE : deux cents mots comptes pour rien.
+    # Un evenement arrive QUAND la chose se produit ; un instantane ne dit pas
+    # quand le texte est arrive. L'asymetrie tranche — une greffe declaree a
+    # tort se convertit en la retravaillant, une pousse declaree a tort ne se
+    # rattrape jamais.
+    assert tard == ["greffe"], (tard, d_tard)
+    assert mots_tard == mots_tot, "un collage tardif ne doit rien ajouter"
+    assert d_tard < d_tot, "le retard doit quand meme reduire le debit"
+    return f"debit {d_tot:.0f} vu tot, {d_tard:.0f} vu tard, greffe dans les deux cas"
+
+
+@essai("guet / le plafond ne transforme pas la frappe en collage")
+def _():
+    from guet import Guet, PLAFOND_ECOULE
+    from paysage import Paysage
+    p, g = Paysage(), Guet()
+    base = "Un debut de chapitre ecrit a la main."
+    p.rattacher(g.amorcer(base), 10, 14)
+    g.relever(base + "\x0b")
+    f = g.relever(base + "\x0bDouze mots tapes tranquillement apres une longue pause, sans hate.")
+    # Le plafond doit proteger du collage sans condamner la frappe honnete :
+    # personne ne tape soixante mots dans un seul elan.
+    d = g.debit(f, 600000)
+    v = [x["verdict"] for x in g.nourrir(p, f, 10, 14, d)]
+    assert v == ["ecriture"], (v, d)
+    return f"douze mots apres dix minutes : debit {d:.0f}, ecriture"
+
+
 # ==========================================================================
 def main(filtre=None):
     print("=" * LARGEUR)

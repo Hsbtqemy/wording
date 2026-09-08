@@ -184,8 +184,8 @@ MUTATIONS = [
      " est declaree connue et le plant cesse de pousser"),
 
     ("guet.py",
-     '                                      f["id"] in self.greffes)',
-     "                                      False)",
+     '                                      f["id"] in self.greffes, debit)',
+     "                                      False, debit)",
      "decision 4 : un chapitre colle puis retravaille reste une greffe pour"
      " toujours — le defaut que le pont avait, remis en place"),
 
@@ -196,8 +196,8 @@ MUTATIONS = [
      " mauvais verdict"),
 
     ("guet.py",
-     "        return mots * INTERVALLE / max(ecoule, INTERVALLE)",
-     "        return mots * INTERVALLE / max(ecoule, 1)",
+     "        borne = min(max(ecoule, INTERVALLE), PLAFOND_ECOULE)",
+     "        borne = min(max(ecoule, 1), PLAFOND_ECOULE)",
      "le debit s'amplifie quand un releve arrive tot : quatre mots tapes"
      " deviennent un collage"),
 
@@ -206,6 +206,26 @@ MUTATIONS = [
      '            if genre == "visite_finie":\n                paysage.etat()',
      "la visite ne se ferme plus : plant.reprises ne monte jamais et l'element"
      " cesse de murir"),
+
+
+    # ------------------------------------------- la porte derobee du collage
+    ("paysage.py",
+     "            if mots_par_intervalle > SEUIL_COLLAGE:\n"
+     "                plant.greffes += 1\n"
+     "                self._actif = e\n"
+     "                return \"greffe\"",
+     "            if False:\n"
+     "                plant.greffes += 1\n"
+     "                self._actif = e\n"
+     "                return \"greffe\"",
+     "decision 4 : coller dans la ligne qu'on ecrit compte tous les mots — le"
+     " trou par lequel un vrai document est passe d'une tige a un arbre"),
+
+    ("guet.py",
+     "        borne = min(max(ecoule, INTERVALLE), PLAFOND_ECOULE)",
+     "        borne = max(ecoule, INTERVALLE)",
+     "le temps ecoule n'est plus plafonne : un collage vu une minute trop tard"
+     " passe pour de l'ecriture"),
 
 ]
 
@@ -235,8 +255,18 @@ def _restaurer_les_restes(fichiers) -> None:
 def main() -> int:
     fichiers = {m[0] for m in MUTATIONS}
     _restaurer_les_restes(fichiers)
-    sauvegardes = {f: io.open(os.path.join(RACINE, f), encoding="utf-8").read()
-                   for f in fichiers}
+    # ⚠️ DEUX VERSIONS DE CHAQUE FICHIER. Git normalise les fins de ligne en
+    # CRLF a chaque checkout sur Windows, et les motifs multi-lignes portent des
+    # sauts simples : ils cessent alors de mordre, et le controle prealable
+    # declare tout le fichier perime alors qu'aucun motif n'a vieilli. Un clone
+    # frais du depot refuserait de lancer les mutations.
+    #
+    # On compare et on mute sur la copie en LF, et on restaure les OCTETS
+    # D'ORIGINE : le fichier ressort exactement comme il etait entre.
+    octets = {f: io.open(os.path.join(RACINE, f), encoding="utf-8").read()
+              for f in fichiers}
+    sauvegardes = {f: t.replace(chr(13) + chr(10), chr(10))
+                   for f, t in octets.items()}
     # Les motifs d'abord, avant de toucher un seul fichier.
     #
     # Un motif perime se signalait « obsolete » en cours de route, apres avoir
@@ -266,14 +296,15 @@ def main() -> int:
         # Plus besoin de tester le motif ici : le controle prealable a deja
         # rendu la main si l'un d'eux ne mordait plus.
         cote = chemin + ".intact"
-        io.open(cote, "w", encoding="utf-8", newline="\n").write(src)
+        io.open(cote, "w", encoding="utf-8", newline="\n").write(octets[fichier])
         io.open(chemin, "w", encoding="utf-8", newline="\n").write(
             src.replace(vieux, neuf, 1))
         try:
             r = subprocess.run([sys.executable, "essais.py"], cwd=RACINE,
                                capture_output=True, text=True)
         finally:
-            io.open(chemin, "w", encoding="utf-8", newline="\n").write(src)
+            io.open(chemin, "w", encoding="utf-8",
+                    newline="").write(octets[fichier])
             os.remove(cote)
         if r.returncode:
             attrapees += 1

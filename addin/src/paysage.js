@@ -467,7 +467,8 @@ export class Paysage {
    * retouche jamais, un brouillon rapporte d'ailleurs se retravaille toujours.
    * Le cas se resout seul, sans rien demander a personne.
    */
-  retoucher(ancien, nouveau, jour = 0, heure = 14, etait_greffe = false) {
+  retoucher(ancien, nouveau, jour = 0, heure = 14, etait_greffe = false,
+            mots_par_intervalle = 0) {
     const e = empreinte(nouveau);
     if (empreinte(ancien) === e) return "inchangee";
 
@@ -494,8 +495,18 @@ export class Paysage {
     }
 
     if (vieille === this._actif && this._mode === "frappe") {
-      // Meme visite, premiere redaction : c'est encore de l'ecriture. Les mots
-      // comptent, aucune reprise n'est enregistree.
+      // Meme visite, premiere redaction : c'est encore de l'ecriture — SAUF si
+      // ca arrive d'un bloc, auquel cas c'est une greffe, comme dans
+      // absorber(). La decision 4 ne gardait que celui-la, et coller dans la
+      // ligne qu'on est EN TRAIN d'ecrire ajoutait tous les mots colles sans
+      // le moindre controle. C'est le trou par lequel un vrai document est
+      // passe d'une tige a un arbre entier en trois collages.
+      if (mots_par_intervalle > SEUIL_COLLAGE) {
+        plant.greffes += 1;
+        this._actif = e;
+        return "greffe";
+      }
+      // Les mots comptent, aucune reprise n'est enregistree.
       const ajout = Math.max(0, en_mots(nouveau).length - en_mots(ancien).length);
       plant.mots += ajout;
       plant.dater(jour, heure, ajout);

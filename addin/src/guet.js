@@ -65,6 +65,22 @@ export const SILENCE = 60;
 export const INTERVALLE = 2000;
 
 /**
+ * Le temps ecoule au-dela duquel on cesse de croire ce qu'il dit.
+ *
+ * ⚠️ C'est la faiblesse propre au guet : un evenement arrive QUAND la chose se
+ * produit, un instantane ne dit pas quand le texte est arrive. Mesure sur un
+ * vrai Word — un collage de deux cents mots vu deux secondes plus tard donne un
+ * debit de 200, donc une greffe ; vu soixante secondes plus tard, 6,7, donc de
+ * l'ECRITURE. C'est par la qu'un vrai document est passe d'une tige a un arbre
+ * en trois collages.
+ *
+ * L'ASYMETRIE TRANCHE : une greffe declaree a tort se convertit en la
+ * retravaillant (point 4), une pousse declaree a tort ne se rattrape jamais
+ * (point 1). Dans le doute, on lit un collage.
+ */
+export const PLAFOND_ECOULE = 4 * INTERVALLE;
+
+/**
  * Les mots d'une ligne, pour le SEUL calcul du debit.
  *
  * en_mots() serait plus juste mais coute une expression reguliere Unicode par
@@ -272,6 +288,8 @@ export class Guet {
    * millisecondes, quatre mots tapes deviendraient un debit de mille six cents
    * et passeraient pour un collage. Elle ne peut donc que reduire le debit,
    * jamais l'amplifier.
+   *
+   * ⚠️ ET LE PLAFOND EST DE QUATRE INTERVALLES — voir PLAFOND_ECOULE.
    */
   debit(faits, ecoule = INTERVALLE) {
     let mots = 0;
@@ -281,7 +299,8 @@ export class Guet {
         mots += Math.max(0, compter_mots(f.texte) - compter_mots(f.ancien));
       }
     }
-    return mots * INTERVALLE / Math.max(ecoule, INTERVALLE);
+    const borne = Math.min(Math.max(ecoule, INTERVALLE), PLAFOND_ECOULE);
+    return mots * INTERVALLE / borne;
   }
 
   /**
@@ -324,7 +343,7 @@ export class Guet {
         v = paysage.absorber(f.texte, f.style, debit, jour, heure, true);
       } else {
         v = paysage.retoucher(f.ancien, f.texte, jour, heure,
-                              this.greffes.has(f.id));
+                              this.greffes.has(f.id), debit);
       }
       if (v === "greffe") this.greffes.add(f.id);
       else if (v === "conversion" || v === "ecriture") this.greffes.delete(f.id);

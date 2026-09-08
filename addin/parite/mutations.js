@@ -472,8 +472,8 @@ const MUTATIONS = [
    + " declaree connue et le plant cesse de pousser"],
 
   ["guet.js",
-   "                              this.greffes.has(f.id));",
-   "                              false);",
+   "                              this.greffes.has(f.id), debit);",
+   "                              false, debit);",
    "decision 4 : un chapitre colle puis retravaille reste une greffe pour"
    + " toujours — le defaut que le pont avait, remis en place"],
 
@@ -484,8 +484,8 @@ const MUTATIONS = [
    + " verdict"],
 
   ["guet.js",
-   "    return mots * INTERVALLE / Math.max(ecoule, INTERVALLE);",
-   "    return mots * INTERVALLE / Math.max(ecoule, 1);",
+   "    const borne = Math.min(Math.max(ecoule, INTERVALLE), PLAFOND_ECOULE);",
+   "    const borne = Math.min(Math.max(ecoule, 1), PLAFOND_ECOULE);",
    "le debit s'amplifie quand un releve arrive tot : quatre mots tapes deviennent"
    + " un collage"],
 
@@ -500,6 +500,22 @@ const MUTATIONS = [
    "        mots += compter_mots(f.texte) - compter_mots(f.ancien);",
    "raccourcir une ligne rend un debit NEGATIF, qui compense un collage arrive"
    + " dans le meme releve"],
+
+
+  // ------------------------------------------- la porte derobee du collage
+  // Le trou par lequel un vrai document est passe d'une tige a un arbre entier
+  // en trois collages, dans le premier Word ou l'add-in ait jamais tourne.
+  ["paysage.js",
+   "      if (mots_par_intervalle > SEUIL_COLLAGE) {",
+   "      if (false) {",
+   "decision 4 : coller dans la ligne qu'on ecrit compte tous les mots colles"
+   + " en extension, sans le moindre controle"],
+
+  ["guet.js",
+   "    const borne = Math.min(Math.max(ecoule, INTERVALLE), PLAFOND_ECOULE);",
+   "    const borne = Math.max(ecoule, INTERVALLE);",
+   "le temps ecoule n'est plus plafonne : un collage vu une minute trop tard"
+   + " passe pour de l'ecriture"],
 
 ];
 
@@ -525,8 +541,19 @@ for (const f of fichiers) {
   }
 }
 
-const sauvegardes = Object.fromEntries(
+// ⚠️ DEUX VERSIONS DE CHAQUE FICHIER. Git normalise les fins de ligne en CRLF
+// a chaque checkout sur Windows, et les motifs multi-lignes portent des sauts
+// simples : ils cessent alors de mordre, et le controle prealable declare tout
+// le fichier perime alors qu'aucun motif n'a vieilli. Un clone frais du depot
+// refuserait de lancer les mutations.
+//
+// On compare et on mute sur la copie en LF, et on restaure les OCTETS
+// D'ORIGINE : le fichier ressort exactement comme il etait entre.
+const octets = Object.fromEntries(
   fichiers.map((f) => [f, readFileSync(join(SRC, f), "utf-8")]),
+);
+const sauvegardes = Object.fromEntries(
+  Object.entries(octets).map(([f, t]) => [f, t.replace(/\r\n/g, "\n")]),
 );
 
 // Les motifs d'abord, avant de toucher un seul fichier.
@@ -565,7 +592,7 @@ for (const [fichier, vieux, neuf, libelle, verificateur] of MUTATIONS) {
   // Plus besoin de tester le motif ici : le controle prealable a deja rendu
   // la main si l'un d'eux ne mordait plus.
   const cote = chemin + ".intact";
-  writeFileSync(cote, src, "utf-8");
+  writeFileSync(cote, octets[fichier], "utf-8");
   writeFileSync(chemin, src.replace(vieux, neuf), "utf-8");
   let r;
   try {
@@ -574,7 +601,7 @@ for (const [fichier, vieux, neuf, libelle, verificateur] of MUTATIONS) {
       : [join(ICI, "parite.js"), CAS];
     r = spawnSync(process.execPath, args, { encoding: "utf-8" });
   } finally {
-    writeFileSync(chemin, src, "utf-8");
+    writeFileSync(chemin, octets[fichier], "utf-8");
     rmSync(cote);
   }
   if (r.status !== 0) {
