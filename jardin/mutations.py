@@ -113,6 +113,38 @@ MUTATIONS = [
      "le volet recadre toujours le dernier plant : revenir sur un vieux"
      " chapitre ne ramene plus la camera"),
 
+    # ---------------------------------- le plafond, l'axe, le feuillage, le port
+    ("traits.py",
+     "        longueur=borne(longueur_moy, 8, 45),",
+     "        longueur=borne(longueur_moy, 8, 30),",
+     "le plafond de longueur revient a 30 : une these entiere sature a 1,000"
+     " et la ville redevient inatteignable"),
+
+    ("grammaire.py",
+     '    axe = tr["structure"]',
+     "    axe = 0.0",
+     "l'arbre reoublie la structure : une bibliographie et un chapitre de"
+     " recit redonnent la meme silhouette"),
+
+    ("grammaire.py",
+     '    eventail = 0.22 + tr["diversite"] * 0.36',
+     "    eventail = 0.40",
+     "le feuillage s'ouvre pareil pour tous : le vocabulaire ne touche plus"
+     " que la couleur"),
+
+    ("grammaire.py",
+     "    port = rng.uniform(-1.0, 1.0)",
+     "    port = 0.0",
+     "tous les plants prennent le meme port : douze chapitres, douze"
+     " exemplaires du meme arbre"),
+
+    # ⚠️ Celle-ci garde la decision 2 contre une bonne idee : elle fait tirer
+    #    la TAILLE par la graine, ce qui rend tripoter indistinguable d'ecrire.
+    ("grammaire.py",
+     "    entre_noeuds *= 1.0 + port * 0.02",
+     "    entre_noeuds *= 1.0 + port * 0.30",
+     "le port se met a tirer la taille au sort : la graine simule de la pousse"),
+
     ("message.py",
      "    t.cadre = cadre_de(phrase, corps, largeur, x0, y0)",
      "    t.cadre = None",

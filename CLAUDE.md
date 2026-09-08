@@ -63,8 +63,8 @@ python jardin/essais.py && python jardin/mutations.py \
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `58 passes, 0 en echec` · `36/36` · `aucun ecart` · `23 passes` ·
-`25 passes` · `87/87`.
+Attendu : `62 passes, 0 en echec` · `41/41` · `aucun ecart` · `23 passes` ·
+`25 passes` · `93/93`.
 
 `essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
 qu'aucune parité ne peut couvrir, faute de Python en face. Elle y a trouvé

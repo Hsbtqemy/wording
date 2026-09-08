@@ -811,6 +811,246 @@ def _():
     return (f"cadre [{vx:.0f}, {vx + vw:.0f}] sur le plant 0 (x={cx_actif:.0f}),"
             f" dernier a x={cx_dernier:.0f}")
 
+@essai("traits / une prose academique n'est plus collee au plafond")
+def _():
+    from traits import extraire, revele
+
+    """
+    ⚠️ CET ESSAI EST NE D'UN EXTRAIT DE THESE REELLE.
+
+    `longueur` plafonnait a 30 mots par phrase. L'extrait en faisait 32,2, donc
+    le trait valait 1,000 partout, dans toutes les sections, du debut a la fin.
+    Trois de ses cinq paragraphes y etaient colles alors que l'auteur va de
+    24,6 a 41,6 mots par phrase.
+
+    Et ca ne coutait pas qu'une physionomie plate : `longueur` pese 0,26 pour
+    le vegetal et 0,20 EN NEGATIF pour l'architecture. A 1,000 elle donne 0,46
+    d'avance a l'arbre avant qu'un seul titre soit compte. Il fallait HUIT
+    titres dans 2 500 mots pour cesser d'etre un arbre, et on tombait alors
+    dans l'abstrait par refus : LA VILLE ETAIT INATTEIGNABLE pour cet auteur,
+    a n'importe quelle densite de structure.
+
+    On compare des TEXTES entre eux, jamais a la constante : un essai qui dit
+    « le plafond vaut 45 » s'adapte a la panne le jour ou on le casse.
+    """
+    def prose(mots_par_phrase, phrases=30):
+        return " ".join(("territoire " * mots_par_phrase).strip() + "."
+                        for _ in range(phrases))
+
+    l = [extraire(prose(n)).longueur for n in (22, 32, 40)]
+    assert l[0] < l[1] < l[2], (
+        f"trois proses de 22, 32 et 40 mots par phrase doivent donner trois"
+        f" longueurs distinctes, obtenu {l}")
+    assert l[2] < 1.0, (
+        f"a 40 mots par phrase le trait sature encore ({l[2]:.3f}) : une these"
+        f" entiere retomberait sur la meme valeur")
+
+    # ⚠️ ET LA CONSEQUENCE, QUI EST LE VRAI SUJET.
+    #
+    # `longueur` pese 0,26 pour le vegetal et 0,20 EN NEGATIF pour
+    # l'architecture : a 1,000 elle donne 0,46 d'avance a l'arbre avant qu'un
+    # seul titre soit compte. Une section charpentee restait un arbre a
+    # n'importe quelle densite de structure — mesure sur une these reelle, il
+    # fallait huit titres dans 2 500 mots pour cesser d'etre un arbre, et on
+    # tombait alors dans l'abstrait par refus, jamais dans une ville.
+    #
+    # LE CORPUS EST CALE SUR DES STATISTIQUES MESUREES, pas invente : 33 mots
+    # par phrase et une subordination de 0,59, contre 32,2 et 0,55 relevees sur
+    # un extrait de these reelle. Un corpus moins subordonne devenait une ville
+    # AVEC ET SANS le plafond casse, et l'essai n'aurait rien traverse — le
+    # piege du cahier qui a l'air complet.
+    #
+    # Quatre phrases par paragraphe, et c'est l'autre nerf : a une phrase par
+    # paragraphe il faut soixante-six paragraphes pour faire 2 500 mots, donc
+    # huit titres n'en font que 11 % et la structure ne monte jamais. Un
+    # paragraphe de these fait environ cent cinquante mots.
+    phrases = [
+        "Les colons europeens au nord du continent, plus tardivement que"
+        " l Espagne, ont progressivement mis en place leurs propres formes"
+        " d integration et institutionnalise ce processus au dix-neuvieme siecle.",
+        "Cet ecart temporel montre que les puissances coloniales, meme si elles"
+        " ont agi selon des modalites distinctes, ont toutes contribue a une"
+        " meme logique de domination territoriale et culturelle.",
+        "L assimilation n etait pas un phenomene homogene mais un processus"
+        " etale dans le temps, dont l objectif commun restait de controler les"
+        " territoires en effacant les identites culturelles des populations"
+        " autochtones.",
+        "A cette periode les colons passaient outre certains traites conclus"
+        " avec des nations autochtones afin de revendiquer des terres"
+        " appartenant legalement a ces dernieres, comme l illustrent les"
+        " traites rompus au long du siecle.",
+    ]
+    titres = ["Introduction", "Chapitre III", "Conclusion partielle",
+              "Sources primaires", "2.1. Les traites", "Bilan",
+              "Annexe", "Corpus"]
+    paras, pose, k = [], 0, 0
+    while sum(len(p.split()) for p in paras) < 2500:
+        paras.append(" ".join(phrases[(k + j) % len(phrases)] for j in range(4)))
+        k += 1
+        if len(paras) % 2 == 0 and pose < len(titres):
+            paras.append(titres[pose])
+            pose += 1
+    t = extraire("\n\n".join(paras))
+    r = revele(t)
+    assert 0.50 < t.subordination < 0.65, (
+        f"le corpus de l'essai a derive : subordination {t.subordination:.3f},"
+        f" attendue autour de 0,59 — c'est la seule bande ou le plafond decide"
+        f" du verdict, donc la seule ou l'essai prouve quelque chose")
+    # Un garde-fou sur le corpus, pas la propriete eprouvee : on verifie que
+    # le plant est bien charpente avant de lui demander de faire une ville.
+    assert t.structure > 0.75, (
+        f"huit titres devraient charpenter le plant, structure obtenue"
+        f" {t.structure:.3f}")
+    assert r.famille == "architecture", (
+        f"une section de these decoupee par huit titres doit devenir une ville,"
+        f" obtenu {r.famille}{' par refus' if r.par_refus else ''}"
+        f" (scores {r.scores}) — avec le plafond a 30 elle restait un arbre"
+        f" quelle que soit sa structure")
+    return (f"longueurs {l[0]:.2f} / {l[1]:.2f} / {l[2]:.2f} ;"
+            f" huit titres font une {r.famille}")
+
+
+@essai("grammaire / la structure du texte change la silhouette de l'arbre")
+def _():
+    import grammaire
+
+    """
+    L'arbre ne lisait que subordination, regularite et longueur — les trois
+    traits les plus STABLES chez un meme auteur. Mesure sur cent vingt plants
+    simules d'une these : le texte faisait varier l'encre de 19 % quand la
+    seule GRAINE la faisait varier de 37 %. Deux chapitres differaient surtout
+    par chance.
+
+    `structure` est le trait qui bouge le plus dans une these — de 0,00 a 0,91
+    selon qu'une section est decoupee en titres ou coule d'un trait — et le
+    vegetal l'ignorait. Une bibliographie, un chapitre a sous-parties et un
+    chapitre de recit donnaient le meme arbre.
+
+    On mesure l'ELANCEMENT (hauteur / largeur) et pas la taille : la
+    composition divise chaque plant par son encombrement final, donc la taille
+    brute ne survit pas au paysage. La proportion, si.
+    """
+    def elancement(structure):
+        tr = dict(grammaire.TRAITS_NEUTRES, structure=structure)
+        t = grammaire.Toile()
+        grammaire.vegetal(t, 1.0, 0.5, 3, grammaire.Teinte.du_jour(120), traits=tr)
+        x0, y0, x1, y1 = t.bbox()
+        return (y1 - y0) / max(x1 - x0, 1.0), len(t.segments)
+
+    plat, n_plat = elancement(0.0)
+    dresse, n_dresse = elancement(0.9)
+    assert dresse > plat * 1.25, (
+        f"un texte charpente doit se dresser : elancement {plat:.2f} sans"
+        f" structure contre {dresse:.2f} avec, soit {dresse / plat:.2f} fois"
+        f" — il en faut au moins 1,25")
+    # Et l'axe ne doit PAS ajouter de bois : c'est une difference de port.
+    assert abs(n_dresse - n_plat) < n_plat * 0.10, (
+        f"l'axe change le nombre de traits ({n_plat} -> {n_dresse}) : il"
+        f" simule de la pousse au lieu de redresser la forme")
+    return f"elancement {plat:.2f} -> {dresse:.2f}, {n_plat} -> {n_dresse} traits"
+
+
+@essai("grammaire / le vocabulaire ouvre le feuillage, sans en ajouter")
+def _():
+    import math
+    from collections import defaultdict
+    import grammaire
+
+    """
+    Le feuillage s'ouvrait a 0,40 radian par feuille, quel que soit le texte.
+    `diversite` — la richesse lexicale — ne servait qu'a la couleur. Elle ouvre
+    maintenant le bouquet : un lexique large fait une etoile, un lexique
+    etroit une brosse.
+
+    ⚠️ Le NOMBRE de feuilles ne bouge pas, et c'est la moitie importante de
+    l'essai : il est tenu par le budget, et la decision 1 interdit qu'il
+    recule. Si ouvrir le feuillage se mettait a en ajouter, un texte au
+    vocabulaire riche paraitrait plus AVANCE qu'un texte pauvre de meme
+    longueur — de la maturite deguisee en extension.
+    """
+    def bouquet(diversite):
+        tr = dict(grammaire.TRAITS_NEUTRES, diversite=diversite)
+        t = grammaire.Toile()
+        grammaire.vegetal(t, 1.0, 0.5, 3, grammaire.Teinte.du_jour(120), traits=tr)
+        par = defaultdict(list)
+        for s in t.segments:
+            if not s[6]:                       # les feuilles, pas le squelette
+                par[(round(s[0], 6), round(s[1], 6))].append(
+                    math.atan2(s[3] - s[1], s[2] - s[0]))
+        larges = [max(a) - min(a) for a in par.values() if len(a) > 1]
+        return sum(larges) / len(larges), sum(len(a) for a in par.values())
+
+    serre, n_serre = bouquet(0.0)
+    ouvert, n_ouvert = bouquet(1.0)
+    assert ouvert > serre * 1.30, (
+        f"un lexique riche doit ouvrir le bouquet : {math.degrees(serre):.0f}"
+        f" degres contre {math.degrees(ouvert):.0f} — il en faut au moins 30 %"
+        f" de plus")
+    assert n_serre == n_ouvert, (
+        f"le nombre de feuilles a bouge ({n_serre} -> {n_ouvert}) : ouvrir le"
+        f" feuillage ne doit jamais en ajouter, sinon le vocabulaire simule de"
+        f" la pousse")
+    return (f"bouquet {math.degrees(serre):.0f} -> {math.degrees(ouvert):.0f}"
+            f" degres, {n_serre} feuilles dans les deux cas")
+
+
+@essai("grammaire / le port distingue deux plants SANS mentir sur la taille")
+def _():
+    import grammaire
+
+    """
+    ⚠️ CET ESSAI GARDE LA DECISION 2 CONTRE UNE BONNE IDEE.
+
+    « Rajouter de l'aleatoire sur la pousse : tres long, tres grand, gros. »
+    L'intention est juste — deux chapitres doivent faire deux arbres — mais un
+    plant plus GROS au hasard, c'est l'invariant cardinal qui tombe : la taille
+    dit combien on a ecrit, et si la graine la tire, tripoter et ecrire
+    deviennent indistinguables a l'oeil.
+
+    La composition l'annulerait de toute facon : elle divise chaque plant par
+    son encombrement final (composer(), k), donc deux plants acheves
+    remplissent le meme cadre quoi qu'on tire. Ce qui SURVIT a cette
+    normalisation, c'est la proportion — angles serres et longues entre-noeuds
+    font un peuplier, angles ouverts et entre-noeuds courts un pommier.
+
+    On verifie donc les deux moities : le port change la PROPORTION, et il ne
+    change pas la QUANTITE DE BOIS.
+    """
+    # ⚠️ ON MESURE L'ECART-TYPE, PAS LE MIN/MAX, ET C'EST TOUT LE SUJET.
+    #
+    # La premiere version de cet essai comparait le plus elance au plus etale
+    # sur vingt-quatre graines. Elle PASSAIT avec le port neutralise : sans
+    # lui, l'inclinaison du tronc et la vigueur produisent deja un rapport de
+    # 1,42 entre les deux extremes — plus que les 1,39 obtenus AVEC le port.
+    # Deux tirages extremes ne disent rien de ce que fait la population.
+    #
+    # Sur deux cents graines, l'ecart-type relatif separe net : 6,3 % sans le
+    # port, 14,5 % avec. La mutation qui le neutralise se fait donc prendre,
+    # ce qui n'etait pas le cas avant.
+    import statistics
+
+    els, comptes = [], []
+    for graine in range(200):
+        t = grammaire.Toile()
+        grammaire.vegetal(t, 1.0, 0.5, graine, grammaire.Teinte.du_jour(120))
+        x0, y0, x1, y1 = t.bbox()
+        els.append((y1 - y0) / max(x1 - x0, 1.0))
+        comptes.append(len(t.segments))
+
+    disperse = statistics.pstdev(els) / statistics.fmean(els)
+    assert disperse > 0.10, (
+        f"deux cents plants du meme texte ont presque le meme port :"
+        f" ecart-type relatif de l'elancement {disperse * 100:.1f} % — il en"
+        f" faut plus de 10 pour que deux chapitres se distinguent, et"
+        f" l'inclinaison du tronc en donne deja 6 a elle seule")
+    ecart = (max(comptes) - min(comptes)) / statistics.fmean(comptes)
+    assert ecart < 0.10, (
+        f"le port fait varier le nombre de traits de {ecart * 100:.0f} % :"
+        f" la graine se met a simuler de la pousse, ce qu'interdit la"
+        f" decision 2 ({min(comptes)} a {max(comptes)} traits)")
+    return (f"elancement disperse a {disperse * 100:.1f} %"
+            f" pour {ecart * 100:.1f} % d'ecart de bois")
+
 # ==========================================================================
 # composition.py
 # ==========================================================================

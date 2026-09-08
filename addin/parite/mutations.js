@@ -622,6 +622,38 @@ const MUTATIONS = [
    "  let i = poses_de.length - 1;",
    "le volet recadre toujours le dernier plant"],
 
+
+  // ------------------------------- le plafond, l'axe, le feuillage, le port
+  ["traits.js",
+   "    longueur: borne(longueur_moy, 8, 45),",
+   "    longueur: borne(longueur_moy, 8, 30),",
+   "le plafond de longueur revient a 30 : toute these sature"],
+
+  ["grammaire.js",
+   "  const axe = tr.structure;",
+   "  const axe = 0.0;",
+   "l'arbre reoublie la structure"],
+
+  ["grammaire.js",
+   "  const eventail = 0.22 + tr.diversite * 0.36;",
+   "  const eventail = 0.40;",
+   "le feuillage s'ouvre pareil pour tous"],
+
+  ["grammaire.js",
+   "  const port = rng.uniform(-1.0, 1.0);",
+   "  const port = 0.0;",
+   "tous les plants prennent le meme port"],
+
+  ["grammaire.js",
+   "  ouverture *= 1.0 - port * 0.7;",
+   "  ouverture *= 1.0 - port * 0.38;",
+   "le port se retracte : le portage a garde l'ancienne valeur"],
+
+  ["grammaire.js",
+   "      const tenue = s === meneur ? 1.0 - axe * 0.72 : 1.0 + axe * 0.4;",
+   "      const tenue = 1.0;",
+   "le rameau meneur ne prolonge plus l'axe"],
+
 ];
 
 if (!existsSync(CAS)) {

@@ -300,7 +300,30 @@ def extraire(texte: str, reecriture: float = 0.0) -> Traits:
         mots=len(mots),
         phrases=len(phrases),
         paragraphes=len(paragraphes),
-        longueur=borne(longueur_moy, 8, 30),
+        # ⚠️ LE PLAFOND EST A 45 MOTS, ET IL A ETE MESURE.
+        #
+        #   Il valait 30, pose au jugement. Un extrait de these reelle ecrit
+        #   a 32,2 mots par phrase — donc AU PLAFOND, et son trait valait 1,000
+        #   quelle que soit la section. Trois de ses cinq paragraphes y etaient
+        #   colles ; l'auteur va de 24,6 a 41,6 mots par phrase et le trait n'en
+        #   voyait rien.
+        #
+        #   Ca ne coutait pas qu'une physionomie plate. `longueur` pese 0,26
+        #   pour le vegetal et 0,20 EN NEGATIF pour l'architecture : a 1,000
+        #   elle donne 0,46 d'avance a l'arbre avant qu'un seul titre soit
+        #   compte. Mesure sur un plant de 2 500 mots de cette these, il fallait
+        #   HUIT titres pour cesser d'etre un arbre — et on tombait alors dans
+        #   l'abstrait par refus, jamais dans une ville. L'architecture etait
+        #   inatteignable pour cet auteur, a n'importe quelle densite de
+        #   structure. A 45, six titres font une ville et le corps du texte
+        #   reste un arbre.
+        #
+        #   Le corpus de reference se classe 40/40 a tous les plafonds de 30 a
+        #   50 : sa separation ne tenait pas a cette saturation. Elle ne l'a
+        #   jamais montre parce que son propre vegetal ecrit a 36,3 mots par
+        #   phrase — sature lui aussi. On y comparait des familles entre elles,
+        #   jamais deux arbres l'un a l'autre.
+        longueur=borne(longueur_moy, 8, 45),
         rythme=borne(cv_phrases, 0.30, 1.00),
         subordination=0.7 * borne(virgules_par_phrase, 0.3, 3.0)
                       + 0.3 * borne(connecteurs, 0.5, 6.0),

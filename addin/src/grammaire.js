@@ -359,10 +359,21 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
   const tr = _traits(traits);
   // Une phrase qui se subordonne se ramifie : la subordination ouvre l'angle.
   // Un texte regulier fait un arbre symetrique ; un texte irregulier penche.
-  const ouverture = 0.26 + tr.subordination * 0.42;
+  let ouverture = 0.26 + tr.subordination * 0.42;
   const dissymetrie = (1.0 - tr.regularite) * 0.30;
   // Des phrases longues font de longues entre-noeuds.
-  const entre_noeuds = 0.72 + tr.longueur * 0.34;
+  let entre_noeuds = 0.72 + tr.longueur * 0.34;
+  // ⚠️ L'AXE, ET C'EST LA QU'UNE THESE SE DISTINGUE D'ELLE-MEME.
+  //   Voir grammaire.py : `structure` est le trait qui bouge le plus dans une
+  //   these et le vegetal l'ignorait. Il devient la dominance apicale.
+  const axe = tr.structure;
+  // Le feuillage suit le vocabulaire. Le NOMBRE de feuilles ne bouge pas.
+  const eventail = 0.22 + tr.diversite * 0.36;
+  const frisson = 0.05 + tr.diversite * 0.14;
+  // ⚠️ LE PORT SE TIRE AU SORT, LA TAILLE JAMAIS. Voir grammaire.py.
+  const port = rng.uniform(-1.0, 1.0);
+  ouverture *= 1.0 - port * 0.7;
+  entre_noeuds *= 1.0 + port * 0.02;
   // ⚠️ LA PROFONDEUR EST FRACTIONNAIRE, et c'est tout le sujet.
   //
   //   Elle valait « 4 + int(extension * 3.0) » : un entier, donc QUATRE formes sur
@@ -419,7 +430,8 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
       const n_feuilles = Math.max(1, Math.min(plafond, Math.trunc(part)
         + (_rang_de_pousse(lignee) < part - Math.trunc(part) ? 1 : 0)));
       for (let i = 0; i < n_feuilles; i++) {
-        const a = angle + (i - n_feuilles / 2) * 0.40 + rng.uniform(-0.1, 0.1);
+        const a = angle + (i - n_feuilles / 2) * eventail
+          + rng.uniform(-frisson, frisson);
         const r = lg * (1.3 + 0.8 * m);
         t.trait(x, y, x + Math.cos(a) * r, y + Math.sin(a) * r, m * 0.55, tt.ton(rng));
       }
@@ -431,12 +443,17 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
     t.noeud(x2, y2, m, tt.ton(rng));
     noeuds.push([x2, y2, lignee]);
     const ouv = ouverture * rng.uniform(0.85, 1.15);
+    // Lequel des deux rameaux prolonge l'axe. Il ALTERNE avec la lignee :
+    // fixe d'un cote, l'axe derivait et l'arbre partait en biais.
+    const meneur = (lignee & 1) ? -1 : 1;
     for (const s of [-1, 1]) {
       const biais = 1.0 + s * dissymetrie;
+      const tenue = s === meneur ? 1.0 - axe * 0.72 : 1.0 + axe * 0.4;
+      const allonge = s === meneur ? 1.0 + axe * 0.22 : 1.0;
       // Le tirage de la longueur est evalue AVANT la descente, comme en
       // Python ou c'est un argument. L'ordre de consommation est la figure.
-      const lg2 = lg * entre_noeuds * rng.uniform(0.94, 1.06);
-      branche(x2, y2, angle + s * ouv * biais, lg2, prof - 1,
+      const lg2 = lg * entre_noeuds * allonge * rng.uniform(0.94, 1.06);
+      branche(x2, y2, angle + s * ouv * biais * tenue, lg2, prof - 1,
               lignee * 2 + (s > 0 ? 1 : 0));
     }
   }

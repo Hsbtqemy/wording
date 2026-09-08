@@ -346,6 +346,48 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
     dissymetrie = (1.0 - tr["regularite"]) * 0.30
     # Des phrases longues font de longues entre-noeuds.
     entre_noeuds = 0.72 + tr["longueur"] * 0.34
+    # ⚠️ L'AXE, ET C'EST LA QU'UNE THESE SE DISTINGUE D'ELLE-MEME.
+    #
+    #   L'arbre ne lisait que subordination, regularite et longueur — les trois
+    #   traits les plus STABLES chez un meme auteur. Mesure sur cent vingt
+    #   plants simules d'une these : le texte faisait varier l'encre de 19 %
+    #   quand la seule graine la faisait varier de 37 %. Deux chapitres
+    #   differaient surtout par chance, et un texte quelconque atteignait
+    #   255 % : l'arbre savait dessiner dix fois plus large que ce que son
+    #   auteur en obtenait.
+    #
+    #   `structure` est le trait qui bouge le PLUS dans une these — de 0,000 a
+    #   0,914 selon qu'une section est decoupee en titres ou coule d'un trait —
+    #   et le vegetal l'ignorait completement. Une bibliographie, un chapitre a
+    #   sous-parties et un chapitre de recit donnaient le meme arbre.
+    #
+    #   Il devient la DOMINANCE APICALE : un texte charpente garde un axe et
+    #   porte ses rameaux en etages, un texte continu fourche en gobelet. C'est
+    #   une difference de silhouette, pas de grain — elle se voit de loin, a la
+    #   taille ou les plants sont poses dans le paysage.
+    axe = tr["structure"]
+    # Le feuillage suit le vocabulaire : un lexique large fait un bouquet
+    # ouvert et disperse, un lexique etroit une brosse serree. Le NOMBRE de
+    # feuilles ne bouge pas — il est tenu par le budget, et la decision 1
+    # interdit qu'il recule. Seule leur ouverture change.
+    eventail = 0.22 + tr["diversite"] * 0.36
+    frisson = 0.05 + tr["diversite"] * 0.14
+    # ⚠️ LE PORT SE TIRE AU SORT, LA TAILLE JAMAIS.
+    #
+    #   Un plant plus GROS au hasard, c'est la decision 2 qui tombe : la taille
+    #   dit combien on a ecrit, et si la graine la tire, tripoter et ecrire
+    #   deviennent indistinguables a l'oeil. La composition l'annulerait de
+    #   toute facon — elle divise par l'encombrement final, donc deux plants
+    #   acheves remplissent le meme cadre quoi qu'il arrive.
+    #
+    #   Ce qui SURVIT a cette normalisation, c'est la proportion. On tire donc
+    #   un port entre etale et elance : angles serres et longues entre-noeuds
+    #   font un peuplier, angles ouverts et entre-noeuds courts un pommier. Le
+    #   compte des traits est le meme des deux cotes — la meme quantite de bois
+    #   portee autrement, ce qui ne ment sur rien.
+    port = rng.uniform(-1.0, 1.0)
+    ouverture *= 1.0 - port * 0.7
+    entre_noeuds *= 1.0 + port * 0.02
     # ⚠️ LA PROFONDEUR EST FRACTIONNAIRE, et c'est tout le sujet.
     #
     #   Elle valait « 4 + int(extension * 3.0) » : un entier, donc QUATRE formes sur
@@ -403,7 +445,8 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
             n_feuilles = max(1, min(plafond, int(part) + (
                 1 if _rang_de_pousse(lignee) < part - int(part) else 0)))
             for i in range(n_feuilles):
-                a = angle + (i - n_feuilles / 2) * 0.40 + rng.uniform(-0.1, 0.1)
+                a = (angle + (i - n_feuilles / 2) * eventail
+                     + rng.uniform(-frisson, frisson))
                 r = lg * (1.3 + 0.8 * m)
                 t.trait(x, y, x + math.cos(a) * r, y + math.sin(a) * r,
                         m * 0.55, tt.ton(rng))
@@ -413,10 +456,19 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
         t.noeud(x2, y2, m, tt.ton(rng))
         noeuds.append((x2, y2, lignee))
         ouv = ouverture * rng.uniform(0.85, 1.15)
+        # Lequel des deux rameaux prolonge l'axe. Il ALTERNE avec la lignee :
+        # fixe d'un cote, l'axe derivait et l'arbre partait en biais, ce que
+        # la dissymetrie est seule a devoir faire.
+        meneur = -1 if lignee & 1 else 1
         for s in (-1, 1):
             biais = 1.0 + s * dissymetrie
-            branche(x2, y2, angle + s * ouv * biais,
-                    lg * entre_noeuds * rng.uniform(0.94, 1.06),
+            tenue = (1.0 - axe * 0.72) if s == meneur else (1.0 + axe * 0.4)
+            # Le lateral garde sa LONGUEUR : le raccourcir en plus de
+            # redresser le meneur recroquevillait l'arbre en chardon des
+            # quatre titres — vu sur planche, la couronne disparaissait.
+            allonge = (1.0 + axe * 0.22) if s == meneur else 1.0
+            branche(x2, y2, angle + s * ouv * biais * tenue,
+                    lg * entre_noeuds * allonge * rng.uniform(0.94, 1.06),
                     prof - 1, lignee * 2 + (s > 0))
 
     # Le port de l'arbre : inclinaison du tronc et vigueur, tires sur la

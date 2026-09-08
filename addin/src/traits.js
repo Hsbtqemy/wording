@@ -353,7 +353,7 @@ export function extraire(texte, reecriture = 0.0) {
     mots: mots.length,
     phrases: phrases.length,
     paragraphes: paragraphes.length,
-    longueur: borne(longueur_moy, 8, 30),
+    longueur: borne(longueur_moy, 8, 45),   // 30 saturait toute these : voir traits.py
     rythme: borne(cv_phrases, 0.30, 1.00),
     subordination: 0.7 * borne(virgules_par_phrase, 0.3, 3.0)
                  + 0.3 * borne(connecteurs, 0.5, 6.0),

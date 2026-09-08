@@ -218,6 +218,54 @@ structuré, la plante devient une ville vers 500 mots.
 l'Abstrait l'emporte par refus de classement. A rattrapé l'échantillon de
 philosophie, qui était à deux millièmes de devenir une Créature.
 
+### Les bornes de normalisation, enfin payées d'une mesure
+
+**Reconsidéré :** le plafond de `longueur` passe de **30 à 45 mots par
+phrase**. C'est la première de ces bornes qui soit calée sur du texte réel
+plutôt qu'au jugé.
+
+L'auteur a envoyé cinq paragraphes de sa thèse. Mesuré : **32,2 mots par
+phrase**, 1,75 virgule par phrase, sur 772 mots et 24 phrases. Le trait
+`longueur` valait donc **1,000** — au plafond, dans toutes les sections, du
+début à la fin. Trois de ses cinq paragraphes y étaient collés alors qu'il va
+de 24,6 à 41,6 mots par phrase. La subordination, elle, allait bien : 0,539,
+loin de son plafond. L'hypothèse de départ — « une thèse sature les deux » —
+était fausse de moitié, et c'est la mesure qui l'a dit.
+
+⚠️ **Le coût n'était pas la physionomie, c'était le classement.** `longueur`
+pèse 0,26 pour le végétal et **0,20 en négatif pour l'architecture** : à 1,000
+elle donne 0,46 d'avance à l'arbre avant qu'un seul titre soit compté. Mesuré
+sur des plants de 2 500 mots de cette prose, selon le nombre de titres :
+
+| titres | végétal | architecture | famille |
+|---|---|---|---|
+| 0 | 0,634 | 0,306 | végétal |
+| 4 | 0,603 | 0,450 | végétal |
+| 6 | 0,589 | 0,506 | végétal |
+| 8 | 0,578 | 0,553 | abstrait, **par refus** |
+
+**La ville était inatteignable pour cet auteur, à n'importe quelle densité de
+structure.** Huit titres dans 2 500 mots ne suffisaient qu'à faire tomber la
+marge de dominance. A 45, six titres font une ville et le corps du texte reste
+un arbre.
+
+Ce que ça ne casse pas : le corpus de référence se classe **40/40 à tous les
+plafonds de 30 à 50**. Sa séparation ne tenait pas à cette saturation.
+
+⚠️ **Pourquoi le banc ne l'avait jamais montré**, et c'est la leçon
+transportable : le végétal du corpus écrit à **36,3 mots par phrase**, saturé
+lui aussi. Tous les arbres de référence étaient au plafond ensemble. On y
+comparait des familles entre elles, jamais deux arbres l'un à l'autre — et le
+défaut ne se voit qu'entre deux arbres.
+
+⚠️ Les plants déjà poussés ne bougent pas : `traits_courants` est sérialisé
+par segment, et la famille aussi. La calibration agit sur ce qui s'écrit
+ensuite. Un paysage devient mixte, il n'est pas réécrit.
+
+**Reste ouvert :** les huit autres bornes (`0,30..1,00` pour le rythme,
+`0,3..3,0` pour les virgules, `0,55..0,80` pour MATTR…) n'ont toujours été
+payées de rien. Celle-ci a montré ce que ça coûte.
+
 ---
 
 ## 6. L'échelle
@@ -428,6 +476,76 @@ d'une famille — port de l'arbre, courbure de l'échine. L'architecture en avai
 déjà, ses hauteurs étant tirées ; la créature n'en avait aucune, son échine
 étant `sin(i×0,40)×0,30` à un bruit de 0,05 près. Six créatures côte à côte
 étaient six fois la même bête.
+
+### L'arbre lisait les trois traits les plus stables de son auteur
+
+**Reconsidéré, et c'est la panne que le point précédent croyait avoir réglée :**
+le végétal lisait `subordination`, `regularite` et `longueur`. Sur un même
+auteur, ce sont exactement les trois qui ne bougent pas.
+
+Mesuré sur 120 plants simulés d'une thèse réelle :
+
+| ce qui varie | encre | largeur | hauteur |
+|---|---|---|---|
+| le texte de la thèse | 19 % | 18 % | 23 % |
+| **la graine seule** | **37 %** | **44 %** | **46 %** |
+| l'extension 0 → 1 | 110 % | 53 % | 68 % |
+| *un texte quelconque* | *255 %* | *193 %* | *211 %* |
+
+**La graine faisait bouger l'arbre deux fois plus que l'écriture.** Deux
+chapitres différaient surtout par chance, et la thèse occupait un dixième de ce
+que la grammaire savait dessiner. Le point 8 avait bien alimenté les curseurs ;
+il n'avait pas vérifié qu'un même auteur les fasse bouger.
+
+⚠️ Et l'extension, qui écrase tout le reste, **ne distingue rien dans une thèse
+finie** : un plant se ferme à 2 500 mots, donc tous les plants achevés sont à
+1,0. Elle raconte la pousse pendant qu'on écrit, pas le paysage d'après.
+
+**Décidé :** l'arbre lit deux traits de plus, choisis parce qu'ils *bougent*.
+
+- **`structure` devient la dominance apicale.** C'est le trait qui varie le
+  plus dans une thèse — de 0,00 à 0,91 selon qu'une section est découpée en
+  titres ou coule d'un trait — et l'arbre l'ignorait : une bibliographie, un
+  chapitre à sous-parties et un chapitre de récit donnaient le même arbre. Un
+  rameau sur deux prolonge désormais l'axe, l'autre s'en écarte. Élancement
+  mesuré : **0,76 sans structure, 1,08 avec**, à nombre de traits constant.
+- **`diversite` ouvre le feuillage.** Un lexique large fait une étoile, un
+  lexique étroit une brosse : **86° à 138°** d'ouverture de bouquet, pour le
+  même nombre de feuilles.
+
+⚠️ **Le meneur alterne avec la lignée.** Fixé d'un côté, l'axe dérive et
+l'arbre part en biais — ce que la dissymétrie est seule à devoir faire.
+
+⚠️ **Le latéral garde sa longueur.** Le raccourcir *en plus* de redresser le
+meneur recroquevillait l'arbre en chardon dès quatre titres : vu sur planche,
+la couronne disparaissait. Deux effets qui se cumulent, un seul qu'on voulait.
+
+### Le port se tire au sort, la taille jamais
+
+**Demandé :** « rajouter de l'aléatoire sur la pousse — très long, très grand,
+gros ». L'intention est juste, la forme ne l'est pas.
+
+⚠️ Un plant plus **gros** au hasard, c'est le point 2 qui tombe : la taille dit
+combien on a écrit, et si la graine la tire, tripoter et écrire deviennent
+indistinguables à l'œil. La composition l'annulerait de toute façon — elle
+divise chaque plant par son encombrement final (`composer()`, `k`), donc deux
+plants achevés remplissent le même cadre quoi qu'on tire.
+
+Ce qui **survit** à cette normalisation, c'est la proportion. On tire donc un
+port entre étalé et élancé : angles serrés font un peuplier, angles ouverts un
+pommier. Même quantité de bois, portée autrement — **3,1 % d'écart de traits
+pour 14,5 % de dispersion de l'élancement**.
+
+⚠️ **Le port à 0,38 ne faisait rien**, et il a fallu deux mesures pour le voir.
+La première comparait le plus élancé au plus étalé sur 24 graines : elle donnait
+1,39 avec le port et **1,42 sans** — l'inclinaison du tronc en produit déjà
+autant, et deux tirages extrêmes ne disent rien d'une population. Sur 200
+graines, l'écart-type sépare net : **6,3 % sans le port, 6,9 % à 0,38, 14,5 %
+à 0,70.** Le premier essai écrit passait avec le port neutralisé ; c'est la
+mutation qui l'aurait dit, la mesure l'a dit avant.
+
+⚠️ L'élancement répond mal à l'angle : le feuillage arrondit la couronne et
+masque le port. C'est pour ça qu'il faut 0,70 là où 0,38 semblait suffisant.
 
 ---
 
