@@ -181,8 +181,19 @@ function monter_hote({ plafond = 109, url = "C:/These/chapitre1.docx",
   };
 
   const faireElement = () => {
-    const el = { innerHTML: "", textContent: "", clientWidth: 340,
-                 clientHeight: 430, addEventListener() {} };
+    const el = {
+      innerHTML: "", textContent: "", clientWidth: 340, clientHeight: 430,
+      // Les ecouteurs etaient jetes — addEventListener() {} — donc aucun essai
+      // ne pouvait declencher le geste d'une personne. C'est ce qui a laisse
+      // l'essai de l'apercu se contenter de verifier qu'AUCUN dialogue ne
+      // s'ouvrait avant le clic, sans jamais cliquer.
+      ecouteurs: {},
+      addEventListener(type, h) { this.ecouteurs[type] = h; },
+      cliquer() {
+        if (!this.ecouteurs.click) throw new Error("rien n'ecoute le clic");
+        return this.ecouteurs.click();
+      },
+    };
     return el;
   };
   const elements = { paysage: faireElement(), mot: faireElement(),
@@ -526,13 +537,182 @@ suite.push(["les styles ne se relisent que quand la structure bouge", async () =
   egal(etat.lectures_de_style, depart + 1, "un paragraphe de plus la perime");
 }]);
 
+// ⚠️ CET ESSAI NE CLIQUAIT PAS. Il portait « recoit la cle de son paysage »
+// et verifiait une seule chose : qu'aucun dialogue n'etait ouvert AVANT le
+// clic. Il ne cliquait jamais, donc il ne traversait rien de ce qu'il
+// pretendait tenir — le troisieme piege du LISEZMOI, en entier.
+//
+// La poignee de main tient en trois temps, et chacun peut casser seul :
+//   1. le clic ouvre le dialogue ;
+//   2. le dialogue dit « pret » ;
+//   3. LE VOLET REPOND ALORS la cle du paysage de CE dossier.
+// Le volet ne parle pas le premier : le dialogue doit avoir pose son ecouteur.
 suite.push(["l'apercu s'ouvre et recoit la cle de son paysage", async () => {
   const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
   await demarrer(etat);
-  etat.elements.apercu.addEventListener = () => {};
-  // On declenche le clic comme le ferait le bouton.
-  const { default: _ } = { default: null };
-  vrai(etat.dialogues.length === 0, "aucun dialogue avant le clic");
+  await pousser(etat, "Un paragraphe, pour qu'il y ait quelque chose a voir.");
+  await laisser_ranger(etat);
+  egal(etat.dialogues.length, 0, "aucun dialogue avant le clic");
+
+  etat.elements.apercu.cliquer();
+  egal(etat.dialogues.length, 1, "le clic ouvre le dialogue");
+  const d = etat.dialogues[0];
+  egal(d.messages.length, 0,
+       "et le volet se tait tant que le dialogue n'a pas parle");
+
+  // Le dialogue dit « pret ».
+  d.dialogMessageReceived();
+  egal(d.messages.length, 1, "le volet repond, et une seule fois");
+
+  const { cle, graine } = JSON.parse(d.messages[0]);
+  const id = etat.reglages["paysage.identifiant"];
+  egal(cle, `paysage:etat:${id}`,
+       "la cle designe le paysage de CE dossier, pas un autre");
+  vrai(typeof graine === "number" && Number.isFinite(graine),
+       `la graine part avec, obtenu ${graine}`);
+
+  // ⚠️ ET LA CLE DOIT EXISTER. Le dialogue relit le localStorage tout seul :
+  // une cle juste qui ne designe rien lui fait afficher un volet vide, ce qui
+  // ressemble a une panne alors que tout le cablage a marche.
+  vrai(etat.stockage.has(cle),
+       `le stockage ne contient rien sous ${cle} : le dialogue s'ouvrirait vide`);
+  const relu = JSON.parse(etat.stockage.get(cle));
+  vrai(relu.segments.length >= 1, "et ce qui s'y trouve porte au moins un plant");
+}]);
+
+// --------------------------------------------------------------------------
+// Le dialogue de la vue d'ensemble (decision 14)
+// --------------------------------------------------------------------------
+// ⚠️ CE CABLAGE ETAIT EN LIGNE DANS apercu.html, donc atteignable par AUCUNE
+// batterie : il n'y a rien a importer dans un script ecrit au milieu d'un
+// fichier HTML. C'est exactement la qu'il s'est casse, et personne n'a rien vu.
+// Il vit maintenant dans src/apercu.js, sous le meme faux Office que le volet.
+
+/** Un faux Office.context.ui, ou addHandlerAsync est VRAIMENT asynchrone. */
+function faux_bureau(journal) {
+  let ecouteur = null;
+  return {
+    EventType: { DialogParentMessageReceived: "dialogParentMessageReceived" },
+    context: {
+      ui: {
+        addHandlerAsync(type, h, rappel) {
+          journal.push(`pose:${type}`);
+          // Office.js pose l'ecouteur en asynchrone. Le simuler en synchrone
+          // rendrait la course invisible, et c'est la course qui casse.
+          setTimeout(() => {
+            ecouteur = h;
+            journal.push("pose");
+            if (rappel) rappel({ status: "succeeded" });
+          }, 0);
+        },
+        messageParent(m) { journal.push(`parent:${m}`); },
+      },
+    },
+    // Ce que ferait le volet en repondant.
+    repondre(message) {
+      if (!ecouteur) { journal.push("PERDU"); return false; }
+      ecouteur({ message });
+      return true;
+    },
+  };
+}
+
+function faux_document() {
+  const els = {
+    paysage: { innerHTML: "", textContent: "", clientHeight: 520 },
+    mot: { innerHTML: "", textContent: "" },
+  };
+  return { getElementById: (id) => els[id] || null, els };
+}
+
+suite.push(["l'apercu pose son ecouteur AVANT de se dire pret", async () => {
+  const { demarrer_apercu } = await import("./src/apercu.js");
+  const journal = [];
+  const bureau = faux_bureau(journal);
+  demarrer_apercu(bureau, faux_document());
+  await new Promise((r) => setTimeout(r, 5));
+
+  // L'ordre EST le contrat. Dire « pret » avant que l'ecouteur soit pose
+  // laisse la reponse du volet tomber dans le vide — et le volet ne repond
+  // qu'une fois, donc le dialogue reste blanc pour toujours.
+  const pose = journal.indexOf("pose");
+  const pret = journal.indexOf("parent:pret");
+  vrai(pose !== -1, "l'ecouteur doit finir par etre pose");
+  vrai(pret !== -1, "et le dialogue doit finir par se dire pret");
+  vrai(pose < pret,
+       `« pret » est parti avant que l'ecouteur soit pose : ${journal.join(" ")}`);
+}]);
+
+suite.push(["la reponse du volet dessine le paysage", async () => {
+  const { demarrer_apercu } = await import("./src/apercu.js");
+  const { Paysage } = await import("./src/paysage.js");
+
+  const p = new Paysage("dlg", "dlg");
+  p.absorber("Chapitre premier", "Titre 1", 0, 30, 14);
+  // ⚠️ ASSEZ DE MOTS POUR LE VERROU. Douze paragraphes font 264 mots, sous
+  // les 800 du verrou : le plant reste un germe et le SVG fait 156 octets. Un
+  // essai du dialogue qui ne dessine qu'un germe ne dit presque rien.
+  for (let i = 0; i < 45; i++) {
+    p.absorber(`Une phrase de travail numero ${i}, ecrite a la main sans se`
+      + " presser le moins du monde, pour que le plant ait de quoi pousser.",
+    "Normal", 7, 30, 14);
+  }
+  const magasin = new Map([["paysage:etat:dlg", p.serialiser()]]);
+  globalThis.localStorage = {
+    getItem: (k) => (magasin.has(k) ? magasin.get(k) : null),
+    setItem() {}, removeItem() {},
+  };
+
+  const doc = faux_document();
+  const bureau = faux_bureau([]);
+  demarrer_apercu(bureau, doc);
+  await new Promise((r) => setTimeout(r, 5));
+
+  vrai(bureau.repondre(JSON.stringify({ cle: "paysage:etat:dlg", graine: 7 })),
+       "l'ecouteur doit etre la quand le volet repond");
+  vrai(doc.els.paysage.innerHTML.startsWith("<svg"),
+       `le dialogue doit porter un SVG, obtenu "${doc.els.paysage.innerHTML.slice(0, 40)}"`);
+  vrai(doc.els.paysage.innerHTML.includes("<line"),
+       "le dialogue doit porter des traits, pas un SVG vide");
+  vrai(doc.els.paysage.innerHTML.length > 2000,
+       "un plant verrouille fait bien plus qu'un germe (156 octets), obtenu "
+       + doc.els.paysage.innerHTML.length);
+  egal(doc.els.mot.textContent, "", "et rien a dire quand tout va bien");
+
+  // Et une cle qui ne designe rien se DIT, au lieu de laisser un blanc.
+  const doc2 = faux_document();
+  const b2 = faux_bureau([]);
+  demarrer_apercu(b2, doc2);
+  await new Promise((r) => setTimeout(r, 5));
+  b2.repondre(JSON.stringify({ cle: "paysage:etat:absent", graine: 7 }));
+  vrai(doc2.els.mot.textContent.length > 0,
+       "un paysage introuvable doit se dire, pas laisser une fenetre blanche");
+  egal(doc2.els.paysage.innerHTML, "", "et ne rien dessiner");
+
+  // ⚠️ ET UNE LECTURE IMPOSSIBLE, qui n'est pas la meme chose qu'un paysage
+  // absent. Paysage.depuis() est defensive : elle ne leve jamais, meme sur du
+  // JSON casse — elle rend un paysage vide. Le seul chemin qui atteint le
+  // catch est localStorage LUI-MEME qui refuse, ce qui arrive quand le
+  // navigateur bloque les donnees de site : getItem LEVE, il ne rend pas null.
+  // Sans message, la fenetre reste blanche et rien ne dit pourquoi.
+  const garde = globalThis.localStorage;
+  globalThis.localStorage = {
+    getItem() {
+      const e = new Error("acces refuse aux donnees de site");
+      e.name = "SecurityError";
+      throw e;
+    },
+  };
+  const doc3 = faux_document();
+  const b3 = faux_bureau([]);
+  demarrer_apercu(b3, doc3);
+  await new Promise((r) => setTimeout(r, 5));
+  b3.repondre(JSON.stringify({ cle: "paysage:etat:dlg", graine: 7 }));
+  globalThis.localStorage = garde;
+  vrai(doc3.els.mot.textContent.includes("SecurityError"),
+       "une lecture impossible doit NOMMER la panne, obtenu"
+       + ` "${doc3.els.mot.textContent}"`);
+  egal(doc3.els.paysage.innerHTML, "", "et ne rien dessiner de faux");
 }]);
 
 // --------------------------------------------------------------------------

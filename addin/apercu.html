@@ -37,33 +37,11 @@
   <div id="paysage"></div>
   <div id="mot"></div>
   <script type="module">
-    import { svg_apercu } from "./src/composition.js";
-    import { Paysage } from "./src/paysage.js";
-
-    function dessiner(cle, graine) {
-      const hote = document.getElementById("paysage");
-      const paysage = Paysage.depuis(localStorage.getItem(cle));
-      const plants = paysage.etat().plants;
-      if (!plants.length) {
-        document.getElementById("mot").textContent =
-          "Rien n'a encore pousse. C'est normal : il faut ecrire un peu.";
-        return;
-      }
-      hote.innerHTML = svg_apercu(plants, hote.clientHeight || 520, graine);
-    }
-
-    Office.onReady(() => {
-      // On demande la cle au volet : c'est lui qui sait quel paysage est
-      // celui de ce dossier.
-      Office.context.ui.addHandlerAsync(
-        Office.EventType.DialogParentMessageReceived,
-        (arg) => {
-          const { cle, graine } = JSON.parse(arg.message);
-          dessiner(cle, graine);
-        },
-      );
-      Office.context.ui.messageParent("pret");
-    });
+    // Tout le cablage est dans src/apercu.js : un script en ligne dans un
+    // fichier HTML n'est atteignable par aucune batterie, et c'est exactement
+    // la que la poignee de main avec le volet s'est cassee sans qu'on le voie.
+    import { demarrer_apercu } from "./src/apercu.js";
+    Office.onReady(() => demarrer_apercu());
   </script>
 </body>
 </html>

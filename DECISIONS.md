@@ -603,6 +603,56 @@ donc pas « la sélection a bougé » mais « la sélection a changé de paragra
 la frappe d'un co-auteur ne doit pas faire pousser le paysage de quelqu'un
 d'autre.
 
+### Un script en ligne dans un HTML n'est atteignable par rien
+
+**Trouvé en vrai Word, et c'est le pire endroit pour le trouver.** Le bouton
+« tout voir » a cessé d'afficher quoi que ce soit — une fenêtre blanche, muette.
+
+Le câblage du dialogue vivait **en ligne dans `apercu.html`**. Il n'y a rien à
+importer dans un script écrit au milieu d'un fichier HTML : ni la parité, ni la
+batterie du volet, ni aucune mutation ne peuvent l'atteindre. C'était le seul
+morceau de code livré qu'aucune de nos six suites ne voyait, et c'est
+exactement là que ça a cassé. La leçon n'est pas « il manquait un essai » :
+c'est **qu'aucun essai n'était possible**.
+
+Ce qu'il contenait :
+
+```js
+Office.context.ui.addHandlerAsync(type, handler);   // ASYNCHRONE
+Office.context.ui.messageParent("pret");            // envoyé sans attendre
+```
+
+`addHandlerAsync` est asynchrone. Dire « prêt » sans attendre son rappel laisse
+une fenêtre pendant laquelle la réponse du volet arrive alors que **personne ne
+l'écoute** — et le volet ne répond qu'une fois, donc le dialogue reste blanc
+pour toujours. La course se perd d'autant plus souvent que le volet répond
+vite : elle s'est ouverte le jour où l'écriture est devenue amortie et où un
+dessin identique a cessé d'être reposé (point 12). **Une optimisation a révélé
+une course**, ce qui est la façon habituelle dont les courses se révèlent.
+
+**Décidé :** aucun code de comportement ne reste dans un `.html`. Le câblage est
+dans `addin/src/apercu.js`, sous le même faux Office que le volet ; les pages
+ne portent plus qu'un `import` et un appel.
+
+⚠️ Et deux essais qui avaient l'air de couvrir tout ça n'en couvraient rien :
+
+- « l'aperçu s'ouvre et reçoit la clé de son paysage » **ne cliquait jamais**.
+  Il vérifiait qu'aucun dialogue n'était ouvert *avant* le clic, puis
+  s'arrêtait. Le faux DOM jetait les écouteurs — `addEventListener() {}` — donc
+  aucun essai ne *pouvait* déclencher un geste de la personne.
+- l'essai de la panne de lecture passait par la branche « aucun plant » et
+  jamais par le `catch`. `Paysage.depuis()` est défensive : elle avale même du
+  JSON cassé et rend un paysage vide. Le seul chemin qui atteint le `catch` est
+  **`localStorage` qui refuse** — données de site bloquées, fenêtre privée : là
+  `getItem` lève, il ne rend pas `null`.
+
+L'essai de l'ordre a besoin d'un faux `addHandlerAsync` **vraiment asynchrone**.
+Simulé en synchrone, la course est invisible et l'essai passe sur le code cassé.
+
+Et le dialogue **dit** maintenant ce qui ne va pas — volet muet au bout de trois
+secondes, lecture impossible, paysage introuvable. Une fenêtre blanche ne se
+diagnostique pas ; une panne qui se nomme, si.
+
 Un quatrième point, mesuré plutôt que lu : le débit du point 4 se compte **par
 intervalle**, pas par vidage. Quinze mots en deux secondes valent 450 mots par
 minute, que personne n'atteint à la main — mais si un vidage a pris dix secondes

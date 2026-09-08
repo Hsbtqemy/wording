@@ -569,6 +569,25 @@ const MUTATIONS = [
    "le cadre n'interpole plus qu'en hauteur : une creature deployee se fait"
    + " rogner sur les cotes"],
 
+
+  // ------------------------------------ la poignee de main du dialogue (14)
+  // La course qui a rendu « tout voir » blanc. Elle ne casse rien de visible
+  // dans le code : elle deplace une ligne.
+  ["apercu.js",
+   "    () => {\n      // L'ecouteur est pose : on peut parler.\n"
+   + "      bureau.context.ui.messageParent(\"pret\");",
+   "    () => {\n      // L'ecouteur est pose : on peut parler.\n"
+   + "      void 0;",
+   "le dialogue ne se dit jamais pret : le volet ne repond pas et la fenetre"
+   + " reste blanche",
+   "volet"],
+
+  ["apercu.js",
+   "    mot.textContent = `Le paysage n'a pas pu etre relu (${e.name}).`;",
+   "    mot.textContent = \"\";",
+   "une lecture impossible laisse une fenetre blanche au lieu de se dire",
+   "volet"],
+
 ];
 
 if (!existsSync(CAS)) {
