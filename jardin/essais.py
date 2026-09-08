@@ -1116,6 +1116,141 @@ def _():
     return "3 vues sur une liste vide"
 
 
+# --------------------------------------------------------------------------
+# Le serrage du massif.
+#
+# ⚠️ Les deux essais qui suivent mesurent sur les POSES, jamais sur la
+# constante. Lire _serrage() et comparer a ce qu'elle renvoie serait comparer
+# la constante a elle-meme : elle s'adapterait a la panne. On lit donc les
+# abscisses rendues et les gabarits, ce qui traverse gabarit(), l'echelle, la
+# profondeur et le placement — et ce qui se casse si l'un d'eux se casse.
+# --------------------------------------------------------------------------
+# ⚠️ LE BALAYAGE SE FAIT EN ABSTRAIT, ET C'EST UNE QUESTION DE DUREE.
+#
+# Ecrit d'abord en vegetal, il posait mille six cent trente-six plants et
+# faisait passer essais.py de 10,1 a 22,9 secondes. mutations.py relance
+# essais.py quarante-quatre fois : neuf minutes ajoutees a une chaine qui doit
+# rester assez courte pour qu'on ne soit pas tente de la paralleliser — ce
+# qu'il ne faut surtout pas faire. Mesure : douze plants coutent 114 ms en
+# vegetal (4 124 traits) contre 5 ms en abstrait (636).
+#
+# Le serrage est un simple facteur sur la largeur reservee, donc la pose ne
+# depend pas de la famille. L'essai le VERIFIE au lieu de le supposer : sans
+# ca, un balayage en abstrait ne dirait rien du paysage de l'auteur, qui porte
+# vingt-deux vegetaux sur trente-cinq. Les trois seuils que le lecteur voit se
+# mesurent d'ailleurs sur SA famille.
+TAILLES_DE_MASSIF = tuple(range(2, 41))
+
+
+def _massif(n, titre="c", depart=0, famille="abstrait"):
+    """n plants acheves du MEME chapitre : une seule parcelle."""
+    return [dict(rang=depart + r, famille=famille, pressentie=None,
+                 extension=1.0, maturite=0.0, dates=[(110, 1)], nuit=False,
+                 titre=titre, traits={}, germe=None) for r in range(n)]
+
+
+def _bandes(plants):
+    """Pour chaque plant : (bord gauche, largeur reservee), dans l'apercu."""
+    from composition import apercu, gabarit
+    poses, largeur = apercu(plants, 520, 1)
+    bandes = []
+    for p, (_d, cx, _y, k, _t) in zip(plants, poses):
+        # La graine est celle d'apercu(). Si elle change la, elle doit changer
+        # ici : l'essai mesurerait sinon le gabarit d'un autre plant.
+        gl, _gh = gabarit(p, 1 + p["rang"] * 977)
+        bandes.append((cx - gl * k / 2, gl * k))
+    return bandes, largeur
+
+
+def _decouverts(n, famille="abstrait"):
+    """La part de chaque plant que le SUIVANT ne recouvre pas."""
+    bandes, _ = _bandes(_massif(n, famille=famille))
+    return [(x1 - x0) / l0 for (x0, l0), (x1, _l1) in zip(bandes, bandes[1:])]
+
+
+@essai("composition / un gros chapitre ne se tasse plus en haie")
+def _():
+    # Le defaut, releve dans le vrai Word : trente-cinq plants, quatre
+    # Titre 1, donc des massifs de 6, 6, 14 et 9 la ou le serrage avait ete
+    # regle pour trois. 55 % de recouvrement moyen — le premier arbre etait le
+    # seul lisible du paysage, parce que le seul dont le cote gauche fut libre.
+    court = _decouverts(3, "vegetal")
+    assert max(court) < 0.55, (
+        f"trois plants d'un meme chapitre ne se recouvrent plus qu'a"
+        f" {(1 - max(court)) * 100:.0f} % : c'est le cas pour lequel 0,46"
+        f" avait ete regle, il ne devait pas bouger")
+    large = _decouverts(14, "vegetal")
+    assert min(large) > 0.80, (
+        f"dans un massif de quatorze, un plant n'en montre que"
+        f" {min(large) * 100:.0f} % : c'est la haie qu'on vient de corriger")
+    assert max(large) < 0.99, (
+        f"un massif de quatorze ne se recouvre plus du tout"
+        f" ({max(large):.3f}) : il ne se distingue plus d'une suite de"
+        f" chapitres d'un seul plant, et les trois niveaux se confondent")
+    deux = _decouverts(2, "vegetal")
+    assert 0.30 < min(deux) < 0.55, (
+        f"deux plants d'un meme chapitre se posent a {min(deux):.3f} : sous"
+        f" zero, le second est A GAUCHE du premier et le paysage se lit a"
+        f" l'envers")
+
+    # L'INVARIANT, et c'est lui qui porte la decision : un massif cache
+    # toujours la meme chose, qu'il en porte trois ou quarante. Ce rapport ne
+    # se compare a aucune constante — casser PLANTS_CACHES le laisse a 1,00,
+    # casser la FORME de la regle le fait exploser.
+    mesures = {t: _decouverts(t) for t in TAILLES_DE_MASSIF}
+
+    # La pose ne depend pas de la famille. C'est ce qui autorise le balayage
+    # ci-dessous a se faire en abstrait ; sans cette ligne, il mesurerait un
+    # paysage que personne n'a.
+    assert abs(max(large) - max(mesures[14])) < 1e-9, (
+        f"un massif de quatorze se pose a {max(large):.4f} en vegetal et"
+        f" {max(mesures[14]):.4f} en abstrait : le serrage a cesse d'etre un"
+        f" simple facteur sur la largeur reservee")
+
+    totaux = [sum(1 - v for v in mesures[t])
+              for t in TAILLES_DE_MASSIF if t >= 3]
+    assert max(totaux) / min(totaux) < 1.02, (
+        f"le total cache dans un massif depend de sa taille :"
+        f" {min(totaux):.2f} a {max(totaux):.2f} largeurs de plant")
+
+    # Et il ne se tasse jamais davantage quand le chapitre grossit.
+    moyennes = [(t, sum(mesures[t]) / (t - 1)) for t in TAILLES_DE_MASSIF]
+    for (ta, a), (tb, b) in zip(moyennes, moyennes[1:]):
+        assert b >= a - 1e-12, (
+            f"un massif de {tb} plants se serre plus qu'un de {ta}"
+            f" ({b:.3f} contre {a:.3f})")
+    return (f"3 plants a {court[0]:.2f}, 14 a {min(large):.2f},"
+            f" {min(totaux):.2f} largeur cachee quelle que soit la taille")
+
+
+@essai("composition / un gros massif reste un massif")
+def _():
+    # Ce que le desserrement pouvait couter : si les plants d'un chapitre
+    # cessent de se toucher, plus rien ne distingue un massif de deux
+    # parcelles voisines, et les trois niveaux du point 6 tombent — sans
+    # qu'aucune image ne soit fausse pour autant. C'est le genre de perte
+    # qu'on ne voit pas en regardant une planche.
+    # ⚠️ En VEGETAL, explicitement : c'est la famille dont l'auteur a
+    # vingt-deux plants sur trente-cinq, et les trois niveaux se jugent sur la
+    # silhouette la plus large des quatre. Vingt-quatre plants ne coutent que
+    # deux dixiemes de seconde ; le balayage, lui, en posait mille six cents.
+    plants = (_massif(12, "c1", famille="vegetal")
+              + _massif(12, "c2", depart=12, famille="vegetal"))
+    bandes, _ = _bandes(plants)
+    inter = [x1 - (x0 + l0) for (x0, l0), (x1, _l1) in zip(bandes, bandes[1:])]
+    dedans = inter[:11] + inter[12:]
+    entre = inter[11]
+    assert max(dedans) < 0, (
+        f"deux plants d'un massif de douze ne se touchent plus :"
+        f" {max(dedans):.1f} px d'ecart")
+    largeur_moyenne = sum(l for _x, l in bandes) / len(bandes)
+    assert entre > largeur_moyenne * 0.4, (
+        f"la respiration de parcelle ne fait plus que {entre:.0f} px pour des"
+        f" plants de {largeur_moyenne:.0f} : le chapitre ne se voit plus")
+    return (f"douze plants chevauches de {-max(dedans):.0f} a"
+            f" {-min(dedans):.0f} px, {entre:.0f} px entre deux chapitres")
+
+
 @essai("composition / la meme redaction donne le meme paysage")
 def _():
     from composition import _demonstration, svg

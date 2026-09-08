@@ -63,8 +63,8 @@ python jardin/essais.py && python jardin/mutations.py \
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `62 passes, 0 en echec` · `41/41` · `aucun ecart` · `23 passes` ·
-`25 passes` · `93/93`.
+Attendu : `64 passes, 0 en echec` · `45/45` · `aucun ecart` · `23 passes` ·
+`25 passes` · `97/97`.
 
 `essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
 qu'aucune parité ne peut couvrir, faute de Python en face. Elle y a trouvé
@@ -86,10 +86,23 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **5 min 57**. Assez long pour donner
-envie de paralléliser, ce qu'il ne faut surtout pas faire — `mutations.py`
-relance `essais.py` trente-six fois, et `mutations.js` relance la parité ou la
-batterie du volet quatre-vingt-sept fois.
+Durée mesurée de l'enchaînement complet : **9 min 38** (8 septembre 2026 ;
+c'était 5 min 57 quand la chaîne comptait 36 et 87 mutations). Où le temps
+passe, parce que ça se voit mal autrement :
+
+| `essais.py` | `mutations.py` | `parite.py` | les deux `essais*.js` | `mutations.js` |
+|---|---|---|---|---|
+| 10 s | **7 min 45** | 4 s | < 1 s | 1 min 38 |
+
+`mutations.py` relance `essais.py` quarante-cinq fois, et `mutations.js`
+relance la parité ou la batterie du volet quatre-vingt-dix-sept fois. Assez
+long pour donner envie de paralléliser, ce qu'il ne faut surtout pas faire.
+
+⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par quarante-cinq.**
+Un essai qui balayait les tailles de massif de 2 à 40 en végétal a coûté 12,8 s
+par passage — neuf minutes de chaîne — pour une propriété qui ne dépend pas de
+la famille. Mesurer le coût d'un essai neuf fait partie de l'écrire : voir la
+décision 14.
 
 ⚠️ Pendant qu'une suite de mutations tourne, ne rien **modifier** dans
 `jardin/*.py` ni `addin/**/*.js` — elle garde en mémoire la version lue au

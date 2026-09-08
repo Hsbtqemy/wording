@@ -1222,6 +1222,126 @@ chaque réouverture sans que personne ne comprenne pourquoi.
 travail va dans le volet ; la vue d'ensemble appartient à un **dialogue**
 (`displayDialogAsync`), qui s'ouvre en fenêtre large.
 
+### Le serrage d'un massif suit sa taille
+
+**Reconsidéré, et c'est la première panne rapportée depuis un vrai Word.**
+L'auteur a ouvert la vue d'ensemble sur sa thèse et a écrit : « j'ai
+l'impression que le premier arbre, ok, mais après ce sont les mêmes ».
+
+Mesuré sur le fichier qu'il a enregistré, et non sur une planche :
+
+| | |
+|---|---|
+| plants | **35** — 22 végétal, 12 abstrait, 1 architecture |
+| Titre 1 dans le document | **4** |
+| massifs | **6, 6, 14 et 9** |
+| recouvrement moyen | **55 %** sur 31 paires consécutives |
+| tailles dessinées | 272×281 à 1200×1159, soit **4,4×** |
+| hauteurs à l'écran | 121 à 129 — **toutes identiques** |
+
+Trois choses se lisent là-dedans, et une seule est un défaut.
+
+**Ce n'était pas la grammaire.** Le paysage porte bien trois familles, et le
+port introduit un rapport de 4,4 entre le plus petit et le plus grand arbre
+dessiné. Ce que le point 6 normalise ensuite — chaque plant divisé par son
+encombrement final — le ramène à des hauteurs identiques, ce qui est voulu :
+deux plants achevés valent 2 500 mots chacun. Seule la largeur survit, de 116
+à 177 px. C'est une vraie différence, et elle devient invisible quand la
+moitié de chaque arbre est cachée derrière le suivant.
+
+**Ce n'était pas non plus la profondeur.** Tous les plants sont à
+`ECHELLE_FOND`, parce que la maturité est nulle partout : aucune reprise n'est
+encore enregistrée dans ce document. L'axe qui doit les séparer est plat, et
+il se remplira en travaillant. Rien à corriger.
+
+⚠️ **Le défaut était dans la pose, et il tenait à une phrase de docstring.**
+`apercu()` annonçait « vingt-sept plants en huit chapitres font huit massifs »,
+et `serrage = 0,46` avait été réglé sur cette phrase : trois ou quatre plants
+par massif, où le chevauchement fait un relief. Un vrai document ne découpe
+pas si régulièrement. **Le nombre de plants par massif n'est pas une constante
+du problème, c'est une variable** — et la constante réglée pour trois en
+recevait quatorze. D'où le premier arbre lisible : c'était le seul dont le
+côté gauche fût libre.
+
+**Décidé :** on borne ce qui est **caché**, au lieu de fixer le pas.
+
+>       (n − 1) × (1 − serrage) = PLANTS_CACHES = 1,08
+
+Un massif cache toujours un peu plus d'une largeur de plant, qu'il en porte
+trois ou trente. Mesuré sur les poses, de n = 3 à n = 40 : **1,0800 dans tous
+les cas, rapport max/min = 1,0000.**
+
+| plants | 2 | 3 | 6 | 9 | 14 | 19 | 27 |
+|---|---|---|---|---|---|---|---|
+| serrage | 0,46 | **0,46** | 0,78 | 0,87 | 0,92 | 0,94 | 0,96 |
+
+⚠️ **À trois plants, la formule redonne exactement 0,46.** Le cas pour lequel
+la valeur avait été payée ne bouge pas d'un pixel — vérifié au sens propre :
+sur les plants du journal de parité, dont les massifs font 1, 2 et 3,
+`svg_apercu()` rend **316 468 caractères identiques** avant et après. Le
+paysage de l'auteur, lui, s'élargit de 89 %. Il défile déjà horizontalement :
+ça coûte du défilement, pas de la lisibilité.
+
+⚠️ **Le plancher n'est pas une précaution de style.** À deux plants la formule
+donne −0,08, c'est-à-dire un plant posé **à gauche** de son prédécesseur : le
+paysage se lirait à l'envers.
+
+⚠️ **Il n'y a pas de plafond, et il ne faut pas en ajouter.** Un plafond à 0,92
+avait été écrit d'abord, pour garantir qu'un massif se chevauche toujours. Il
+ne garantissait rien : le serrage tend vers 1 sans jamais l'atteindre, donc
+deux plants d'un même massif se recouvrent de toute façon. Il cassait en
+revanche le seul invariant que la règle possède — au-delà de quinze plants le
+total caché recommençait à croître. **Une borne qui ne protège de rien et qui
+détruit une propriété exacte est une borne à retirer.**
+
+⚠️ **Ce que le desserrement pouvait coûter, et qui ne se voit sur aucune
+planche :** si les plants d'un chapitre cessent de se toucher, plus rien ne
+distingue un massif d'une suite de parcelles d'un seul plant, et les trois
+niveaux du point 6 tombent sans qu'aucune image ne soit fausse. Un essai le
+tient : sur deux parcelles de douze, tous les intervalles internes sont
+négatifs (10 à 18 px de chevauchement) et celui entre parcelles vaut 112 px,
+pour des plants de 149.
+
+**Le volet n'est pas touché** : il passe par `composer()`, qui n'a pas de
+serrage. C'est la vue d'ensemble seule.
+
+⚠️ **Le cahier de parité ne traversait la règle par aucun bout.** Ses massifs
+font 1, 1, 2, 2, 2, 2, 2, 2, 2 et 3 — **tous au plancher**, c'est-à-dire du
+côté de la formule où elle ne calcule rien. La pente qui desserre les gros
+chapitres n'était exercée par aucune vue, et un portage qui l'aurait ratée
+serait passé. C'est le piège 3 exactement, et la deuxième fois qu'il frappe au
+même endroit : `apercu` avait déjà eu une vue nommée « deux du même chapitre »
+qui prenait deux chapitres différents. On **fabrique** donc un massif de
+dix-neuf, en donnant le même titre à tous les plants posés.
+
+⚠️ Et comme le cahier ne transporte que des **rangs**, le titre fabriqué ne
+traversait pas : le JavaScript relisait les plants par leur rang, retrouvait
+leurs vrais titres, et comparait dix parcelles à une seule. **Vingt et un
+écarts, tous faux.** Le titre forcé se transporte maintenant à part, et les
+deux côtés appliquent le même forçage.
+
+**Où ça se vérifie :** deux essais dans `essais.py` — l'un mesure ce qu'un
+plant montre encore de lui-même, l'autre que les trois niveaux tiennent — plus
+trois mutations de chaque côté. Les deux essais mesurent sur les **poses**, pas
+sur la constante : lire `_serrage()` et comparer à ce qu'elle renvoie serait
+comparer la constante à elle-même, et elle s'adapterait à la panne.
+
+⚠️ **Le premier essai écrit a doublé la durée de la chaîne, et c'est une panne
+à part entière.** Il balayait les tailles de massif de 2 à 40 en **végétal** :
+1 636 plants posés, `essais.py` de **10,1 à 22,9 s** — et `mutations.py` le
+relance quarante-quatre fois, soit **neuf minutes ajoutées**. Or la longueur de
+cette chaîne est déjà ce qui donne envie de la paralléliser, ce qu'il ne faut
+surtout pas faire : la rallonger, c'est attaquer la discipline de vérification
+par le côté.
+
+Mesuré : douze plants coûtent **114 ms en végétal** (4 124 traits) contre
+**5 ms en abstrait** (636). Le serrage étant un simple facteur sur la largeur
+réservée, la pose ne dépend pas de la famille — le balayage se fait donc en
+abstrait, et **l'essai vérifie cette indépendance au lieu de la supposer**, en
+comparant un massif de quatorze dans les deux familles. Les trois seuils que le
+lecteur voit restent mesurés en végétal, qui est la famille de 22 des 35 plants
+de l'auteur. Retour à **10,0 s**, soit le coût d'avant à 1 % près.
+
 ---
 
 ## 15. Le ton des phrases

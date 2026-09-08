@@ -244,7 +244,7 @@ const MUTATIONS = [
    "le volet recentre le plant en cours : un plant qui nait redonne un volet vide"],
 
   ["composition.js",
-   "    const serrage = groupe.length > 1 ? 0.46 : 1.0;",
+   "    const serrage = _serrage(groupe.length);",
    "    const serrage = 1.0;",
    "les plants d'une meme parcelle ne se recouvrent plus : le massif se defait"],
 
@@ -653,6 +653,38 @@ const MUTATIONS = [
    "      const tenue = s === meneur ? 1.0 - axe * 0.72 : 1.0 + axe * 0.4;",
    "      const tenue = 1.0;",
    "le rameau meneur ne prolonge plus l'axe"],
+
+
+  // ----------------------------------------------- le serrage du massif
+  ["composition.js",
+   "  const lache = 1.0 - PLANTS_CACHES / (n - 1);",
+   "  const lache = 1.0 - PLANTS_CACHES / n;",
+   "le portage decale d'un le nombre d'intervalles : un massif de trois"
+   + " se pose a 0,64 au lieu de 0,46"],
+
+  // ⚠️ Le plafond avait ete ecrit d'abord, puis retire cote Python. Un
+  //    portage fait sur la premiere version le garderait, et RIEN ne se
+  //    verrait avant quinze plants par massif : c'est la seule mutation que
+  //    la vue « un chapitre entier » du cahier soit seule a attraper, et
+  //    c'est elle qui justifie que cette vue existe.
+  ["composition.js",
+   "  return Math.max(SERRAGE_SERRE, lache);",
+   "  return Math.max(SERRAGE_SERRE, Math.min(0.92, lache));",
+   "le plafond retire cote Python survit dans le portage : invisible"
+   + " jusqu'a quatorze plants par massif"],
+
+  ["composition.js",
+   "  return Math.max(SERRAGE_SERRE, lache);",
+   "  return lache;",
+   "le plancher saute : a deux plants le serrage devient negatif"],
+
+  // ⚠️ Piege de portage pur : Python leverait ZeroDivisionError, JavaScript
+  //    rend -Infinity sans un mot, et le plant part a l'infini a gauche.
+  ["composition.js",
+   "  if (n < 2) return 1.0;",
+   "  if (n < 1) return 1.0;",
+   "un massif d'un seul plant tombe dans la formule : division par zero,"
+   + " que JavaScript ne signale pas"],
 
 ];
 

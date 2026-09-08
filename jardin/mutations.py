@@ -113,6 +113,38 @@ MUTATIONS = [
      "le volet recadre toujours le dernier plant : revenir sur un vieux"
      " chapitre ne ramene plus la camera"),
 
+    # ------------------------------------------------- le serrage du massif
+    ("composition.py",
+     "    lache = 1.0 - PLANTS_CACHES / (n - 1)",
+     "    lache = 0.0",
+     "le serrage redevient fixe a 0,46 : un chapitre de quatorze plants se"
+     " retasse en haie, et le premier arbre redevient le seul lisible"),
+
+    # ⚠️ Celle-ci mute dans l'AUTRE sens, et c'est la plus utile des trois :
+    #    elle desserre tout, ce qui est exactement la correction naive. Le
+    #    paysage a l'air propre et les trois niveaux du point 6 sont morts.
+    ("composition.py",
+     "    lache = 1.0 - PLANTS_CACHES / (n - 1)",
+     "    lache = 1.0",
+     "les plants d'un massif cessent de se toucher : un chapitre ne se"
+     " distingue plus d'une suite de chapitres d'un seul plant"),
+
+    # ⚠️ Celle-ci remet le PLAFOND qui avait ete ecrit d'abord puis retire.
+    #    Elle ne se voit pas avant quinze plants par massif — et c'est tout
+    #    l'interet : elle prouve que l'invariant du total cache porte quelque
+    #    chose qu'aucun seuil de lisibilite ne surveille.
+    ("composition.py",
+     "    return max(SERRAGE_SERRE, lache)",
+     "    return max(SERRAGE_SERRE, min(0.92, lache))",
+     "le plafond a 0,92 revient : au-dela de quinze plants le total cache"
+     " recommence a croitre, et la regle perd son seul invariant"),
+
+    ("composition.py",
+     "    return max(SERRAGE_SERRE, lache)",
+     "    return lache",
+     "le plancher saute : a deux plants le serrage vaut -0,08 et le second"
+     " se pose A GAUCHE du premier"),
+
     # ---------------------------------- le plafond, l'axe, le feuillage, le port
     ("traits.py",
      "        longueur=borne(longueur_moy, 8, 45),",

@@ -536,11 +536,39 @@ def cas_composition(plants) -> dict:
         titres.setdefault(q["titre"], q)
     sous["deux chapitres"] = list(titres.values())[:2]
 
+    # ⚠️ LE JOURNAL NE FABRIQUE QUE DES MASSIFS DE UN, DEUX ET TROIS PLANTS.
+    #
+    # Mesure : 1, 1, 2, 2, 2, 2, 2, 2, 2, 3. Tous au PLANCHER du serrage,
+    # c'est-a-dire du cote de la formule ou elle ne calcule rien. La pente qui
+    # desserre les gros chapitres n'etait traversee par aucune vue — un
+    # portage qui l'aurait ratee serait passe, exactement comme le serrage
+    # lui-meme est reste intraverse jusqu'a ce que « deux du meme chapitre »
+    # cesse de prendre deux chapitres differents.
+    #
+    # Le paysage reel de l'auteur porte un massif de QUATORZE, parce que son
+    # document n'a que quatre Titre 1. On ne peut pas le faire sortir du
+    # corpus, qui decoupe regulierement ; on le FABRIQUE, en donnant le meme
+    # titre a tous les plants poses. C'est la seule vue du cahier qui ne
+    # vienne pas telle quelle du journal, et c'est assume : la forme qu'elle
+    # exerce vient d'un vrai document, pas d'une envie de couverture.
+    gros = [dict(q, titre="un seul chapitre") for _c, g in suites for q in g]
+    if len(gros) < 8:
+        raise AssertionError(
+            f"{len(gros)} plants poses : le massif fabrique est trop court"
+            f" pour traverser la pente du serrage, qui ne se separe du"
+            f" plancher qu'a partir de quatre plants")
+    sous["un chapitre entier"] = gros
+    # Le cahier ne transporte que des RANGS, et le rendu JavaScript relit les
+    # plants par leur rang : le titre fabrique ci-dessus ne traverserait pas.
+    # On le transporte donc a part, et l'autre cote applique le meme forcage.
+    forces = {"un chapitre entier": "un seul chapitre"}
+
     vues = {}
     for nom, sp in sous.items():
         poses, largeur = composition.composer(sp, 560, 1)
         vues[nom] = {
             "plants": [p["rang"] for p in sp],
+            "titre_force": forces.get(nom),
             "largeur": largeur,
             # Les poses sans la Toile : profondeur, x, y, echelle. C'est la
             # composition elle-meme, avant tout rendu.
@@ -805,6 +833,8 @@ def cas_tables() -> dict:
             "OPACITE_FOND": composition.OPACITE_FOND,
             "ECART": composition.ECART,
             "ECART_PARCELLE": composition.ECART_PARCELLE,
+            "SERRAGE_SERRE": composition.SERRAGE_SERRE,
+            "PLANTS_CACHES": composition.PLANTS_CACHES,
         },
         "paysage": {
             "STYLES_TITRE": sorted(paysage_mod.STYLES_TITRE),

@@ -546,7 +546,14 @@ titre("paysage");
                 gabarit(parRang[g.rang], g.graine));
   }
   for (const [nom, v] of Object.entries(cahier.composition.vues)) {
-    const sp = v.plants.map((r) => parRang[r]);
+    let sp = v.plants.map((r) => parRang[r]);
+    // ⚠️ Le cahier peut FORCER un titre commun : c'est ainsi qu'il fabrique
+    // un massif de dix-neuf plants, que le journal ne sait pas produire — il
+    // ne fait que des massifs de un, deux et trois, tous au plancher du
+    // serrage. Sans cette ligne, le JS regrouperait par les VRAIS titres et
+    // comparerait dix parcelles a une seule : l'ecart serait reel, le
+    // diagnostic completement faux.
+    if (v.titre_force) sp = sp.map((p) => ({ ...p, titre: v.titre_force }));
     const [poses, largeur] = composer(sp, 560, 1);
     meme(`${nom} : largeur totale`, v.largeur, largeur);
     memeProfond(`${nom} : poses`, v.poses, poses.map(([d, cx, y, k]) => [d, cx, y, k]));

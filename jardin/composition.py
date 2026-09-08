@@ -54,6 +54,53 @@ OPACITE_FOND = 0.78
 ECART = 1.06            # respiration entre deux plants, en largeur de plant
 ECART_PARCELLE = 1.55   # entre deux chapitres
 
+# ⚠️ LE SERRAGE D'UN MASSIF SUIT SA TAILLE, ET C'EST CE QUI EST CACHE
+# QU'ON BORNE, PAS CE QUI EST MONTRE.
+#
+# C'etait 0,46 des qu'une parcelle portait deux plants : chacun recouvrait
+# 54 % du suivant. Regle pour la forme que la docstring d'apercu() annonce —
+# vingt-sept plants en huit chapitres, donc trois ou quatre par massif, ou le
+# chevauchement fait un relief.
+#
+# Mesure sur le paysage REEL de l'auteur, releve dans Word : trente-cinq
+# plants, mais QUATRE Titre 1. Massifs de 6, 6, 14 et 9, et 55 % de
+# recouvrement moyen sur trente et une paires consecutives. Quatorze arbres
+# qui se recouvrent a moitie ne font pas un relief, ils font une haie — et le
+# premier arbre etait le seul lisible du paysage parce qu'il etait le seul
+# dont le cote gauche fut libre. La constante avait ete reglee pour trois,
+# elle en recevait quatorze.
+#
+# On borne donc le TOTAL recouvert dans un massif, au lieu de fixer le pas :
+#
+#       (n - 1) x (1 - serrage) = PLANTS_CACHES
+#
+# soit serrage = 1 - PLANTS_CACHES / (n - 1). Un massif cache toujours la
+# meme chose — un peu plus d'une largeur de plant — qu'il en porte trois ou
+# trente. A trois plants la formule redonne EXACTEMENT 0,46 : le cas pour
+# lequel la valeur avait ete reglee ne bouge pas d'un pixel.
+#
+# ⚠️ Le plancher n'est pas une precaution de style, il tient le cas a deux
+# plants : la formule y donnerait -0,08, c'est-a-dire un plant pose A GAUCHE
+# de son predecesseur. Le paysage se lirait a l'envers.
+#
+# ⚠️ Il n'y a PAS de plafond, et il ne faut pas en ajouter un. Le serrage
+# tend vers 1 sans jamais l'atteindre, donc deux plants d'un meme massif se
+# recouvrent toujours un peu, si gros soit le chapitre — c'est ce qui garde
+# les trois niveaux du point 6 lisibles sans etiquette : un massif se
+# chevauche, une parcelle respire. Un plafond a 0,92 avait ete essaye ; il ne
+# protegeait de rien que la formule ne protege deja, et il cassait le seul
+# invariant que cette regle ait — le total cache cessait d'etre constant.
+SERRAGE_SERRE = 0.46    # le pas le plus serre : deux ou trois plants
+PLANTS_CACHES = 1.08    # largeurs de plant recouvertes, au total, par massif
+
+
+def _serrage(n: int) -> float:
+    """Le pas d'un massif de n plants, en largeur de plant."""
+    if n < 2:
+        return 1.0
+    lache = 1.0 - PLANTS_CACHES / (n - 1)
+    return max(SERRAGE_SERRE, lache)
+
 
 def _profondeur(plant: dict) -> float:
     """0 au fond, 1 au premier plan. C'est la maturite, et rien d'autre."""
@@ -378,10 +425,15 @@ def apercu(plants: list, hauteur=520, graine=1, marge=70):
     La vue d'ensemble, groupee par PARCELLE.
 
     La compression ne vient pas d'une reduction d'echelle mais du regroupement :
-    la hierarchie du point 6 la donne gratuitement. Vingt-sept plants en huit
-    chapitres font huit massifs, et un massif se regarde d'un coup. Les plants
-    d'une meme parcelle se chevauchent — c'est le meme texte, ils forment un
-    relief — et les parcelles respirent entre elles.
+    la hierarchie du point 6 la donne gratuitement. Un massif se regarde d'un
+    coup. Les plants d'une meme parcelle se chevauchent — c'est le meme texte,
+    ils forment un relief — et les parcelles respirent entre elles.
+
+    ⚠️ Cette docstring disait « vingt-sept plants en huit chapitres font
+    huit massifs », et le serrage etait regle sur cette phrase. Un vrai
+    document ne decoupe pas si regulierement : celui de l'auteur fait
+    trente-cinq plants en QUATRE chapitres. Le nombre de plants par massif
+    n'est pas une constante du probleme, c'est une variable — voir _serrage().
     """
     rng = random.Random(graine)
     parcelles: list = []
@@ -399,8 +451,9 @@ def apercu(plants: list, hauteur=520, graine=1, marge=70):
     haut_utile = hauteur * 0.44
     poses, x = [], marge
     for cle, groupe in parcelles:
-        # Dans un massif, les plants se serrent et se recouvrent.
-        serrage = 0.46 if len(groupe) > 1 else 1.0
+        # Dans un massif, les plants se serrent et se recouvrent — d'autant
+        # moins qu'ils sont nombreux. Voir _serrage().
+        serrage = _serrage(len(groupe))
         largeur_massif = 0.0
         for p in groupe:
             t = depuis_plant(p, graine + p["rang"] * 977)

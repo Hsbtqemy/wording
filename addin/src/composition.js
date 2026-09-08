@@ -36,6 +36,41 @@ export const OPACITE_FOND = 0.78;
 export const ECART = 1.06;          // respiration entre deux plants
 export const ECART_PARCELLE = 1.55; // entre deux chapitres
 
+// ⚠️ LE SERRAGE D'UN MASSIF SUIT SA TAILLE, ET C'EST CE QUI EST CACHE QU'ON
+// BORNE, PAS CE QUI EST MONTRE.
+//
+// C'etait 0,46 des qu'une parcelle portait deux plants : chacun recouvrait
+// 54 % du suivant. Regle pour la forme qu'apercu() annoncait — vingt-sept
+// plants en huit chapitres, donc trois ou quatre par massif.
+//
+// Mesure sur le paysage REEL de l'auteur, releve dans Word : trente-cinq
+// plants, mais QUATRE Titre 1. Massifs de 6, 6, 14 et 9, et 55 % de
+// recouvrement moyen. Quatorze arbres qui se recouvrent a moitie ne font pas
+// un relief, ils font une haie — et le premier arbre etait le seul lisible du
+// paysage parce qu'il etait le seul dont le cote gauche fut libre.
+//
+// On borne donc le TOTAL recouvert dans un massif, au lieu de fixer le pas :
+// (n - 1) x (1 - serrage) = PLANTS_CACHES. Un massif cache toujours la meme
+// chose, qu'il en porte trois ou trente. A trois plants la formule redonne
+// exactement 0,46 : le cas pour lequel la valeur avait ete reglee ne bouge pas.
+//
+// ⚠️ Le plancher tient le cas a deux plants, ou la formule donnerait -0,08 :
+// un plant pose A GAUCHE de son predecesseur, et le paysage se lit a l'envers.
+//
+// ⚠️ Il n'y a PAS de plafond, et il ne faut pas en ajouter un. Le serrage
+// tend vers 1 sans jamais l'atteindre, donc deux plants d'un meme massif se
+// recouvrent toujours un peu : un massif se chevauche, une parcelle respire,
+// et les trois niveaux du point 6 restent lisibles sans etiquette.
+export const SERRAGE_SERRE = 0.46;  // le pas le plus serre : deux ou trois
+export const PLANTS_CACHES = 1.08;  // largeurs de plant cachees, par massif
+
+/** Le pas d'un massif de n plants, en largeur de plant. */
+function _serrage(n) {
+  if (n < 2) return 1.0;
+  const lache = 1.0 - PLANTS_CACHES / (n - 1);
+  return Math.max(SERRAGE_SERRE, lache);
+}
+
 /** 0 au fond, 1 au premier plan. C'est la maturite, et rien d'autre. */
 function _profondeur(plant) {
   return Math.max(0.0, Math.min(1.0, plant.maturite || 0.0));
@@ -288,10 +323,14 @@ export function vue_de_travail(plants, graine = 1, largeur = 360, hauteur = 440,
  * La vue d'ensemble, groupee par PARCELLE.
  *
  * La compression ne vient pas d'une reduction d'echelle mais du regroupement :
- * la hierarchie du point 6 la donne gratuitement. Vingt-sept plants en huit
- * chapitres font huit massifs, et un massif se regarde d'un coup. Les plants
- * d'une meme parcelle se chevauchent — c'est le meme texte, ils forment un
- * relief — et les parcelles respirent entre elles.
+ * la hierarchie du point 6 la donne gratuitement. Un massif se regarde d'un
+ * coup. Les plants d'une meme parcelle se chevauchent — c'est le meme texte,
+ * ils forment un relief — et les parcelles respirent entre elles.
+ *
+ * ⚠️ Cette docstring disait « vingt-sept plants en huit chapitres font huit
+ * massifs », et le serrage etait regle sur cette phrase. Un vrai document ne
+ * decoupe pas si regulierement : celui de l'auteur fait trente-cinq plants en
+ * QUATRE chapitres. Voir _serrage().
  */
 export function apercu(plants, hauteur = 520, graine = 1, marge = 70) {
   const rng = new Alea(graine);
@@ -311,8 +350,9 @@ export function apercu(plants, hauteur = 520, graine = 1, marge = 70) {
   const poses = [];
   let x = marge;
   for (const [, groupe] of parcelles) {
-    // Dans un massif, les plants se serrent et se recouvrent.
-    const serrage = groupe.length > 1 ? 0.46 : 1.0;
+    // Dans un massif, les plants se serrent et se recouvrent — d'autant moins
+    // qu'ils sont nombreux. Voir _serrage().
+    const serrage = _serrage(groupe.length);
     let largeur_massif = 0.0;
     for (const p of groupe) {
       const t = depuis_plant(p, graine + p.rang * 977);
@@ -340,4 +380,5 @@ export function svg_apercu(plants, hauteur = 520, graine = 1) {
 // Voir le commentaire de TABLES dans traits.js : derivees, jamais recopiees.
 export const TABLES = {
   HORIZON, ECHELLE_FOND, ECHELLE_AVANT, OPACITE_FOND, ECART, ECART_PARCELLE,
+  SERRAGE_SERRE, PLANTS_CACHES,
 };
