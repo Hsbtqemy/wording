@@ -361,7 +361,13 @@ export function extraire(texte, reecriture = 0.0) {
     structure: borne(part_structurelle, 0.0, 0.35),
     dialogue: borne(densite_dialogue, 0.0, 4.0),
     interrogation: borne(interro, 0.0, 0.15),
-    diversite: borne(mattr(mots), 0.55, 0.80),
+    // ⚠️ 0,55..0,80 ecrasait la moitie du corpus contre le plancher : vingt
+    //    plants sur quarante a 0,000, donc trois tons de palette sur cinq
+    //    inatteignables. Le plafond de 0,80 n'etait atteint par rien — le
+    //    maximum jamais mesure est 0,669. Voir traits.py pour les mesures et,
+    //    surtout, pour pourquoi le PLAFOND est la valeur dangereuse : sous
+    //    0,70, une these lexicalement riche bascule en abstrait par refus.
+    diversite: borne(mattr(mots), 0.45, 0.72),
     ponctuation_rare: borne(rares, 0.3, 3.0),
     reecriture: Math.max(0.0, Math.min(1.0, reecriture)),
   };

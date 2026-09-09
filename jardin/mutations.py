@@ -146,6 +146,26 @@ MUTATIONS = [
      " se pose A GAUCHE du premier"),
 
     # ---------------------------------- le plafond, l'axe, le feuillage, le port
+    # ------------------------------------------------ la borne de diversite
+    #
+    # ⚠️ Deux mutations, une par DIRECTION, parce qu'un seul essai ne peut
+    #    pas tenir cette borne : trop haute elle ecrase, trop basse elle
+    #    renverse le classement. Chacune doit etre rattrapee par un essai
+    #    different — si les deux tombent sur le meme, l'un des deux gardes ne
+    #    sert a rien.
+    ("traits.py",
+     "        diversite=borne(mattr(mots), 0.45, 0.72),",
+     "        diversite=borne(mattr(mots), 0.55, 0.80),",
+     "la borne de diversite revient a 0,55..0,80 : vingt plants sur quarante"
+     " retombent a 0,000 et trois tons de palette sur cinq redeviennent"
+     " inatteignables"),
+
+    ("traits.py",
+     "        diversite=borne(mattr(mots), 0.45, 0.72),",
+     "        diversite=borne(mattr(mots), 0.45, 0.69),",
+     "trois centiemes de plafond en moins : une these lexicalement riche"
+     " devient un abstrait par refus et perd tous ses arbres d'un coup"),
+
     ("traits.py",
      "        longueur=borne(longueur_moy, 8, 45),",
      "        longueur=borne(longueur_moy, 8, 30),",

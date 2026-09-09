@@ -63,8 +63,8 @@ python jardin/essais.py && python jardin/mutations.py \
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `64 passes, 0 en echec` · `45/45` · `aucun ecart` · `23 passes` ·
-`25 passes` · `97/97`.
+Attendu : `66 passes, 0 en echec` · `47/47` · `aucun ecart` · `23 passes` ·
+`25 passes` · `98/98`.
 
 `essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
 qu'aucune parité ne peut couvrir, faute de Python en face. Elle y a trouvé
@@ -86,16 +86,23 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **9 min 38** (8 septembre 2026 ;
-c'était 5 min 57 quand la chaîne comptait 36 et 87 mutations). Où le temps
-passe, parce que ça se voit mal autrement :
+Durée mesurée de l'enchaînement complet : **9 min 38 à 13 min 35** selon la
+charge de la machine (8 septembre 2026 ; c'était 5 min 57 quand la chaîne
+comptait 36 et 87 mutations). Où le temps passe, parce que ça se voit mal
+autrement :
 
 | `essais.py` | `mutations.py` | `parite.py` | les deux `essais*.js` | `mutations.js` |
 |---|---|---|---|---|
-| 10 s | **7 min 45** | 4 s | < 1 s | 1 min 38 |
+| 10–14 s | **7 min 45 – 11 min 23** | 4–5 s | < 1 s | 1 min 38 – 2 min |
 
-`mutations.py` relance `essais.py` quarante-cinq fois, et `mutations.js`
-relance la parité ou la batterie du volet quatre-vingt-dix-sept fois. Assez
+⚠️ La fourchette est de la **charge machine, pas du code** : deux mesures dos à
+dos du même `essais.py` ont donné 14 194 ms et 14 018 ms là où il avait mis
+10 037 ms une heure plus tôt. Avant d'accuser un essai neuf d'avoir ralenti la
+chaîne, mesurer les deux versions **l'une après l'autre** — sinon on retire du
+travail juste pour rien.
+
+`mutations.py` relance `essais.py` quarante-sept fois, et `mutations.js`
+relance la parité ou la batterie du volet quatre-vingt-dix-huit fois. Assez
 long pour donner envie de paralléliser, ce qu'il ne faut surtout pas faire.
 
 ⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par quarante-cinq.**

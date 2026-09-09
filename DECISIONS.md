@@ -262,9 +262,116 @@ défaut ne se voit qu'entre deux arbres.
 par segment, et la famille aussi. La calibration agit sur ce qui s'écrit
 ensuite. Un paysage devient mixte, il n'est pas réécrit.
 
-**Reste ouvert :** les huit autres bornes (`0,30..1,00` pour le rythme,
-`0,3..3,0` pour les virgules, `0,55..0,80` pour MATTR…) n'ont toujours été
-payées de rien. Celle-ci a montré ce que ça coûte.
+**Reste ouvert :** les sept autres bornes (`0,30..1,00` pour le rythme,
+`0,3..3,0` pour les virgules…) n'ont toujours été payées de rien. Celle-ci a
+montré ce que ça coûte.
+
+### La deuxième borne, et le piège qui était dans l'autre sens
+
+**Reconsidéré :** `diversite` passe de **0,55..0,80 à 0,45..0,72** de MATTR.
+Deuxième des huit à être mesurée, et elle était fausse par les deux bouts.
+
+Mesure sur des plants de 2 500 mots réellement engendrés :
+
+| | vocabulaire | MATTR |
+|---|---|---|
+| architecture | 70 | 0,461 – 0,482 |
+| créature | 34 | 0,463 – 0,508 |
+| végétal | 190 | 0,592 – 0,602 |
+| abstrait | 430 | 0,656 – 0,669 |
+| **la thèse de l'auteur** | — | **0,6491** |
+
+**Le plafond de 0,80 n'était atteint par rien** — maximum jamais observé
+0,669. **Le plancher de 0,55 laissait vingt plants sur quarante à `diversite`
+= 0,000 exactement**, architecture et créature en entier. Conséquences : trois
+des cinq tons de chaque palette étaient inatteignables ; l'éventail du feuillage
+(`0,22 + diversite × 0,36`, en radians) ne couvrait que **48 %** de l'amplitude
+que son propre code prévoit — 0,220 à 0,391 sur 0,220 à 0,580 ; et les facettes
+de l'abstrait (`5 + int(diversite × 4,4)`) ne dépassaient jamais 7 sur 9.
+
+⚠️ **Le corpus ne peut pas arbitrer cette borne** : il se classe **40/40 à
+toutes les bornes essayées**, de 0,40..0,75 à 0,55..0,80. Exactement ce qui
+s'était passé pour `longueur`, et pour la même raison — on y compare des
+familles entre elles, jamais deux textes d'une même famille. Le seul texte qui
+décide est de la vraie prose.
+
+⚠️ **ET LE PLAFOND EST LA VALEUR DANGEREUSE, CE QUI EST CONTRE-INTUITIF.**
+L'abstrait pèse **0,58 sur `diversite`** — c'est 58 % de son score. Or la thèse
+de l'auteur est lexicalement aussi riche que le profil abstrait : 0,6491 contre
+0,656–0,669. Plus le plafond descend, plus sa `diversite` monte, et plus
+l'abstrait devient compétitif contre son propre végétal. Sa marge de dominance :
+
+| plafond | 0,66 | 0,68 | 0,69 | 0,70 | **0,72** |
+|---|---|---|---|---|---|
+| marge | +0,014 | +0,034 | +0,055 | +0,074 | **+0,108** |
+| famille | abstrait | abstrait | abstrait | végétal, au bord | **végétal** |
+
+**Une borne calée au plus juste sur la plage observée — 0,46..0,67, ce qui
+paraissait la réponse évidente — transformait une thèse entière en abstrait par
+refus, en voulant lui donner des couleurs.** La borne étroite d'avant la
+protégeait par accident, en écrasant le signal. C'est le contraire du cas
+`longueur`, où la saturation empêchait la ville ; ici la désaturation détruit
+l'arbre.
+
+⚠️ **Le plancher, lui, ne décide de rien pour l'auteur** — sa marge reste
+végétale de 0,40 à 0,50 de plancher, à plafond fixé. Il décide de la
+**séparation**, et c'est là qu'il se paie : 0,40 donne à la créature une
+`diversite` de 0,180–0,309, donc tantôt 1 ton tantôt 2, et à l'abstrait tantôt
+3 tantôt 4 — deux familles qui se croisent. 0,45 les sépare net. Il se trouve
+aussi juste sous le MATTR le plus bas jamais mesuré (0,4606), donc la prose la
+plus monotone atterrit près de zéro sans grande zone morte en dessous.
+
+Ce que 0,45..0,72 donne : architecture et créature **1 ton**, végétal **3**,
+abstrait **4** — quatre niveaux distincts qui suivent les tailles de vocabulaire
+réelles, ce que la docstring de `Teinte` promet depuis toujours. La thèse de
+l'auteur passe de 2 à 3 tons, avec +0,108 de marge, soit près du double de
+`MARGE_DOMINANCE`.
+
+⚠️ **Une erreur de méthode, commise et corrigée, qui vaut d'être écrite.** La
+première mesure rejouait les échantillons de 300 mots pour en faire des plants
+de 2 500. Il n'y reste que deux ou trois paragraphes éligibles, donc la fenêtre
+de 200 mots voyait sans arrêt des répétitions qui n'existent pas dans le texte :
+MATTR de l'abstrait tombait de 0,64 à 0,54, et **l'abstrait paraissait moins
+riche que le végétal** — l'inverse de la vérité. Deux échantillons semblaient
+même mal classés. Sur du texte réellement engendré, MATTR tient sa promesse :
+0,591 à 600 mots contre 0,594 à 2 500. **Un corpus fabriqué par répétition ne
+mesure pas ce qu'on croit.**
+
+**Où ça se vérifie :** deux essais, **un par direction**, parce qu'aucun ne peut
+tenir les deux. Le premier surveille le bas — le végétal ne doit pas retomber
+sous 0,35, l'abstrait doit se détacher de plus de 0,10, la palette doit utiliser
+au moins trois niveaux. Le second surveille le haut, sur un profil qui reproduit
+la thèse réelle : syntaxe végétale peu subordonnée, aucune ponctuation rare,
+vocabulaire de l'abstrait — marge mesurée +0,096 à +0,130, qui encadre les
++0,108 de l'auteur.
+
+⚠️ **Le végétal ordinaire du corpus ne convenait pas comme témoin** : sa
+subordination sature à 1,00 et sa marge vaut +0,30, donc il reste végétal
+**même avec la borne cassée**. L'essai aurait été vert dans les deux cas —
+le piège du cahier qui a l'air complet, pour la troisième fois sur ce projet.
+
+⚠️ **Les plants déjà poussés ne bougent pas** : `traits_courants` et la famille
+sont sérialisés par segment. La calibration agit sur ce qui s'écrit ensuite.
+
+⚠️ **Ce que la nouvelle borne NE règle PAS, et il faut le chiffrer plutôt que
+de laisser croire à une réparation complète.** `n_tons = 1 + int(diversite × 4)`
+ne rend le **cinquième ton** qu'à `diversite` = 1,000 exactement, soit
+MATTR ≥ 0,72 — au-dessus de tout ce qui a jamais été observé. Même chose pour la
+**neuvième facette** de l'abstrait, qui demande MATTR ≥ 0,695. On passe donc de
+trois tons morts sur cinq à **un seul**, et l'éventail de 48 % à **77 %** de son
+amplitude. C'est un gain mesuré, pas une plage enfin complète.
+
+⚠️ Et un effet de bord à surveiller : le profil abstrait **pur** passe de 6–7
+facettes à **8** — une seule valeur au lieu de deux. La variété des facettes ne
+vient donc plus du profil pur mais des plants classés abstraits **par refus**,
+dont la `diversite` est étalée. À regarder sur planche avant d'y toucher.
+
+**Ce qui reste su et non réglé.** Le plafond est calé pour que le **seul vrai
+document disponible** garde ses arbres — c'est un point de mesure, pas une
+population. À revoir avec d'autres proses. Et la question de fond est ailleurs :
+`diversite` à 0,58 est un **identifiant faible** pour l'abstrait, ce qu'une
+borne bien calée ne fait que révéler. Toucher aux `POIDS` est une autre
+décision, et elle appartient à l'auteur.
 
 ---
 
@@ -1709,8 +1816,10 @@ l'exécution.
     cadeau, c'est le seul instant où l'organisme change de nature sous les yeux
     de la personne — et c'est peut-être bien ainsi : c'est une naissance, pas un
     fondu. À regarder en vrai avant de trancher.
-13. **`diversite` n'utilise que la moitié basse de sa plage, et trois tons sur
-    cinq sont inatteignables.** Deuxième des huit bornes de normalisation à se
+13. ~~**`diversite` n'utilise que la moitié basse de sa plage, et trois tons
+    sur cinq sont inatteignables.**~~ **Réglé** — borne portée à 0,45..0,72,
+    voir la décision 5. Le piège n'était pas où on le croyait : une borne calée
+    au plus juste faisait basculer la thèse en abstrait par refus. Deuxième des huit bornes de normalisation à se
     révéler fausse dès qu'on la mesure — après `longueur`, et par l'autre bout :
     là le trait saturait au plafond, ici il rampe au plancher.
 

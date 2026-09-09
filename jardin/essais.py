@@ -910,6 +910,146 @@ def _():
             f" huit titres font une {r.famille}")
 
 
+# --------------------------------------------------------------------------
+# La borne de diversite se tient PAR LES DEUX BOUTS, et il faut les deux.
+#
+# Trop haute, elle ecrase : a 0,55..0,80 vingt plants sur quarante valaient
+# 0,000 et trois tons de palette sur cinq etaient inatteignables.
+# Trop basse, elle renverse le classement : l'abstrait pese 0,58 sur ce seul
+# trait, donc une prose lexicalement riche finit abstraite PAR REFUS — une
+# these entiere qui perd ses arbres pour avoir gagne des couleurs.
+#
+# Un seul essai ne peut pas tenir les deux : le premier surveille le bas, le
+# second le haut. Casser la borne dans un sens laisse l'autre vert.
+# --------------------------------------------------------------------------
+def _plants_de(famille, mots=1200, graines=3):
+    """Des plants engendres, pas des caricatures reechantillonnees.
+
+    ⚠️ Rejouer un echantillon de 300 mots pour en faire 2 500 ne marche
+    PAS : il n'y reste que deux ou trois paragraphes eligibles, donc la
+    fenetre de 200 mots voit sans arret des repetitions qui n'existent pas
+    dans le texte, et MATTR s'effondre de 0,64 a 0,54. Mesure faite, erreur
+    commise. Sur du texte reellement engendre, MATTR tient sa promesse : 0,591
+    a 600 mots contre 0,594 a 2 500, d'ou les 1 200 mots d'ici — assez pour
+    etre stable, assez peu pour que quarante-cinq relances restent gratuites.
+    """
+    import random
+    from corpus import paragraphe
+    out = []
+    for g in range(graines):
+        rng, bloc, n = random.Random(g), [], 0
+        while n < mots:
+            texte, _style = paragraphe(rng, famille)
+            bloc.append(texte)
+            n += len(texte.split())
+        out.append("\n\n".join(bloc))
+    return out
+
+
+@essai("traits / la richesse lexicale separe les quatre familles")
+def _():
+    from traits import extraire
+    from grammaire import Teinte
+    from corpus import PROFILS
+
+    # Mesure a l'origine du changement, sur des plants de 2 500 mots :
+    #   architecture 0,461..0,482 (vocabulaire 70)
+    #   creature     0,463..0,508 (34)
+    #   vegetal      0,592..0,602 (190)
+    #   abstrait     0,656..0,669 (430)
+    # Le plafond de 0,80 n'etait atteint par rien, le plancher de 0,55
+    # ecrasait l'architecture et la creature en entier.
+    par_famille = {}
+    for famille in PROFILS:
+        par_famille[famille] = [extraire(t).diversite
+                                for t in _plants_de(famille)]
+
+    veg, abs_ = par_famille["vegetal"], par_famille["abstrait"]
+    pauvres = par_famille["architecture"] + par_famille["creature"]
+
+    assert min(veg) > 0.35, (
+        f"le vegetal retombe a {min(veg):.3f} de diversite : c'est le regime"
+        f" ou la moitie du corpus valait 0,000 et ou trois tons de palette sur"
+        f" cinq etaient inatteignables")
+    assert min(abs_) - max(veg) > 0.10, (
+        f"l'abstrait ({min(abs_):.3f}) ne se detache plus du vegetal"
+        f" ({max(veg):.3f}) : le trait qui l'identifie a 0,58 ne le distingue"
+        f" plus de rien")
+    assert min(veg) - max(pauvres) > 0.15, (
+        f"un vocabulaire de 190 mots ({min(veg):.3f}) ne se distingue plus"
+        f" d'un vocabulaire de 34 ou 70 ({max(pauvres):.3f})")
+
+    # ⚠️ Le garde du HAUT que cet essai peut tenir : au-dela, l'abstrait
+    # sature et c'est le second essai qui prend le relais, sur ce que ca
+    # coute au classement.
+    plafonnes = [d for ds in par_famille.values() for d in ds if d > 0.95]
+    assert not plafonnes, (
+        f"{len(plafonnes)} plants collent au plafond de diversite"
+        f" ({max(plafonnes):.3f}) : la borne est trop basse et le trait"
+        f" recommence a ne plus rien separer, par l'autre bout")
+
+    tons = sorted({Teinte([(251, 1)], False, d).n_tons
+                   for ds in par_famille.values() for d in ds})
+    assert len(tons) >= 3, (
+        f"la palette n'utilise que {len(tons)} niveaux de richesse {tons} :"
+        f" avant correction il y en avait deux, 1 et 2, sur cinq possibles")
+    return (f"architecture/creature {max(pauvres):.2f}, vegetal"
+            f" {min(veg):.2f}, abstrait {min(abs_):.2f} — tons {tons}")
+
+
+@essai("traits / une these lexicalement riche garde ses arbres")
+def _():
+    from traits import extraire, revele, MARGE_DOMINANCE
+    from corpus import PROFILS, Profil
+
+    # ⚠️ LE CAS QUE LE CORPUS NE SAIT PAS PRODUIRE, ET LE SEUL QUI DECIDE.
+    #
+    # Le corpus se classe 40/40 a TOUTES les bornes essayees, de 0,40..0,75 a
+    # 0,55..0,80 : il ne peut pas arbitrer celle-ci. Ce qui l'arbitre est une
+    # these reelle, mesuree — longueur 0,653, subordination 0,539, ponctuation
+    # rare nulle, aucune structure, MATTR 0,6491 — dont la marge de dominance
+    # vaut +0,108 a la borne livree et tombe a +0,055 si le plafond descend a
+    # 0,69. Elle devient alors un ABSTRAIT PAR REFUS : une these entiere perd
+    # ses arbres parce qu'on a voulu lui donner des couleurs.
+    #
+    # Le profil ci-dessous la reproduit : syntaxe vegetale peu subordonnee,
+    # aucune ponctuation rare, et le vocabulaire de l'abstrait. Il donne une
+    # marge de +0,096 a +0,130, qui encadre les +0,108 mesures.
+    #
+    # ⚠️ Le vegetal ORDINAIRE du corpus ne convient pas : sa subordination
+    # sature a 1,00 et sa marge vaut +0,30, donc il reste vegetal meme avec la
+    # borne cassee. L'essai aurait ete vert dans les deux cas — le piege du
+    # cahier qui a l'air complet, pour la troisieme fois sur ce projet.
+    v = PROFILS["vegetal"]
+    PROFILS["these_riche"] = Profil(
+        mots_par_phrase=32, dispersion=v.dispersion, virgules=0.30,
+        connecteurs=0.15, structure=0.0, dialogue=0.0, questions=v.questions,
+        rare=0.0, vocabulaire=PROFILS["abstrait"].vocabulaire,
+        phrases_par_paragraphe=v.phrases_par_paragraphe,
+        regularite=v.regularite)
+    try:
+        revelations = [revele(extraire(t))
+                       for t in _plants_de("these_riche")]
+    finally:
+        del PROFILS["these_riche"]
+
+    for i, r in enumerate(revelations):
+        assert r.famille == "vegetal", (
+            f"la these riche numero {i} devient {r.famille}"
+            f"{' par refus' if r.par_refus else ''} (marge {r.marge:+.3f},"
+            f" diversite {r.traits.diversite:.3f}) : une prose devient"
+            f" abstraite par sa seule richesse lexicale, et un auteur perd"
+            f" tous ses arbres d'un coup")
+    marges = [r.marge for r in revelations]
+    assert min(marges) > MARGE_DOMINANCE, (
+        f"la marge tombe a {min(marges):+.3f} pour une marge de dominance de"
+        f" {MARGE_DOMINANCE} : la these tient encore, mais au bord, et le"
+        f" moindre chapitre un peu plus riche basculera")
+    return (f"marges {min(marges):+.3f} a {max(marges):+.3f} pour"
+            f" MARGE_DOMINANCE {MARGE_DOMINANCE}, diversite"
+            f" {min(r.traits.diversite for r in revelations):.2f}")
+
+
 @essai("grammaire / la structure du texte change la silhouette de l'arbre")
 def _():
     import grammaire

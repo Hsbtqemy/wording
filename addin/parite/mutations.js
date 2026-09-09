@@ -625,6 +625,12 @@ const MUTATIONS = [
 
   // ------------------------------- le plafond, l'axe, le feuillage, le port
   ["traits.js",
+   "    diversite: borne(mattr(mots), 0.45, 0.72),",
+   "    diversite: borne(mattr(mots), 0.55, 0.80),",
+   "le portage garde l'ancienne borne de diversite : le paysage JavaScript"
+   + " perd trois tons de palette sur cinq"],
+
+  ["traits.js",
    "    longueur: borne(longueur_moy, 8, 45),",
    "    longueur: borne(longueur_moy, 8, 30),",
    "le plafond de longueur revient a 30 : toute these sature"],

@@ -331,7 +331,76 @@ def extraire(texte: str, reecriture: float = 0.0) -> Traits:
         structure=borne(part_structurelle, 0.0, 0.35),
         dialogue=borne(densite_dialogue, 0.0, 4.0),
         interrogation=borne(interro, 0.0, 0.15),
-        diversite=borne(mattr(mots), 0.55, 0.80),
+        # ⚠️ 0,55..0,80 ECRASAIT LA MOITIE DU CORPUS CONTRE LE PLANCHER.
+        #
+        #   Mesure sur des plants de 2 500 mots reellement varies (MATTR est
+        #   stable en longueur : 0,591 a 600 mots contre 0,594 a 2 500) —
+        #
+        #       architecture  0,461 .. 0,482      vocabulaire 70
+        #       creature      0,463 .. 0,508      vocabulaire 34
+        #       vegetal       0,592 .. 0,602      vocabulaire 190
+        #       abstrait      0,656 .. 0,669      vocabulaire 430
+        #       la these de l'auteur   0,6491
+        #
+        #   Le plafond de 0,80 n'etait atteint par rien : le maximum jamais
+        #   observe est 0,669. Le plancher de 0,55 laissait VINGT plants sur
+        #   quarante a diversite = 0,000 exactement — architecture et creature
+        #   en entier. Trois des cinq tons de chaque palette etaient donc
+        #   inatteignables, et l'eventail du feuillage ne parcourait que 25 a
+        #   45 degres au lieu de 25 a 66.
+        #
+        #   ⚠️ LE CORPUS NE PEUT PAS ARBITRER CETTE BORNE : il se classe 40/40
+        #   a toutes les bornes essayees, de 0,40..0,75 a 0,55..0,80. C'est
+        #   exactement ce qui s'etait passe pour `longueur`, et pour la meme
+        #   raison — on y compare des familles entre elles, jamais deux textes
+        #   d'une meme famille. Le seul texte qui discrimine est de la vraie
+        #   prose.
+        #
+        #   ⚠️ LE PLAFOND EST LA VALEUR DANGEREUSE, ET C'EST CONTRE-INTUITIF.
+        #   L'abstrait pese 0,58 sur `diversite` (voir POIDS). Or la these de
+        #   l'auteur est lexicalement aussi riche que le profil abstrait —
+        #   0,6491 contre 0,656..0,669. Plus le plafond descend, plus sa
+        #   diversite monte, et plus l'abstrait devient competitif contre son
+        #   propre vegetal. Mesure de sa marge de dominance :
+        #
+        #       plafond 0,66  ->  +0,014   ABSTRAIT par refus
+        #       plafond 0,68  ->  +0,034   ABSTRAIT par refus
+        #       plafond 0,69  ->  +0,055   ABSTRAIT par refus
+        #       plafond 0,70  ->  +0,074   vegetal, mais au bord
+        #       plafond 0,72  ->  +0,108   vegetal
+        #
+        #   Une borne calee au plus juste sur la plage observee (0,46..0,67)
+        #   aurait donc transforme une these entiere en abstrait par refus, en
+        #   voulant lui donner des couleurs. La borne etroite d'avant la
+        #   protegeait par accident, en ecrasant le signal.
+        #
+        #   0,45..0,72 laisse +0,108 de marge, soit pres du double de
+        #   MARGE_DOMINANCE, et rend les quatre familles distinctes : 1 ton
+        #   pour l'architecture et la creature, 3 pour le vegetal, 4 pour
+        #   l'abstrait — ce que la docstring de Teinte promet depuis toujours.
+        #
+        #   ⚠️ LE PLANCHER NE DECIDE DE RIEN POUR L'AUTEUR — sa marge reste
+        #   vegetale de 0,40 a 0,50 de plancher, a plafond fixe. Il decide de la
+        #   SEPARATION, et c'est la qu'il se paie : a 0,40 la creature obtient
+        #   0,180..0,309, donc tantot 1 ton tantot 2, et l'abstrait tantot 3
+        #   tantot 4 — deux familles qui se croisent. 0,45 les separe net, et
+        #   se trouve juste sous le MATTR le plus bas jamais mesure (0,4606),
+        #   donc la prose la plus monotone atterrit pres de zero sans grande
+        #   zone morte en dessous.
+        #
+        #   ⚠️ CE QUE CETTE BORNE NE REGLE PAS. n_tons = 1 + int(diversite x 4)
+        #   ne rend le CINQUIEME ton qu'a diversite = 1,000 exactement, soit
+        #   MATTR >= 0,72 — au-dessus de tout ce qui a ete observe. Idem pour la
+        #   neuvieme facette de l'abstrait (MATTR >= 0,695). On passe de trois
+        #   tons morts sur cinq a un seul, et l'eventail du feuillage de 48 % a
+        #   77 % de son amplitude. Un gain mesure, pas une plage complete.
+        #
+        #   Reste su, et non regle : le plafond est cale pour que le SEUL vrai
+        #   document disponible garde ses arbres. A revoir avec d'autres
+        #   proses. Et la question de fond est ailleurs — `diversite` a 0,58
+        #   est un identifiant faible pour l'abstrait, ce qu'une borne bien
+        #   calee ne fait que reveler.
+        diversite=borne(mattr(mots), 0.45, 0.72),
         ponctuation_rare=borne(rares, 0.3, 3.0),
         reecriture=max(0.0, min(1.0, reecriture)),
     )
