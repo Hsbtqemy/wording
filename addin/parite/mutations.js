@@ -160,8 +160,8 @@ const MUTATIONS = [
    "le fondu arrondit au lieu de tronquer : int() de Python tronque"],
 
   ["grammaire.js",
-   "    this.n_tons = 1 + Math.trunc(Math.min(1.0, Math.max(0.0, diversite)) * 4);",
-   "    this.n_tons = 1 + Math.round(Math.min(1.0, Math.max(0.0, diversite)) * 4);",
+   "    this.n_tons = 1 + Math.trunc(Math.min(1.0, Math.max(0.0, richesse)) * 4);",
+   "    this.n_tons = 1 + Math.round(Math.min(1.0, Math.max(0.0, richesse)) * 4);",
    "le nombre de tons arrondit : un texte monotone tire dans deux tons"],
 
   // L'ORDRE DES TIRAGES. Deux lignes echangees, aucune erreur visible : la
@@ -624,11 +624,27 @@ const MUTATIONS = [
 
 
   // ------------------------------- le plafond, l'axe, le feuillage, le port
+  // Les deux lectures de MATTR, cote portage. Le cahier porte `diversite` ET
+  // `richesse` avec des valeurs DIFFERENTES sur les vecteurs dessines (0,63
+  // contre 0,84, 0,31 contre 0,12) : c'est ce qui rend visible un portage qui
+  // lit l'un pour l'autre. Sans cet ecart, ces trois mutations passeraient.
   ["traits.js",
-   "    diversite: borne(mattr(mots), 0.45, 0.72),",
-   "    diversite: borne(mattr(mots), 0.55, 0.80),",
-   "le portage garde l'ancienne borne de diversite : le paysage JavaScript"
-   + " perd trois tons de palette sur cinq"],
+   "    diversite: borne(mattr_du_texte, 0.55, 0.80),",
+   "    diversite: borne(mattr_du_texte, 0.42, 0.70),",
+   "le portage classe avec la borne du DESSIN : le paysage JavaScript range"
+   + " en abstrait des chapitres que Python garde en arbres"],
+
+  ["traits.js",
+   "    richesse: borne(mattr_du_texte, 0.42, 0.70),",
+   "    richesse: borne(mattr_du_texte, 0.55, 0.80),",
+   "le portage garde l'ancienne borne : le paysage JavaScript perd trois tons"
+   + " de palette sur cinq"],
+
+  ["grammaire.js",
+   '    "richesse" in traits ? traits.richesse : 0.5);',
+   '    "diversite" in traits ? traits.diversite : 0.5);',
+   "le portage peint le plant avec le trait de CLASSEMENT au lieu de celui du"
+   + " dessin"],
 
   ["traits.js",
    "    longueur: borne(longueur_moy, 8, 45),",
@@ -641,7 +657,7 @@ const MUTATIONS = [
    "l'arbre reoublie la structure"],
 
   ["grammaire.js",
-   "  const eventail = 0.22 + tr.diversite * 0.36;",
+   "  const eventail = 0.22 + tr.richesse * 0.36;",
    "  const eventail = 0.40;",
    "le feuillage s'ouvre pareil pour tous"],
 

@@ -911,16 +911,27 @@ def _():
 
 
 # --------------------------------------------------------------------------
-# La borne de diversite se tient PAR LES DEUX BOUTS, et il faut les deux.
+# MATTR EST LU DEUX FOIS, ET LES DEUX LECTURES ONT CHACUNE LEUR ESSAI.
 #
-# Trop haute, elle ecrase : a 0,55..0,80 vingt plants sur quarante valaient
-# 0,000 et trois tons de palette sur cinq etaient inatteignables.
-# Trop basse, elle renverse le classement : l'abstrait pese 0,58 sur ce seul
-# trait, donc une prose lexicalement riche finit abstraite PAR REFUS — une
-# these entiere qui perd ses arbres pour avoir gagne des couleurs.
+# On a longtemps cru qu'une seule borne pouvait servir aux deux metiers. Elle
+# ne le peut pas, et la demonstration a coute un vrai paysage :
 #
-# Un seul essai ne peut pas tenir les deux : le premier surveille le bas, le
-# second le haut. Casser la borne dans un sens laisse l'autre vert.
+#   trop haute (0,55..0,80), elle ECRASE LE DESSIN — vingt plants sur quarante
+#   valaient 0,000 et trois tons de palette sur cinq etaient inatteignables ;
+#   trop basse (0,45..0,72), elle RENVERSE LE CLASSEMENT — l'abstrait pese
+#   0,58 sur ce seul trait, donc l'elargir a ajoute +0,198 au score abstrait
+#   de tous les plants a la fois, et une these entiere a perdu ses arbres pour
+#   avoir gagne des couleurs.
+#
+# D'ou deux traits issus du meme MATTR : `diversite` classe, `richesse`
+# dessine. Trois essais, un par risque :
+#
+#   1. `richesse` separe les familles A L'OEIL, et sa borne tient par les deux
+#      bouts — rien a 0,000, rien a 1,000.
+#   2. `diversite` garde le CLASSEMENT d'une these reelle, et le temoin porte
+#      la ponctuation que l'auteur ecrit vraiment.
+#   3. `richesse` n'entre dans AUCUN poids de famille — le jour ou elle y
+#      entre, le partage est defait et on a refait l'erreur du 9 septembre.
 # --------------------------------------------------------------------------
 def _plants_de(famille, mots=1200, graines=3):
     """Des plants engendres, pas des caricatures reechantillonnees.
@@ -952,47 +963,48 @@ def _():
     from grammaire import Teinte
     from corpus import PROFILS
 
-    # Mesure a l'origine du changement, sur des plants de 2 500 mots :
-    #   architecture 0,461..0,482 (vocabulaire 70)
-    #   creature     0,463..0,508 (34)
-    #   vegetal      0,592..0,602 (190)
-    #   abstrait     0,656..0,669 (430)
-    # Le plafond de 0,80 n'etait atteint par rien, le plancher de 0,55
-    # ecrasait l'architecture et la creature en entier.
-    par_famille = {}
-    for famille in PROFILS:
-        par_famille[famille] = [extraire(t).diversite
-                                for t in _plants_de(famille)]
+    # MATTR brut, mesure sur cent vingt plants : quatre familles, cinq
+    # tailles de 600 a 2 500 mots, six graines.
+    #   creature     0,4323..0,5078 (vocabulaire 34)
+    #   architecture 0,4582..0,4879 (70)
+    #   vegetal      0,5736..0,6070 (190)
+    #   these reelle 0,6409..0,6442 (dix pages de l'auteur, deux plants)
+    #   abstrait     0,6449..0,6896 (430)
+    # `richesse` (0,42..0,70) doit rendre cet ordre LISIBLE A L'OEIL. C'est
+    # son seul metier : nombre de tons, ouverture du feuillage, facettes.
+    #
+    # Les tailles comptent : un plant court descend plus bas qu'un long — la
+    # creature perd 0,03 de MATTR entre 2 500 et 600 mots. Une borne calee sur
+    # une seule taille ecrase les autres, ce qui est arrive avec 0,45.
+    par_famille = {f: [extraire(t).richesse for t in _plants_de(f)]
+                   for f in PROFILS}
+    toutes = [r for rs in par_famille.values() for r in rs]
 
     veg, abs_ = par_famille["vegetal"], par_famille["abstrait"]
     pauvres = par_famille["architecture"] + par_famille["creature"]
 
-    assert min(veg) > 0.35, (
-        f"le vegetal retombe a {min(veg):.3f} de diversite : c'est le regime"
-        f" ou la moitie du corpus valait 0,000 et ou trois tons de palette sur"
-        f" cinq etaient inatteignables")
-    assert min(abs_) - max(veg) > 0.10, (
-        f"l'abstrait ({min(abs_):.3f}) ne se detache plus du vegetal"
-        f" ({max(veg):.3f}) : le trait qui l'identifie a 0,58 ne le distingue"
-        f" plus de rien")
-    assert min(veg) - max(pauvres) > 0.15, (
+    # Les deux bouts de la borne, chacun paye par une panne reelle.
+    ecrases = [r for r in toutes if r <= 0.001]
+    assert not ecrases, (
+        f"{len(ecrases)} plants sur {len(toutes)} valent 0,000 de richesse :"
+        f" c'est le regime ou la moitie du corpus etait plate et ou trois tons"
+        f" de palette sur cinq etaient inatteignables")
+    satures = [r for r in toutes if r >= 0.999]
+    assert not satures, (
+        f"{len(satures)} plants collent au plafond de richesse : la borne est"
+        f" trop basse et le trait cesse de separer par l'autre bout")
+
+    assert min(veg) - max(pauvres) > 0.25, (
         f"un vocabulaire de 190 mots ({min(veg):.3f}) ne se distingue plus"
         f" d'un vocabulaire de 34 ou 70 ({max(pauvres):.3f})")
+    assert min(abs_) - max(veg) > 0.15, (
+        f"l'abstrait ({min(abs_):.3f}) ne se detache plus du vegetal"
+        f" ({max(veg):.3f}) : les deux se peindront pareil")
 
-    # ⚠️ Le garde du HAUT que cet essai peut tenir : au-dela, l'abstrait
-    # sature et c'est le second essai qui prend le relais, sur ce que ca
-    # coute au classement.
-    plafonnes = [d for ds in par_famille.values() for d in ds if d > 0.95]
-    assert not plafonnes, (
-        f"{len(plafonnes)} plants collent au plafond de diversite"
-        f" ({max(plafonnes):.3f}) : la borne est trop basse et le trait"
-        f" recommence a ne plus rien separer, par l'autre bout")
-
-    tons = sorted({Teinte([(251, 1)], False, d).n_tons
-                   for ds in par_famille.values() for d in ds})
+    tons = sorted({Teinte([(251, 1)], False, r).n_tons for r in toutes})
     assert len(tons) >= 3, (
-        f"la palette n'utilise que {len(tons)} niveaux de richesse {tons} :"
-        f" avant correction il y en avait deux, 1 et 2, sur cinq possibles")
+        f"la palette n'utilise que {len(tons)} niveaux {tons} : avant le"
+        f" partage il y en avait deux, 1 et 2, sur cinq possibles")
     return (f"architecture/creature {max(pauvres):.2f}, vegetal"
             f" {min(veg):.2f}, abstrait {min(abs_):.2f} — tons {tons}")
 
@@ -1006,15 +1018,31 @@ def _():
     #
     # Le corpus se classe 40/40 a TOUTES les bornes essayees, de 0,40..0,75 a
     # 0,55..0,80 : il ne peut pas arbitrer celle-ci. Ce qui l'arbitre est une
-    # these reelle, mesuree — longueur 0,653, subordination 0,539, ponctuation
-    # rare nulle, aucune structure, MATTR 0,6491 — dont la marge de dominance
-    # vaut +0,108 a la borne livree et tombe a +0,055 si le plafond descend a
-    # 0,69. Elle devient alors un ABSTRAIT PAR REFUS : une these entiere perd
-    # ses arbres parce qu'on a voulu lui donner des couleurs.
+    # these reelle. Dix pages de l'auteur, decoupees comme l'add-in les
+    # decoupe — deux plants de 2 624 et 2 138 mots :
     #
-    # Le profil ci-dessous la reproduit : syntaxe vegetale peu subordonnee,
-    # aucune ponctuation rare, et le vocabulaire de l'abstrait. Il donne une
-    # marge de +0,096 a +0,130, qui encadre les +0,108 mesures.
+    #             longueur  subord.  ponct_rare  structure  MATTR   marge
+    #   plant 1     0,555    0,488     0,256       0,136    0,6420  +0,155
+    #   plant 2     0,701    0,598     0,530       0,000    0,6442  +0,169
+    #
+    # A la borne livree, ces deux plants basculeraient vers l'abstrait a 2,02
+    # et 2,44 signes « ; : ( ) — … » pour cent mots. L'auteur en ecrit 0,99 et
+    # 1,73. A la borne elargie a 0,45..0,72, les memes seuils tombaient a 0,74
+    # et 1,16 — SOUS ce qui est ecrit — et les deux plants sont devenus
+    # abstraits. C'est ce qui s'est passe sur son paysage, en une nuit.
+    #
+    # Le profil ci-dessous le reproduit : syntaxe vegetale peu subordonnee,
+    # vocabulaire de l'abstrait, et une ponctuation rare de 0,400 a 0,489 —
+    # dans la plage reellement ecrite. Ses marges vont de +0,108 a +0,161,
+    # soit un peu SOUS les +0,155..+0,169 mesures : le temoin est plus dur que
+    # la realite, ce qui est le bon sens de l'ecart.
+    #
+    # ⚠️ IL A LONGTEMPS PORTE rare=0,0, ET C'ETAIT L'ERREUR DANS L'ESSAI.
+    # La borne fautive avait ete calee sur un extrait de 772 mots qui ne
+    # contenait pas un seul signe rare ; le temoin heritait du meme angle
+    # mort et ne tombait que pour un elargissement sur deux. Avec la densite
+    # reelle, il tombe pour 0,45..0,72, pour 0,45..0,69, pour 0,50..0,80 et
+    # meme pour 0,55..0,75.
     #
     # ⚠️ Le vegetal ORDINAIRE du corpus ne convient pas : sa subordination
     # sature a 1,00 et sa marge vaut +0,30, donc il reste vegetal meme avec la
@@ -1024,7 +1052,7 @@ def _():
     PROFILS["these_riche"] = Profil(
         mots_par_phrase=32, dispersion=v.dispersion, virgules=0.30,
         connecteurs=0.15, structure=0.0, dialogue=0.0, questions=v.questions,
-        rare=0.0, vocabulaire=PROFILS["abstrait"].vocabulaire,
+        rare=0.60, vocabulaire=PROFILS["abstrait"].vocabulaire,
         phrases_par_paragraphe=v.phrases_par_paragraphe,
         regularite=v.regularite)
     try:
@@ -1033,21 +1061,125 @@ def _():
     finally:
         del PROFILS["these_riche"]
 
+    rares = [r.traits.ponctuation_rare for r in revelations]
+    assert min(rares) > 0.20, (
+        f"le temoin n'ecrit plus que {min(rares):.3f} de ponctuation rare :"
+        f" il est retombe dans l'angle mort de l'extrait de 772 mots et ne"
+        f" peut plus rien dire du trait qui decide")
+
     for i, r in enumerate(revelations):
         assert r.famille == "vegetal", (
             f"la these riche numero {i} devient {r.famille}"
             f"{' par refus' if r.par_refus else ''} (marge {r.marge:+.3f},"
-            f" diversite {r.traits.diversite:.3f}) : une prose devient"
-            f" abstraite par sa seule richesse lexicale, et un auteur perd"
-            f" tous ses arbres d'un coup")
+            f" diversite {r.traits.diversite:.3f}, ponctuation rare"
+            f" {r.traits.ponctuation_rare:.3f}) : une prose devient abstraite"
+            f" par sa seule richesse lexicale, et un auteur perd tous ses"
+            f" arbres d'un coup")
     marges = [r.marge for r in revelations]
     assert min(marges) > MARGE_DOMINANCE, (
         f"la marge tombe a {min(marges):+.3f} pour une marge de dominance de"
         f" {MARGE_DOMINANCE} : la these tient encore, mais au bord, et le"
         f" moindre chapitre un peu plus riche basculera")
     return (f"marges {min(marges):+.3f} a {max(marges):+.3f} pour"
-            f" MARGE_DOMINANCE {MARGE_DOMINANCE}, diversite"
-            f" {min(r.traits.diversite for r in revelations):.2f}")
+            f" MARGE_DOMINANCE {MARGE_DOMINANCE}, ponctuation rare"
+            f" {min(rares):.2f}..{max(rares):.2f}")
+
+
+@essai("traits / le trait qui dessine n'entre jamais dans le classement")
+def _():
+    from dataclasses import replace
+    from traits import POIDS, extraire, revele, scores
+
+    # ⚠️ C'EST TOUTE LA DECISION, ET ELLE NE TIENT A RIEN D'AUTRE.
+    #
+    # `richesse` existe pour que le dessin puisse avoir sa propre echelle sans
+    # deplacer la frontiere des familles. Le jour ou elle entre dans un poids,
+    # le partage est defait en silence : elargir la borne pour voir des
+    # couleurs recommencera a couter des arbres. Deux gardes, parce que le
+    # premier seul se contourne en renommant.
+    utilises = {nom for comps in POIDS.values() for nom, _p, _i in comps}
+    assert "richesse" not in utilises, (
+        f"`richesse` est entree dans POIDS ({sorted(utilises)}) : le trait de"
+        f" DESSIN decide de nouveau du CLASSEMENT, et on a refait l'erreur du"
+        f" 9 septembre")
+
+    # Et le garde par le comportement : deux textes identiques dont seule la
+    # richesse differe doivent se classer exactement pareil.
+    #
+    # ⚠️ `mots` est force au-dela de PALIER_DIVERGENCE. Sans ca la famille
+    # vaut None des deux cotes — l'extrait ne fait pas 200 mots — et cette
+    # moitie de l'essai comparait deux None : verte, et creuse.
+    base = extraire(
+        "Le colon europeen mettait sa masculinite a l'epreuve et la"
+        " reaffirmait en se montrant digne des qualites qui y etaient"
+        " associees, selon une perspective eurocentree, comme la force et le"
+        " courage. Ces contre-modeles desservaient la binarite stricte"
+        " opposant hommes et femmes, la naturalisation du genre et la"
+        " hierarchisation des sexes, dont la portee reste discutee.")
+    base = replace(base, mots=1200)
+    pauvre, riche = replace(base, richesse=0.0), replace(base, richesse=1.0)
+    assert scores(pauvre) == scores(riche), (
+        f"changer la seule richesse change les scores : {scores(pauvre)}"
+        f" contre {scores(riche)}")
+    assert revele(pauvre).famille == revele(riche).famille, (
+        f"changer la seule richesse change la famille :"
+        f" {revele(pauvre).famille} contre {revele(riche).famille}")
+    return (f"{len(utilises)} traits classent, richesse n'en est pas ;"
+            f" 0,0 et 1,0 donnent {revele(riche).famille}")
+
+
+@essai("grammaire / le plant se peint avec le trait du dessin, pas du classement")
+def _():
+    from dataclasses import asdict
+    from traits import extraire
+    import grammaire
+
+    """
+    ⚠️ CETTE MUTATION AVAIT ECHAPPE A TOUTE LA BATTERIE.
+
+    `depuis_plant` est le seul point de contact entre l'etat d'un plant et son
+    rendu : tout ce que le dessin sait du texte passe par cette ligne. Elle
+    lit `richesse`. Lui faire lire `diversite` remet la couleur sous la
+    dependance du trait qui CLASSE — c'est-a-dire defait le partage — et rien
+    ne bronchait.
+
+    Pourquoi rien ne bronchait : les deux sortent du meme MATTR et varient
+    dans le MEME SENS. Un essai qui verifie « un texte plus riche fait plus de
+    tons » reste vert quel que soit celui des deux qu'on lit. Ce qui les
+    separe n'est pas le sens, c'est la VALEUR — il faut donc un texte ou elles
+    sont franchement distinctes, et il faut le VERIFIER avant d'en conclure
+    quoi que ce soit, sinon l'essai est creux.
+    """
+    texte = _plants_de("abstrait", mots=600, graines=1)[0]
+    tr = asdict(extraire(texte))
+    ecart = tr["richesse"] - tr["diversite"]
+    assert ecart > 0.25, (
+        f"les deux lectures de MATTR ne different plus que de {ecart:+.3f} sur"
+        f" ce texte : l'essai ne peut plus distinguer laquelle est lue, et il"
+        f" serait vert dans les deux cas")
+
+    dates, nuit, graine = [(120, 3)], False, 7
+    plant = {"famille": "abstrait", "extension": 0.6, "maturite": 0.4,
+             "dates": dates, "nuit": nuit, "traits": tr}
+
+    def peint(valeur):
+        return grammaire.dessiner("abstrait", 0.6, 0.4, graine,
+                                  grammaire.Teinte(dates, nuit, valeur),
+                                  tr).segments
+
+    par_richesse, par_diversite = peint(tr["richesse"]), peint(tr["diversite"])
+    assert par_richesse != par_diversite, (
+        f"les deux valeurs donnent le meme dessin ({len(par_richesse)}"
+        f" segments identiques) : l'essai ne traverse rien et rassure pour"
+        f" rien")
+
+    assert grammaire.depuis_plant(plant, graine).segments == par_richesse, (
+        f"le plant n'est pas peint avec `richesse` ({tr['richesse']:.3f}) :"
+        f" la couleur est repassee par le trait de classement"
+        f" ({tr['diversite']:.3f}), et le prochain elargissement de borne"
+        f" recoutera des arbres")
+    return (f"richesse {tr['richesse']:.2f} contre diversite"
+            f" {tr['diversite']:.2f}, {len(par_richesse)} segments")
 
 
 @essai("grammaire / la structure du texte change la silhouette de l'arbre")
@@ -1098,9 +1230,12 @@ def _():
 
     """
     Le feuillage s'ouvrait a 0,40 radian par feuille, quel que soit le texte.
-    `diversite` — la richesse lexicale — ne servait qu'a la couleur. Elle ouvre
-    maintenant le bouquet : un lexique large fait une etoile, un lexique
-    etroit une brosse.
+    La richesse lexicale ne servait qu'a la couleur. Elle ouvre maintenant le
+    bouquet : un lexique large fait une etoile, un lexique etroit une brosse.
+
+    Elle passe par `richesse`, jamais par `diversite` : le feuillage est du
+    DESSIN. Lire ici le trait de classement remettrait la frontiere des
+    familles au bout d'un pinceau.
 
     ⚠️ Le NOMBRE de feuilles ne bouge pas, et c'est la moitie importante de
     l'essai : il est tenu par le budget, et la decision 1 interdit qu'il
@@ -1108,8 +1243,8 @@ def _():
     vocabulaire riche paraitrait plus AVANCE qu'un texte pauvre de meme
     longueur — de la maturite deguisee en extension.
     """
-    def bouquet(diversite):
-        tr = dict(grammaire.TRAITS_NEUTRES, diversite=diversite)
+    def bouquet(richesse):
+        tr = dict(grammaire.TRAITS_NEUTRES, richesse=richesse)
         t = grammaire.Toile()
         grammaire.vegetal(t, 1.0, 0.5, 3, grammaire.Teinte.du_jour(120), traits=tr)
         par = defaultdict(list)

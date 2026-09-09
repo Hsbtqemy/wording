@@ -84,7 +84,8 @@ class Profil:
     dialogue          -> dialogue (tirets de replique, guillemets)
     questions         -> interrogation
     rare              -> ponctuation_rare (; : parentheses tirets suspension)
-    vocabulaire       -> diversite (MATTR)
+    vocabulaire       -> diversite ET richesse (deux lectures du meme MATTR :
+                         l'une classe, l'autre dessine — voir traits.extraire)
     """
 
     def __init__(self, mots_par_phrase, dispersion, virgules, connecteurs,

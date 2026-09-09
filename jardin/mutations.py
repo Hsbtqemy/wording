@@ -146,25 +146,49 @@ MUTATIONS = [
      " se pose A GAUCHE du premier"),
 
     # ---------------------------------- le plafond, l'axe, le feuillage, le port
-    # ------------------------------------------------ la borne de diversite
+    # ------------------------------------------- les deux lectures de MATTR
     #
-    # ⚠️ Deux mutations, une par DIRECTION, parce qu'un seul essai ne peut
-    #    pas tenir cette borne : trop haute elle ecrase, trop basse elle
-    #    renverse le classement. Chacune doit etre rattrapee par un essai
-    #    different — si les deux tombent sur le meme, l'un des deux gardes ne
-    #    sert a rien.
+    # ⚠️ CINQ MUTATIONS, ET AUCUNE NE DOIT TOMBER SUR LE MEME ESSAI QU'UNE
+    #    AUTRE. Le meme MATTR est lu deux fois — `diversite` classe,
+    #    `richesse` dessine — et cinq choses distinctes peuvent casser : la
+    #    borne du classement, les deux bouts de celle du dessin, le partage
+    #    lui-meme, et le fil qui va du trait au pinceau. Un seul essai ne
+    #    peut pas tenir tout ca ; si deux mutations tombent sur le meme, un
+    #    des gardes ne sert a rien et le prochain elargissement passera.
     ("traits.py",
-     "        diversite=borne(mattr(mots), 0.45, 0.72),",
-     "        diversite=borne(mattr(mots), 0.55, 0.80),",
-     "la borne de diversite revient a 0,55..0,80 : vingt plants sur quarante"
-     " retombent a 0,000 et trois tons de palette sur cinq redeviennent"
+     "        diversite=borne(mattr_du_texte, 0.55, 0.80),",
+     "        diversite=borne(mattr_du_texte, 0.45, 0.72),",
+     "la borne du CLASSEMENT s'elargit pour faire de la couleur : +0,198 au"
+     " score abstrait de tous les plants a la fois, le seuil de bascule d'une"
+     " these tombe de 2,4 a 1,1 signe rare pour cent mots, et un vrai paysage"
+     " perd vingt-deux arbres en une nuit"),
+
+    ("traits.py",
+     "        richesse=borne(mattr_du_texte, 0.42, 0.70),",
+     "        richesse=borne(mattr_du_texte, 0.55, 0.80),",
+     "la borne du DESSIN reprend celle du classement : la moitie du corpus"
+     " redevient plate a 0,000 et trois tons de palette sur cinq redeviennent"
      " inatteignables"),
 
     ("traits.py",
-     "        diversite=borne(mattr(mots), 0.45, 0.72),",
-     "        diversite=borne(mattr(mots), 0.45, 0.69),",
-     "trois centiemes de plafond en moins : une these lexicalement riche"
-     " devient un abstrait par refus et perd tous ses arbres d'un coup"),
+     "        richesse=borne(mattr_du_texte, 0.42, 0.70),",
+     "        richesse=borne(mattr_du_texte, 0.20, 0.70),",
+     "la borne du dessin s'ouvre par le BAS : plus rien n'est ecrase, et"
+     " c'est le piege — un vocabulaire de 34 mots se peint desormais comme"
+     " un vocabulaire de 190"),
+
+    ("traits.py",
+     '        ("diversite", 0.58, False),',
+     '        ("richesse", 0.58, False),',
+     "le trait de DESSIN entre dans POIDS : le partage est defait en silence,"
+     " et elargir une borne pour voir des couleurs recoutera des arbres"),
+
+    ("grammaire.py",
+     '                    traits.get("richesse", 0.5))',
+     '                    traits.get("diversite", 0.5))',
+     "le plant se peint avec le trait de CLASSEMENT : les couleurs"
+     " redeviennent suspendues a la frontiere des familles, ce qu'on venait"
+     " justement de defaire"),
 
     ("traits.py",
      "        longueur=borne(longueur_moy, 8, 45),",
@@ -179,7 +203,7 @@ MUTATIONS = [
      " recit redonnent la meme silhouette"),
 
     ("grammaire.py",
-     '    eventail = 0.22 + tr["diversite"] * 0.36',
+     '    eventail = 0.22 + tr["richesse"] * 0.36',
      "    eventail = 0.40",
      "le feuillage s'ouvre pareil pour tous : le vocabulaire ne touche plus"
      " que la couleur"),

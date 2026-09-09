@@ -163,7 +163,7 @@ def cas_traits(rng) -> list[dict]:
                 "texte": texte,
                 "traits": {n: getattr(r.traits, n) for n in (
                     "longueur", "rythme", "subordination", "regularite",
-                    "structure", "dialogue", "interrogation", "diversite",
+                    "structure", "dialogue", "interrogation", "diversite", "richesse",
                     "ponctuation_rare", "reecriture")},
                 "comptes": {"mots": r.traits.mots, "phrases": r.traits.phrases,
                             "paragraphes": r.traits.paragraphes},
@@ -183,7 +183,7 @@ def cas_traits(rng) -> list[dict]:
             "texte": texte,
             "traits": {n: getattr(r.traits, n) for n in (
                 "longueur", "rythme", "subordination", "regularite",
-                "structure", "dialogue", "interrogation", "diversite",
+                "structure", "dialogue", "interrogation", "diversite", "richesse",
                 "ponctuation_rare", "reecriture")},
             "comptes": {"mots": r.traits.mots, "phrases": r.traits.phrases,
                         "paragraphes": r.traits.paragraphes},
@@ -623,11 +623,13 @@ def cas_teinte() -> list:
         ([[1, 1], [2, 1], [3, 1]], True, 0.99),
         ([], False, 0.5),
     ]
+    # `div` porte desormais RICHESSE, pas diversite : c'est le trait de
+    # DESSIN qui compte les tons. Voir traits.extraire().
     for dates, nuit, div in cas:
         t = grammaire.Teinte(dates or None, nuit, div)
         rng = random.Random(4242)
         tirages = [[t.jour(rng), t.ton(rng)] for _ in range(40)]
-        sortie.append({"dates": dates, "nuit": nuit, "diversite": div,
+        sortie.append({"dates": dates, "nuit": nuit, "richesse": div,
                        "n_tons": t.n_tons, "total": t._total,
                        "tirages": tirages})
     return sortie
@@ -653,6 +655,12 @@ def cas_figures() -> list:
     Les vecteurs de traits vont jusqu'aux extremes (tout a zero, tout a un) :
     au milieu, une correspondance trait -> geometrie qu'on aurait inversee
     donnerait presque la meme figure.
+
+    ⚠️ `richesse` y vaut AUTRE CHOSE que `diversite` — 0,84 contre 0,63,
+    0,12 contre 0,31. Les deux sortent du meme MATTR et se ressemblent sur un
+    vrai texte ; leur donner ici la meme valeur rendrait invisible le portage
+    qui lit le trait de CLASSEMENT la ou le dessin veut celui de DESSIN, et
+    c'est exactement l'erreur qu'on vient de payer.
     """
     vecteurs = {
         "neutre": None,
@@ -660,11 +668,11 @@ def cas_figures() -> list:
         "un": {k: 1.0 for k in grammaire.TRAITS_NEUTRES},
         "prose": {"longueur": 0.82, "rythme": 0.21, "subordination": 0.77,
                   "regularite": 0.34, "structure": 0.05, "dialogue": 0.02,
-                  "interrogation": 0.11, "diversite": 0.63,
+                  "interrogation": 0.11, "diversite": 0.63, "richesse": 0.84,
                   "ponctuation_rare": 0.29},
         "rapport": {"longueur": 0.19, "rythme": 0.28, "subordination": 0.12,
                     "regularite": 0.88, "structure": 0.91, "dialogue": 0.0,
-                    "interrogation": 0.03, "diversite": 0.31,
+                    "interrogation": 0.03, "diversite": 0.31, "richesse": 0.12,
                     "ponctuation_rare": 0.08},
     }
     teintes = {

@@ -136,12 +136,18 @@ class Teinte:
     segment monotone n'en tire qu'un. La saison reste lisible, la richesse du
     texte devient une richesse chromatique, et aucune variable ne porte deux
     choses.
+
+    ⚠️ Et le texte le prend par `richesse`, PAS par `diversite`. Ce sont deux
+    lectures du meme MATTR, bornees differemment parce qu'elles repondent a
+    deux questions — voir traits.extraire(). Brancher les tons sur le trait de
+    CLASSEMENT a coute vingt-deux arbres sur un vrai paysage : elargir la borne
+    pour voir des couleurs deplacait du meme coup la frontiere des familles.
     """
 
-    def __init__(self, dates=None, nuit=False, diversite=0.5):
+    def __init__(self, dates=None, nuit=False, richesse=0.5):
         self.dates = list(dates) if dates else [(200, 1)]
         self.nuit = bool(nuit)
-        self.n_tons = 1 + int(min(1.0, max(0.0, diversite)) * 4)   # 1 a 5
+        self.n_tons = 1 + int(min(1.0, max(0.0, richesse)) * 4)    # 1 a 5
         self._poids, cumul = [], 0
         for _, poids in self.dates:
             cumul += max(1, poids)
@@ -149,9 +155,9 @@ class Teinte:
         self._total = cumul
 
     @classmethod
-    def du_jour(cls, jour=200, heure=14, diversite=0.5):
+    def du_jour(cls, jour=200, heure=14, richesse=0.5):
         """Raccourci pour les planches : un plant ecrit d'un seul jet."""
-        return cls([(jour, 1)], HEURE_NUIT[0] <= heure < HEURE_NUIT[1], diversite)
+        return cls([(jour, 1)], HEURE_NUIT[0] <= heure < HEURE_NUIT[1], richesse)
 
     def jour(self, rng) -> int:
         """Une vraie date du plant, tiree au poids des mots ecrits ce jour-la."""
@@ -301,7 +307,7 @@ MEMBRES_PROPORTIONNELS = True
 TRAITS_NEUTRES = {
     "longueur": 0.5, "rythme": 0.5, "subordination": 0.5, "regularite": 0.5,
     "structure": 0.5, "dialogue": 0.5, "interrogation": 0.5,
-    "diversite": 0.5, "ponctuation_rare": 0.5,
+    "diversite": 0.5, "richesse": 0.5, "ponctuation_rare": 0.5,
 }
 
 
@@ -370,8 +376,8 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
     # ouvert et disperse, un lexique etroit une brosse serree. Le NOMBRE de
     # feuilles ne bouge pas — il est tenu par le budget, et la decision 1
     # interdit qu'il recule. Seule leur ouverture change.
-    eventail = 0.22 + tr["diversite"] * 0.36
-    frisson = 0.05 + tr["diversite"] * 0.14
+    eventail = 0.22 + tr["richesse"] * 0.36
+    frisson = 0.05 + tr["richesse"] * 0.14
     # ⚠️ LE PORT SE TIRE AU SORT, LA TAILLE JAMAIS.
     #
     #   Un plant plus GROS au hasard, c'est la decision 2 qui tombe : la taille
@@ -653,7 +659,7 @@ def abstrait(t: Toile, extension, maturite, graine, teinte=None,
     cela, la famille du refus de classement aurait la regle la plus rigide des
     quatre — un pavage hexagonal regulier.
 
-        diversite        -> nombre de facettes
+        richesse         -> nombre de facettes
         ponctuation_rare -> irregularite des sommets
         rythme           -> torsion d'un anneau au suivant
         subordination    -> etoilement (sommets pousses vers l'interieur)
@@ -663,7 +669,7 @@ def abstrait(t: Toile, extension, maturite, graine, teinte=None,
     tt = teinte or Teinte.du_jour()
     tr = _traits(traits)
 
-    cotes = 5 + int(tr["diversite"] * 4.4)              # 5 a 9 facettes
+    cotes = 5 + int(tr["richesse"] * 4.4)               # 5 a 9 facettes
     irreg = 0.06 + tr["ponctuation_rare"] * 0.34
     torsion = tr["rythme"] * 0.62
     etoile = tr["subordination"] * 0.42
@@ -809,7 +815,7 @@ def depuis_plant(plant: dict, graine: int, **kw) -> Toile:
     """
     traits = plant.get("traits") or {}
     teinte = Teinte(plant["dates"], plant["nuit"],
-                    traits.get("diversite", 0.5))
+                    traits.get("richesse", 0.5))
     g = plant.get("germe")
     if not plant.get("famille"):
         # Pas encore de famille : on dessine le germe, qui penche vers la
@@ -1122,11 +1128,11 @@ def verifier():
 
     print("")
     print("Le texte porte le nombre de tons, la date porte la teinte :")
-    for dive in (0.0, 0.35, 0.7, 1.0):
-        tt = Teinte.du_jour(110, 14, dive)
+    for rich in (0.0, 0.35, 0.7, 1.0):
+        tt = Teinte.du_jour(110, 14, rich)
         rng = random.Random(4)
         tons = sorted({tt.ton(rng) for _ in range(40)})
-        print(f"  diversite {dive:.2f} -> {len(tons)} ton(s)   {' '.join(tons)}")
+        print(f"  richesse {rich:.2f} -> {len(tons)} ton(s)   {' '.join(tons)}")
 
     print("")
     print("Un plant ecrit de fevrier a mai (vraies dates ponderees) :")

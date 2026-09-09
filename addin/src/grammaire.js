@@ -132,10 +132,10 @@ export function palette(jour, ton = 0, nuit = false) {
  * Aucune variable ne porte deux choses.
  */
 export class Teinte {
-  constructor(dates = null, nuit = false, diversite = 0.5) {
+  constructor(dates = null, nuit = false, richesse = 0.5) {
     this.dates = dates && dates.length ? dates.map((d) => [d[0], d[1]]) : [[200, 1]];
     this.nuit = Boolean(nuit);
-    this.n_tons = 1 + Math.trunc(Math.min(1.0, Math.max(0.0, diversite)) * 4);
+    this.n_tons = 1 + Math.trunc(Math.min(1.0, Math.max(0.0, richesse)) * 4);
     this._poids = [];
     let cumul = 0;
     for (const [, poids] of this.dates) {
@@ -146,9 +146,9 @@ export class Teinte {
   }
 
   /** Raccourci : un plant ecrit d'un seul jet. */
-  static du_jour(jour = 200, heure = 14, diversite = 0.5) {
+  static du_jour(jour = 200, heure = 14, richesse = 0.5) {
     return new Teinte([[jour, 1]], HEURE_NUIT[0] <= heure && heure < HEURE_NUIT[1],
-                      diversite);
+                      richesse);
   }
 
   /** Une vraie date du plant, tiree au poids des mots ecrits ce jour-la. */
@@ -302,7 +302,7 @@ export class Toile {
 export const TRAITS_NEUTRES = {
   longueur: 0.5, rythme: 0.5, subordination: 0.5, regularite: 0.5,
   structure: 0.5, dialogue: 0.5, interrogation: 0.5,
-  diversite: 0.5, ponctuation_rare: 0.5,
+  diversite: 0.5, richesse: 0.5, ponctuation_rare: 0.5,
 };
 
 function _traits(traits) {
@@ -368,8 +368,8 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
   //   these et le vegetal l'ignorait. Il devient la dominance apicale.
   const axe = tr.structure;
   // Le feuillage suit le vocabulaire. Le NOMBRE de feuilles ne bouge pas.
-  const eventail = 0.22 + tr.diversite * 0.36;
-  const frisson = 0.05 + tr.diversite * 0.14;
+  const eventail = 0.22 + tr.richesse * 0.36;
+  const frisson = 0.05 + tr.richesse * 0.14;
   // ⚠️ LE PORT SE TIRE AU SORT, LA TAILLE JAMAIS. Voir grammaire.py.
   const port = rng.uniform(-1.0, 1.0);
   ouverture *= 1.0 - port * 0.7;
@@ -668,7 +668,7 @@ export function creature(t, extension, maturite, graine, teinte = null,
  * cela, la famille du refus de classement aurait la regle la plus rigide des
  * quatre — un pavage hexagonal regulier.
  *
- *     diversite        -> nombre de facettes
+ *     richesse         -> nombre de facettes
  *     ponctuation_rare -> irregularite des sommets
  *     rythme           -> torsion d'un anneau au suivant
  *     subordination    -> etoilement (sommets pousses vers l'interieur)
@@ -679,7 +679,7 @@ export function abstrait(t, extension, maturite, graine, teinte = null, traits =
   const tt = teinte || Teinte.du_jour();
   const tr = _traits(traits);
 
-  const cotes = 5 + Math.trunc(tr.diversite * 4.4);          // 5 a 9 facettes
+  const cotes = 5 + Math.trunc(tr.richesse * 4.4);           // 5 a 9 facettes
   const irreg = 0.06 + tr.ponctuation_rare * 0.34;
   const torsion = tr.rythme * 0.62;
   const etoile = tr.subordination * 0.42;
@@ -839,7 +839,7 @@ export function dessiner(famille, extension, maturite, graine, teinte = null,
 export function depuis_plant(plant, graine, etoffage = null) {
   const traits = plant.traits || {};
   const teinte = new Teinte(plant.dates, plant.nuit,
-    "diversite" in traits ? traits.diversite : 0.5);
+    "richesse" in traits ? traits.richesse : 0.5);
   const g = plant.germe;
   if (!plant.famille) {
     // Pas encore de famille : on dessine le germe, qui penche vers la

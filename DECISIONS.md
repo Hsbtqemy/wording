@@ -266,112 +266,173 @@ ensuite. Un paysage devient mixte, il n'est pas réécrit.
 `0,3..3,0` pour les virgules…) n'ont toujours été payées de rien. Celle-ci a
 montré ce que ça coûte.
 
-### La deuxième borne, et le piège qui était dans l'autre sens
+### La deuxième borne : décidée, défaite par un vrai document, puis partagée
 
-**Reconsidéré :** `diversite` passe de **0,55..0,80 à 0,45..0,72** de MATTR.
-Deuxième des huit à être mesurée, et elle était fausse par les deux bouts.
+**Reconsidéré deux fois en deux jours.** `diversite` avait été porté de
+**0,55..0,80 à 0,45..0,72** de MATTR pour rendre des couleurs. Le paysage réel
+de l'auteur a répondu en une nuit : **vingt-deux arbres sur trente-cinq étaient
+devenus huit sur trente-huit**, plus une seule architecture, plus une seule
+créature. La borne de classement est **revenue à 0,55..0,80**, et le besoin de
+couleur est passé dans un **second trait**.
 
-Mesure sur des plants de 2 500 mots réellement engendrés :
+Le même MATTR, mesuré une fois, est désormais **lu deux fois** :
 
-| | vocabulaire | MATTR |
+| | borne | métier |
 |---|---|---|
-| architecture | 70 | 0,461 – 0,482 |
-| créature | 34 | 0,463 – 0,508 |
-| végétal | 190 | 0,592 – 0,602 |
-| abstrait | 430 | 0,656 – 0,669 |
-| **la thèse de l'auteur** | — | **0,6491** |
+| `diversite` | 0,55..0,80 | **où ce texte se situe** parmi quatre familles |
+| `richesse` | 0,42..0,70 | **à quel point ce texte est riche**, pour le dessin seul |
 
-**Le plafond de 0,80 n'était atteint par rien** — maximum jamais observé
-0,669. **Le plancher de 0,55 laissait vingt plants sur quarante à `diversite`
-= 0,000 exactement**, architecture et créature en entier. Conséquences : trois
-des cinq tons de chaque palette étaient inatteignables ; l'éventail du feuillage
-(`0,22 + diversite × 0,36`, en radians) ne couvrait que **48 %** de l'amplitude
-que son propre code prévoit — 0,220 à 0,391 sur 0,220 à 0,580 ; et les facettes
-de l'abstrait (`5 + int(diversite × 4,4)`) ne dépassaient jamais 7 sur 9.
+⚠️ **`richesse` n'entre dans aucun `POIDS`, et c'est toute la décision.** Le
+jour où elle y entre, élargir une borne pour voir des couleurs recoûtera des
+arbres. Deux essais et une mutation la surveillent, dont un garde structurel
+qui lit `POIDS` et un garde par le comportement.
 
-⚠️ **Le corpus ne peut pas arbitrer cette borne** : il se classe **40/40 à
-toutes les bornes essayées**, de 0,40..0,75 à 0,55..0,80. Exactement ce qui
-s'était passé pour `longueur`, et pour la même raison — on y compare des
-familles entre elles, jamais deux textes d'une même famille. Le seul texte qui
-décide est de la vraie prose.
+#### Le mécanisme, parce qu'il ne se devine pas
 
-⚠️ **ET LE PLAFOND EST LA VALEUR DANGEREUSE, CE QUI EST CONTRE-INTUITIF.**
-L'abstrait pèse **0,58 sur `diversite`** — c'est 58 % de son score. Or la thèse
-de l'auteur est lexicalement aussi riche que le profil abstrait : 0,6491 contre
-0,656–0,669. Plus le plafond descend, plus sa `diversite` monte, et plus
-l'abstrait devient compétitif contre son propre végétal. Sa marge de dominance :
+L'abstrait pèse **0,58 sur `diversite`** — 58 % de son score, sur deux traits
+seulement. Élargir la borne ne déplace donc pas un curseur : elle ajoute
+**+0,198 au score abstrait de TOUS les plants à la fois**. Ce que ça fait au
+seul autre trait de l'abstrait, `ponctuation_rare` :
 
-| plafond | 0,66 | 0,68 | 0,69 | 0,70 | **0,72** |
-|---|---|---|---|---|---|
-| marge | +0,014 | +0,034 | +0,055 | +0,074 | **+0,108** |
-| famille | abstrait | abstrait | abstrait | végétal, au bord | **végétal** |
+| | seuil de bascule vers l'abstrait |
+|---|---|
+| borne 0,55..0,80 | **2,41** signes `; : ( ) — …` pour cent mots |
+| borne 0,45..0,72 | **1,14** |
 
-**Une borne calée au plus juste sur la plage observée — 0,46..0,67, ce qui
-paraissait la réponse évidente — transformait une thèse entière en abstrait par
-refus, en voulant lui donner des couleurs.** La borne étroite d'avant la
-protégeait par accident, en écrasant le signal. C'est le contraire du cas
-`longueur`, où la saturation empêchait la ville ; ici la désaturation détruit
-l'arbre.
+Un deux-points tous les quatre-vingt-dix mots suffisait à faire perdre un arbre.
 
-⚠️ **Le plancher, lui, ne décide de rien pour l'auteur** — sa marge reste
-végétale de 0,40 à 0,50 de plancher, à plafond fixé. Il décide de la
-**séparation**, et c'est là qu'il se paie : 0,40 donne à la créature une
-`diversite` de 0,180–0,309, donc tantôt 1 ton tantôt 2, et à l'abstrait tantôt
-3 tantôt 4 — deux familles qui se croisent. 0,45 les sépare net. Il se trouve
-aussi juste sous le MATTR le plus bas jamais mesuré (0,4606), donc la prose la
-plus monotone atterrit près de zéro sans grande zone morte en dessous.
+#### Ce que dix pages réelles ont dit, et que rien d'autre ne pouvait dire
 
-Ce que 0,45..0,72 donne : architecture et créature **1 ton**, végétal **3**,
-abstrait **4** — quatre niveaux distincts qui suivent les tailles de vocabulaire
-réelles, ce que la docstring de `Teinte` promet depuis toujours. La thèse de
-l'auteur passe de 2 à 3 tons, avec +0,108 de marge, soit près du double de
-`MARGE_DOMINANCE`.
+L'auteur a fourni un chapitre entier — 4 762 mots, 39 paragraphes — découpé
+comme l'add-in le découpe :
 
-⚠️ **Une erreur de méthode, commise et corrigée, qui vaut d'être écrite.** La
-première mesure rejouait les échantillons de 300 mots pour en faire des plants
-de 2 500. Il n'y reste que deux ou trois paragraphes éligibles, donc la fenêtre
-de 200 mots voyait sans arrêt des répétitions qui n'existent pas dans le texte :
-MATTR de l'abstrait tombait de 0,64 à 0,54, et **l'abstrait paraissait moins
-riche que le végétal** — l'inverse de la vérité. Deux échantillons semblaient
-même mal classés. Sur du texte réellement engendré, MATTR tient sa promesse :
-0,591 à 600 mots contre 0,594 à 2 500. **Un corpus fabriqué par répétition ne
-mesure pas ce qu'on croit.**
+| | mots | `longueur` | `subord.` | `ponct_rare` | `structure` | MATTR | marge |
+|---|---|---|---|---|---|---|---|
+| plant 1 | 2 624 | 0,555 | 0,488 | 0,256 | 0,136 | 0,6420 | **+0,155** |
+| plant 2 | 2 138 | 0,701 | 0,598 | 0,530 | 0,000 | 0,6442 | **+0,169** |
 
-**Où ça se vérifie :** deux essais, **un par direction**, parce qu'aucun ne peut
-tenir les deux. Le premier surveille le bas — le végétal ne doit pas retomber
-sous 0,35, l'abstrait doit se détacher de plus de 0,10, la palette doit utiliser
-au moins trois niveaux. Le second surveille le haut, sur un profil qui reproduit
-la thèse réelle : syntaxe végétale peu subordonnée, aucune ponctuation rare,
-vocabulaire de l'abstrait — marge mesurée +0,096 à +0,130, qui encadre les
-+0,108 de l'auteur.
+| | seuil de bascule | signes réellement écrits |
+|---|---|---|
+| plant 1 | 2,02 | **0,99** |
+| plant 2 | 2,44 | **1,73** |
+| avec la borne cassée | 0,74 et 1,16 | *les deux plants basculaient* |
+
+**C'est exactement ce qui s'est produit sur son écran.** Le contrefactuel n'est
+pas une reconstitution : les deux seuils tombent sous ce qui est écrit.
+
+⚠️ **Trois choses qu'on croyait savoir et qui étaient fausses.**
+
+- **« La prose universitaire maximise les deux traits de l'abstrait. »** Non.
+  L'auteur écrit **1,32** signe rare pour cent mots, soit **0,379** sur
+  l'échelle 0,3..3,0 — le bas du milieu. Seul `diversite` est saturé. La
+  faiblesse structurelle de l'abstrait était à moitié imaginaire.
+- **« Les plants déjà poussés ne bougent pas. »** Vrai dans le code — la
+  famille est verrouillée et sérialisée — mais **seulement tant que l'état
+  survit**. Le paysage de l'auteur a été reconstruit depuis le document, et
+  chaque famille a été redérivée à la borne du jour. Une calibration n'agit pas
+  « sur ce qui s'écrit ensuite » ; elle agit sur tout, à la première relecture.
+- **« La thèse ne contient pas de ponctuation rare. »** Artefact de l'extrait
+  de 772 mots sur lequel la borne avait été calée. Un extrait qui contient zéro
+  signe rare ne peut rien dire du trait qui décide.
+
+#### L'erreur de méthode, qui est la vraie leçon
+
+**La borne avait été calée sur un point, pas sur une population.** Un extrait,
+772 mots, sans un seul signe rare. Le corpus, lui, se classe 40/40 à *toutes*
+les bornes essayées de 0,40..0,75 à 0,55..0,80 : il ne peut pas arbitrer, parce
+qu'on y compare des familles entre elles, jamais deux textes d'une même
+famille. Et la première carte de sensibilité tracée pour comprendre la panne
+gelait `ponctuation_rare` à 0,000 — l'artefact de l'extrait — donc elle
+produisait trois grilles identiques qui **innocentaient la borne**.
+
+La borne de `richesse` a donc été calée autrement : **cent vingt plants**,
+quatre familles × cinq tailles de 600 à 2 500 mots × six graines.
+
+| | MATTR observé | `richesse` | tons |
+|---|---|---|---|
+| créature | 0,4323 – 0,5078 | 0,04 – 0,31 | 1 – 2 |
+| architecture | 0,4582 – 0,4879 | 0,14 – 0,24 | 1 |
+| végétal | 0,5736 – 0,6070 | 0,55 – 0,67 | 3 |
+| **la thèse de l'auteur** | **0,6409 – 0,6442** | **0,79 – 0,80** | **4** |
+| abstrait | 0,6449 – 0,6896 | 0,80 – 0,96 | 4 |
+
+**0,42..0,70 se pose juste en dehors de la plage observée** : rien n'est écrasé
+en bas, rien ne sature en haut, et un essai vérifie les deux bouts. `0,45..0,72`
+avait été essayé d'abord — il écrasait encore trois plants sur cent vingt à
+0,000 et son plafond n'était atteint par rien. **Les deux défauts qu'on venait
+de corriger, en plus petit.**
+
+Résultat pour l'auteur : ses chapitres restent **végétaux avec la marge
+d'origine**, et passent de **2 à 4 tons**. Les deux gains, sans le prix.
+
+#### Où ça se vérifie
+
+**Quatre essais et cinq mutations**, un par risque — et aucune mutation ne doit
+tomber sur le même essai qu'une autre, sinon un garde ne sert à rien :
+
+| ce qui casse | rattrapé par |
+|---|---|
+| la borne du **classement** s'élargit | *une thèse lexicalement riche garde ses arbres* |
+| la borne du **dessin** reprend celle du classement | *la richesse lexicale sépare les quatre familles* |
+| la borne du dessin s'ouvre par le **bas** | *la richesse lexicale sépare les quatre familles* |
+| `richesse` entre dans **`POIDS`** | *le trait qui dessine n'entre jamais dans le classement* |
+| le plant se peint avec le trait de **classement** | *le plant se peint avec le trait du dessin* |
+
+Chaque ligne a son garde propre. Le dernier essai en rattrape trois de plus,
+parce qu'il commence par exiger que les deux lectures soient distinguables sur
+son texte ; seule la dernière ligne n'a que lui.
+
+⚠️ **La cinquième a échappé à toute la batterie**, et c'est le harnais de
+mutations qui l'a trouvée. `depuis_plant` est le seul point de contact entre
+l'état d'un plant et son rendu ; lui faire lire `diversite` au lieu de
+`richesse` remettait la couleur sous la dépendance du trait qui classe, et rien
+ne bronchait — parce que les deux sortent du même MATTR et **varient dans le
+même sens**. Un essai qui vérifie « un texte plus riche fait plus de tons »
+reste vert quel que soit celui des deux qu'on lit. Ce qui les sépare est la
+valeur, pas le sens : l'essai neuf commence donc par **vérifier que les deux
+sont distinguables sur son texte**, sinon il rassurerait pour rien.
+
+⚠️ **Le témoin portait `rare=0,0`, et c'était la même erreur, dans l'essai.**
+Il héritait de l'angle mort de l'extrait de 772 mots et ne tombait que pour un
+élargissement sur deux. Avec la densité réellement écrite (0,400 à 0,489), il
+tombe pour 0,45..0,72, pour 0,45..0,69, pour 0,50..0,80 **et même** pour
+0,55..0,75. Ses marges, +0,108 à +0,161, sont un peu **sous** les +0,155..+0,169
+mesurés : le témoin est plus dur que la réalité, ce qui est le bon sens de
+l'écart.
 
 ⚠️ **Le végétal ordinaire du corpus ne convenait pas comme témoin** : sa
-subordination sature à 1,00 et sa marge vaut +0,30, donc il reste végétal
-**même avec la borne cassée**. L'essai aurait été vert dans les deux cas —
-le piège du cahier qui a l'air complet, pour la troisième fois sur ce projet.
+subordination sature à 1,00 et sa marge vaut +0,30, donc il reste végétal *même
+avec la borne cassée*. L'essai aurait été vert dans les deux cas — le piège du
+cahier qui a l'air complet, pour la troisième fois sur ce projet.
 
-⚠️ **Les plants déjà poussés ne bougent pas** : `traits_courants` et la famille
-sont sérialisés par segment. La calibration agit sur ce qui s'écrit ensuite.
+⚠️ **Le cahier de parité porte `richesse` avec une valeur différente de
+`diversite`** sur les deux vecteurs dessinés — 0,84 contre 0,63, 0,12 contre
+0,31. Sans cet écart, un portage qui lit l'un pour l'autre passerait la parité
+sans un mot.
 
-⚠️ **Ce que la nouvelle borne NE règle PAS, et il faut le chiffrer plutôt que
-de laisser croire à une réparation complète.** `n_tons = 1 + int(diversite × 4)`
-ne rend le **cinquième ton** qu'à `diversite` = 1,000 exactement, soit
-MATTR ≥ 0,72 — au-dessus de tout ce qui a jamais été observé. Même chose pour la
-**neuvième facette** de l'abstrait, qui demande MATTR ≥ 0,695. On passe donc de
-trois tons morts sur cinq à **un seul**, et l'éventail de 48 % à **77 %** de son
-amplitude. C'est un gain mesuré, pas une plage enfin complète.
+#### Ce qui reste su et non réglé
 
-⚠️ Et un effet de bord à surveiller : le profil abstrait **pur** passe de 6–7
-facettes à **8** — une seule valeur au lieu de deux. La variété des facettes ne
-vient donc plus du profil pur mais des plants classés abstraits **par refus**,
-dont la `diversite` est étalée. À regarder sur planche avant d'y toucher.
+⚠️ **Le cinquième ton reste inatteignable, et c'est structurel.**
+`n_tons = 1 + int(richesse × 4)` ne le rend qu'à `richesse` = 1,000
+exactement, c'est-à-dire au-dessus du plafond — donc seulement par écrêtage.
+`1 + min(4, int(richesse × 5))` étalerait la palette sur ses cinq niveaux
+(1 / 1–2 / 3–4 / 5). Une ligne, et **elle ne touche plus que le dessin** : c'est
+précisément la liberté que le partage achète. À l'auteur de dire s'il la veut.
 
-**Ce qui reste su et non réglé.** Le plafond est calé pour que le **seul vrai
-document disponible** garde ses arbres — c'est un point de mesure, pas une
-population. À revoir avec d'autres proses. Et la question de fond est ailleurs :
-`diversite` à 0,58 est un **identifiant faible** pour l'abstrait, ce qu'une
-borne bien calée ne fait que révéler. Toucher aux `POIDS` est une autre
-décision, et elle appartient à l'auteur.
+⚠️ **Deux tiers des signes rares de l'auteur sont des parenthèses** — 42 sur 63
+— et `PONCTUATION_RARE` compte l'ouvrante **et** la fermante. Une incise coûte
+donc double, là où un point-virgule coûte un ; ses « (1483-1546) » pèsent autant
+que deux points-virgules. Constaté, pas corrigé : toucher au motif redéplacerait
+toute la calibration.
+
+**Les six autres bornes de normalisation n'ont toujours été payées de rien.**
+Deux ont été mesurées, deux se sont révélées fausses. Le taux n'est pas
+rassurant.
+
+Et la question de fond est ailleurs : **`diversite` à 0,58 est un identifiant
+faible pour l'abstrait**, ce qu'une borne bien calée ne fait que révéler.
+L'abstrait n'a que deux traits ; le végétal en a quatre. Toucher aux `POIDS` est
+une autre décision, et elle appartient à l'auteur.
 
 ---
 
@@ -1817,39 +1878,30 @@ l'exécution.
     de la personne — et c'est peut-être bien ainsi : c'est une naissance, pas un
     fondu. À regarder en vrai avant de trancher.
 13. ~~**`diversite` n'utilise que la moitié basse de sa plage, et trois tons
-    sur cinq sont inatteignables.**~~ **Réglé** — borne portée à 0,45..0,72,
-    voir la décision 5. Le piège n'était pas où on le croyait : une borne calée
-    au plus juste faisait basculer la thèse en abstrait par refus. Deuxième des huit bornes de normalisation à se
-    révéler fausse dès qu'on la mesure — après `longueur`, et par l'autre bout :
-    là le trait saturait au plafond, ici il rampe au plancher.
+    sur cinq sont inatteignables.**~~ **Réglé, mais pas comme prévu** — voir la
+    décision 5. Élargir la borne a bien rendu les couleurs, et a fait perdre
+    **vingt-deux arbres sur trente-cinq** au paysage réel de l'auteur en une
+    nuit. Le trait a donc été **dédoublé** : `diversite` (0,55..0,80) classe,
+    `richesse` (0,42..0,70) dessine, et `richesse` n'entre dans aucun `POIDS`.
 
-    | texte | MATTR | `diversite` | tons |
-    |---|---|---|---|
-    | la thèse de l'auteur | 0,6491 | 0,3963 | **2** / 5 |
-    | échantillon végétal | 0,6652 | 0,4607 | 2 |
-    | échantillon architecture | 0,6478 | 0,3912 | 2 |
-    | échantillon abstrait | 0,6412 | 0,3647 | 2 |
-    | échantillon créature | 0,6033 | 0,2130 | 1 |
-    | **la thèse simulée du banc** | **0,5449** | **0,0000** | **1** |
+    Ce que le point avait vu juste : le plafond de 0,80 n'est atteint par rien,
+    le plancher de 0,55 écrasait la moitié du corpus à 0,000, et l'éventail du
+    feuillage ne parcourait qu'un quart de son amplitude. Ce qu'il n'avait pas
+    vu : **le trait qui écrase le dessin est le même que celui qui décide de la
+    famille**, et le desserrer ajoute +0,198 au score abstrait de tous les
+    plants à la fois.
 
-    Le plafond est à 0,80 de MATTR ; le maximum jamais observé est **0,6652**.
-    Sur de la prose continue en fenêtre de 200 mots, 0,80 supposerait un
-    vocabulaire presque sans répétition — aucun texte réel n'y va. Il faudrait
-    0,675 pour trois tons.
+    ⚠️ Sa dernière ligne — « `diversite` ne pèse dans aucune classification sauf
+    l'abstrait (poids 0,58) […] la frontière de l'abstrait bougerait, à mesurer
+    avant » — **disait exactement ce qui allait arriver**. Le risque était écrit
+    dans le point ; il a été lu comme une réserve, pas comme un veto. Sur une
+    thèse, l'abstrait n'est pas une frontière parmi quatre : c'est *la*
+    frontière.
 
-    ⚠️ **La thèse simulée du banc est sous le plancher**, à `diversite` =
-    0,0000 exactement. Le corpus qui sert à tout vérifier est écrasé contre la
-    borne basse : c'est pour ça qu'aucune planche n'a jamais pu le montrer.
+    Reste ouvert et hérité de là : le **cinquième ton** et la **neuvième
+    facette** ne sont atteignables que par écrêtage, faute d'un `int(x × 4)`
+    qui rend cinq valeurs. Voir la fin de la décision 5.
 
-    ⚠️ **Ça abîme aussi l'ouverture du feuillage du point 8.** `eventail = 0,22
-    + diversite × 0,36` devait parcourir 0,22 à 0,58 rad ; avec `diversite`
-    coincée entre 0,21 et 0,46 elle ne parcourt que 0,30 à 0,39 — **un quart de
-    l'amplitude**. Les 86° → 138° consignés là-haut viennent de traits
-    fabriqués, pas de textes réels.
-
-    Risque du recalibrage : `diversite` ne pèse dans aucune classification sauf
-    **l'abstrait** (poids 0,58). Les trois autres familles ne bougeraient pas,
-    la frontière de l'abstrait si — à mesurer avant, et sur plus de six textes.
 14. **Faire porter une forme au mobilier du document.** Demandé par l'auteur :
     les images, l'index, la table des matières, la bibliographie ne sont pas de
     la prose, et ils ne devraient pas pousser comme elle. Aujourd'hui

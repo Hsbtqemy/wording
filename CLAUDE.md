@@ -63,8 +63,8 @@ python jardin/essais.py && python jardin/mutations.py \
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `66 passes, 0 en echec` · `47/47` · `aucun ecart` · `23 passes` ·
-`25 passes` · `98/98`.
+Attendu : `68 passes, 0 en echec` · `50/50` · `aucun ecart` · `23 passes` ·
+`25 passes` · `100/100`.
 
 `essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
 qu'aucune parité ne peut couvrir, faute de Python en face. Elle y a trouvé
@@ -86,14 +86,20 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **9 min 38 à 13 min 35** selon la
-charge de la machine (8 septembre 2026 ; c'était 5 min 57 quand la chaîne
-comptait 36 et 87 mutations). Où le temps passe, parce que ça se voit mal
-autrement :
+Durée mesurée de l'enchaînement complet : **15 min 38** (9 septembre 2026, à 50
+et 100 mutations). C'était 9 min 38 à 13 min 35 quand la chaîne comptait 47 et
+98 mutations, et 5 min 57 à 36 et 87. Où le temps passe, parce que ça se voit
+mal autrement :
 
 | `essais.py` | `mutations.py` | `parite.py` | les deux `essais*.js` | `mutations.js` |
 |---|---|---|---|---|
-| 10–14 s | **7 min 45 – 11 min 23** | 4–5 s | < 1 s | 1 min 38 – 2 min |
+| 13–16 s | **≈ 13 min** | 4–5 s | < 1 s | ≈ 2 min |
+
+⚠️ Les deux colonnes en ≈ sont **déduites**, pas chronométrées : total mesuré
+moins les quatre suites courtes, elles chronométrées. Un chiffre déduit d'un
+total où l'essentiel est justement ce qu'on déduit ne vaut pas grand-chose —
+si la question est « où passe le temps », c'est `mutations.py` qu'il faut
+chronométrer directement, et personne ne l'a fait.
 
 ⚠️ La fourchette est de la **charge machine, pas du code** : deux mesures dos à
 dos du même `essais.py` ont donné 14 194 ms et 14 018 ms là où il avait mis
@@ -101,15 +107,22 @@ dos du même `essais.py` ont donné 14 194 ms et 14 018 ms là où il avait mis
 chaîne, mesurer les deux versions **l'une après l'autre** — sinon on retire du
 travail juste pour rien.
 
-`mutations.py` relance `essais.py` quarante-sept fois, et `mutations.js`
-relance la parité ou la batterie du volet quatre-vingt-dix-huit fois. Assez
+`mutations.py` relance `essais.py` cinquante fois, et `mutations.js`
+relance la parité ou la batterie du volet cent fois. Assez
 long pour donner envie de paralléliser, ce qu'il ne faut surtout pas faire.
 
-⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par quarante-cinq.**
+⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par cinquante.**
 Un essai qui balayait les tailles de massif de 2 à 40 en végétal a coûté 12,8 s
 par passage — neuf minutes de chaîne — pour une propriété qui ne dépend pas de
 la famille. Mesurer le coût d'un essai neuf fait partie de l'écrire : voir la
 décision 14.
+
+Exemple de mesure faite comme il faut : les deux essais ajoutés pour le partage
+de MATTR coûtent **+808 ms** par passage — médiane de trois tours **alternés**
+entre les deux versions, 13 864 contre 14 672 ms. Sur cinquante relances, une
+quarantaine de secondes. Les tours individuels allaient de 12 993 à 24 592 ms
+selon la charge : sans l'alternance, n'importe quelle conclusion était
+disponible.
 
 ⚠️ Pendant qu'une suite de mutations tourne, ne rien **modifier** dans
 `jardin/*.py` ni `addin/**/*.js` — elle garde en mémoire la version lue au

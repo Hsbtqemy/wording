@@ -285,7 +285,8 @@ export const NOMS_TRAITS = [
   "structure",         // titres, listes, blocs
   "dialogue",          // guillemets, tirets de replique
   "interrogation",     // densite de points d'interrogation
-  "diversite",         // richesse lexicale (MATTR)
+  "diversite",         // richesse lexicale, pour le CLASSEMENT
+  "richesse",          // la meme mesure, pour le DESSIN
   "ponctuation_rare",  // ; : parentheses tirets points de suspension
   "reecriture",        // signal comportemental, fourni par l'add-in
 ];
@@ -345,6 +346,8 @@ export function extraire(texte, reecriture = 0.0) {
 
   const interro = compter(texte, "?") / phrases.length;
   const rares = ((texte.match(PONCTUATION_RARE) || []).length / Math.max(mots.length, 1)) * 100;
+  // Mesuree une fois, lue deux : voir le commentaire de `diversite`.
+  const mattr_du_texte = mattr(mots);
   let structurels = 0;
   for (const p of paragraphes) if (est_structurel(p)) structurels += 1;
   const part_structurelle = structurels / paragraphes.length;
@@ -361,13 +364,24 @@ export function extraire(texte, reecriture = 0.0) {
     structure: borne(part_structurelle, 0.0, 0.35),
     dialogue: borne(densite_dialogue, 0.0, 4.0),
     interrogation: borne(interro, 0.0, 0.15),
-    // ⚠️ 0,55..0,80 ecrasait la moitie du corpus contre le plancher : vingt
-    //    plants sur quarante a 0,000, donc trois tons de palette sur cinq
-    //    inatteignables. Le plafond de 0,80 n'etait atteint par rien — le
-    //    maximum jamais mesure est 0,669. Voir traits.py pour les mesures et,
-    //    surtout, pour pourquoi le PLAFOND est la valeur dangereuse : sous
-    //    0,70, une these lexicalement riche bascule en abstrait par refus.
-    diversite: borne(mattr(mots), 0.45, 0.72),
+    // ⚠️ Le classement et le dessin ne demandent pas la meme chose a MATTR.
+    //    Une seule normalisation pour les deux a transforme vingt-deux arbres
+    //    en huit sur le paysage reel de l'auteur, en vingt-quatre heures :
+    //    l'abstrait pese 0,58 sur `diversite`, donc elargir la borne a ajoute
+    //    +0,198 a son score sur TOUS les plants. Voir traits.py pour les
+    //    mesures et pour l'erreur de methode (une borne calee sur un extrait
+    //    de 772 mots sans un seul signe rare).
+    //
+    //      diversite   ou ce texte se situe parmi quatre familles (0,55..0,80,
+    //                  la borne payee par le corpus). Ne bouge pas.
+    //      richesse    a quel point ce texte est riche (0,42..0,70). Ne sert
+    //                  qu'au dessin : tons, feuillage, facettes. Borne calee
+    //                  sur cent vingt plants — plancher de MATTR 0,4323,
+    //                  plafond 0,6896 — pour que rien n'ecrase ni ne sature.
+    //
+    //    ⚠️ `richesse` ne doit JAMAIS entrer dans POIDS.
+    diversite: borne(mattr_du_texte, 0.55, 0.80),
+    richesse: borne(mattr_du_texte, 0.42, 0.70),
     ponctuation_rare: borne(rares, 0.3, 3.0),
     reecriture: Math.max(0.0, Math.min(1.0, reecriture)),
   };

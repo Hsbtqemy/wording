@@ -226,7 +226,7 @@ def message(t: Toile, phrase: str, avancement: float, x0=0.0, y0=0.0,
     de l'heure : la phrase ne se complete que si la personne travaille.
     """
     rng = random.Random(graine)
-    tt = teinte or Teinte([(0, 1)], nuit=True, diversite=1.0)
+    tt = teinte or Teinte([(0, 1)], nuit=True, richesse=1.0)
     lignes = _mise_en_page(phrase, largeur)
 
     # Le cadre est pose d'abord, sur la phrase entiere.

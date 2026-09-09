@@ -128,11 +128,13 @@ const VECTEURS = {
   prose: {
     longueur: 0.82, rythme: 0.21, subordination: 0.77, regularite: 0.34,
     structure: 0.05, dialogue: 0.02, interrogation: 0.11, diversite: 0.63,
+    richesse: 0.84,
     ponctuation_rare: 0.29,
   },
   rapport: {
     longueur: 0.19, rythme: 0.28, subordination: 0.12, regularite: 0.88,
     structure: 0.91, dialogue: 0.0, interrogation: 0.03, diversite: 0.31,
+    richesse: 0.12,
     ponctuation_rare: 0.08,
   },
 };
@@ -281,9 +283,10 @@ for (const c of cahier.tokenisation) {
   meme(`phrases ${apercu}`, c.phrases, en_phrases(c.texte).length);
   meme(`paragraphes ${apercu}`, c.paragraphes, en_paragraphes(c.texte).length);
   meme(`structurel ${apercu}`, c.structurel, est_structurel(c.texte));
-  // MATTR a part, pas seulement a travers diversite : borne(mattr, 0.55, 0.80)
-  // ecrete, et sur un texte court les deux valeurs comparees seraient deux
-  // zeros identiques quoi qu'il arrive en amont.
+  // MATTR a part, pas seulement a travers diversite ni richesse : les deux
+  // ecretent — borne(mattr, 0.55, 0.80) et borne(mattr, 0.45, 0.72) —
+  // et sur un texte court les deux valeurs comparees seraient deux zeros
+  // identiques quoi qu'il arrive en amont.
   meme(`mattr ${apercu}`, c.mattr, mattr(en_mots(c.texte)));
 }
 console.log(`  ${cahier.tokenisation.length} textes, ${Date.now() - debut} ms`);
@@ -454,7 +457,7 @@ titre("couleur");
 
 titre("teinte");
 for (const c of cahier.teinte) {
-  const t = new Teinte(c.dates.length ? c.dates : null, c.nuit, c.diversite);
+  const t = new Teinte(c.dates.length ? c.dates : null, c.nuit, c.richesse);
   meme(`Teinte(${JSON.stringify(c.dates)}).n_tons`, c.n_tons, t.n_tons);
   meme(`Teinte(${JSON.stringify(c.dates)})._total`, c.total, t._total);
   const rng = new Alea(4242);

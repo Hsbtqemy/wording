@@ -249,7 +249,8 @@ class Traits:
     structure: float         # titres, listes, blocs
     dialogue: float          # guillemets, tirets de replique
     interrogation: float     # densite de points d'interrogation
-    diversite: float         # richesse lexicale (MATTR)
+    diversite: float         # richesse lexicale, pour le CLASSEMENT
+    richesse: float          # la meme mesure, pour le DESSIN — voir extraire()
     ponctuation_rare: float  # ; : parentheses tirets points de suspension
     # Signal comportemental, fourni par l'add-in (voir plus bas).
     reecriture: float = 0.0
@@ -294,6 +295,8 @@ def extraire(texte: str, reecriture: float = 0.0) -> Traits:
 
     interro = texte.count("?") / len(phrases)
     rares = len(PONCTUATION_RARE.findall(texte)) / max(len(mots), 1) * 100
+    # Mesuree une fois, lue deux : voir le commentaire de `diversite`.
+    mattr_du_texte = mattr(mots)
     part_structurelle = sum(1 for p in paragraphes if est_structurel(p)) / len(paragraphes)
 
     return Traits(
@@ -331,76 +334,70 @@ def extraire(texte: str, reecriture: float = 0.0) -> Traits:
         structure=borne(part_structurelle, 0.0, 0.35),
         dialogue=borne(densite_dialogue, 0.0, 4.0),
         interrogation=borne(interro, 0.0, 0.15),
-        # ⚠️ 0,55..0,80 ECRASAIT LA MOITIE DU CORPUS CONTRE LE PLANCHER.
+        # ⚠️ LE CLASSEMENT ET LE DESSIN NE DEMANDENT PAS LA MEME CHOSE A
+        #    MATTR, ET LEUR IMPOSER UNE SEULE NORMALISATION A COUTE UNE THESE.
         #
-        #   Mesure sur des plants de 2 500 mots reellement varies (MATTR est
-        #   stable en longueur : 0,591 a 600 mots contre 0,594 a 2 500) —
+        #   Recit, parce qu'il ne se devine pas. Mesure sur des plants de
+        #   2 500 mots : architecture 0,461..0,482, creature 0,463..0,508,
+        #   vegetal 0,592..0,602, abstrait 0,656..0,669, la these de l'auteur
+        #   0,6491. La borne d'alors, 0,55..0,80, laissait VINGT plants sur
+        #   quarante a 0,000 exactement et n'etait atteinte par rien en haut :
+        #   trois tons de palette sur cinq inatteignables. On l'a donc elargie
+        #   a 0,45..0,72, mesures a l'appui.
         #
-        #       architecture  0,461 .. 0,482      vocabulaire 70
-        #       creature      0,463 .. 0,508      vocabulaire 34
-        #       vegetal       0,592 .. 0,602      vocabulaire 190
-        #       abstrait      0,656 .. 0,669      vocabulaire 430
-        #       la these de l'auteur   0,6491
+        #   ⚠️ LE PAYSAGE REEL A REPONDU EN VINGT-QUATRE HEURES : vingt-deux
+        #   arbres sur trente-cinq etaient devenus huit sur trente-huit. La
+        #   cause n'est pas une erreur de calcul, c'est que l'abstrait pese
+        #   0,58 sur ce trait. Elargir la borne a ajoute +0,198 au score
+        #   abstrait de TOUS les plants a la fois, et fait passer de 2,41 a
+        #   1,14 le nombre de signes « ; : ( ) — … » pour cent mots au-dela
+        #   duquel une these cesse d'etre un arbre. Un deux-points tous les
+        #   quatre-vingt-dix mots suffisait.
         #
-        #   Le plafond de 0,80 n'etait atteint par rien : le maximum jamais
-        #   observe est 0,669. Le plancher de 0,55 laissait VINGT plants sur
-        #   quarante a diversite = 0,000 exactement — architecture et creature
-        #   en entier. Trois des cinq tons de chaque palette etaient donc
-        #   inatteignables, et l'eventail du feuillage ne parcourait que 25 a
-        #   45 degres au lieu de 25 a 66.
+        #   ⚠️ L'ERREUR DE METHODE, qui est la vraie lecon : la borne avait ete
+        #   calee sur UN extrait de 772 mots. Un point, pas une population. Et
+        #   cet extrait ne contenait pas un seul signe rare, donc il ne pouvait
+        #   rien dire du trait qui decide.
         #
-        #   ⚠️ LE CORPUS NE PEUT PAS ARBITRER CETTE BORNE : il se classe 40/40
-        #   a toutes les bornes essayees, de 0,40..0,75 a 0,55..0,80. C'est
-        #   exactement ce qui s'etait passe pour `longueur`, et pour la meme
-        #   raison — on y compare des familles entre elles, jamais deux textes
-        #   d'une meme famille. Le seul texte qui discrimine est de la vraie
-        #   prose.
+        #   D'ou deux lectures, parce que ce sont deux questions :
         #
-        #   ⚠️ LE PLAFOND EST LA VALEUR DANGEREUSE, ET C'EST CONTRE-INTUITIF.
-        #   L'abstrait pese 0,58 sur `diversite` (voir POIDS). Or la these de
-        #   l'auteur est lexicalement aussi riche que le profil abstrait —
-        #   0,6491 contre 0,656..0,669. Plus le plafond descend, plus sa
-        #   diversite monte, et plus l'abstrait devient competitif contre son
-        #   propre vegetal. Mesure de sa marge de dominance :
+        #     diversite   OU CE TEXTE SE SITUE parmi quatre familles. Borne
+        #                 0,55..0,80, celle que le corpus a payee — 40/40 — et
+        #                 la seule qui ait ete confrontee a un vrai document.
+        #                 Elle n'a aucune raison de bouger pour des raisons de
+        #                 couleur.
+        #     richesse    A QUEL POINT CE TEXTE EST RICHE, sur sa propre
+        #                 echelle. Ne sert qu'au dessin : nombre de tons de la
+        #                 palette, ouverture du feuillage, facettes de
+        #                 l'abstrait.
         #
-        #       plafond 0,66  ->  +0,014   ABSTRAIT par refus
-        #       plafond 0,68  ->  +0,034   ABSTRAIT par refus
-        #       plafond 0,69  ->  +0,055   ABSTRAIT par refus
-        #       plafond 0,70  ->  +0,074   vegetal, mais au bord
-        #       plafond 0,72  ->  +0,108   vegetal
+        #   ⚠️ LA BORNE DE `richesse` EST CALEE SUR UNE POPULATION, ET C'EST
+        #   LA CORRECTION DE METHODE. Cent vingt plants — quatre familles,
+        #   cinq tailles de 600 a 2 500 mots, six graines — donnent un
+        #   plancher de MATTR a 0,4323 et un plafond a 0,6896. La borne se
+        #   pose juste en dehors : 0,42..0,70. Rien n'est ecrase en bas, rien
+        #   ne sature en haut, et un essai le verifie sur les deux bouts.
         #
-        #   Une borne calee au plus juste sur la plage observee (0,46..0,67)
-        #   aurait donc transforme une these entiere en abstrait par refus, en
-        #   voulant lui donner des couleurs. La borne etroite d'avant la
-        #   protegeait par accident, en ecrasant le signal.
+        #   0,45..0,72 avait ete essaye d'abord : il ecrasait encore trois
+        #   plants sur cent vingt a 0,000, et son plafond n'etait atteint par
+        #   rien. Les deux defauts qu'on venait de corriger, en plus petit.
         #
-        #   0,45..0,72 laisse +0,108 de marge, soit pres du double de
-        #   MARGE_DOMINANCE, et rend les quatre familles distinctes : 1 ton
-        #   pour l'architecture et la creature, 3 pour le vegetal, 4 pour
-        #   l'abstrait — ce que la docstring de Teinte promet depuis toujours.
+        #   Ce que le partage rend possible : cette borne ne peut plus
+        #   deplacer une seule famille. C'est exactement ce qu'on a achete.
         #
-        #   ⚠️ LE PLANCHER NE DECIDE DE RIEN POUR L'AUTEUR — sa marge reste
-        #   vegetale de 0,40 a 0,50 de plancher, a plafond fixe. Il decide de la
-        #   SEPARATION, et c'est la qu'il se paie : a 0,40 la creature obtient
-        #   0,180..0,309, donc tantot 1 ton tantot 2, et l'abstrait tantot 3
-        #   tantot 4 — deux familles qui se croisent. 0,45 les separe net, et
-        #   se trouve juste sous le MATTR le plus bas jamais mesure (0,4606),
-        #   donc la prose la plus monotone atterrit pres de zero sans grande
-        #   zone morte en dessous.
+        #   Mesure des deux ensemble : les quatre familles restent 40/40, les
+        #   tons vont de 1 (architecture) a 4 (abstrait) selon la famille — la
+        #   these de l'auteur en recoit 4 la ou elle en avait 2 — et le seuil
+        #   de bascule d'une these reste celui de la borne de classement.
         #
-        #   ⚠️ CE QUE CETTE BORNE NE REGLE PAS. n_tons = 1 + int(diversite x 4)
-        #   ne rend le CINQUIEME ton qu'a diversite = 1,000 exactement, soit
-        #   MATTR >= 0,72 — au-dessus de tout ce qui a ete observe. Idem pour la
-        #   neuvieme facette de l'abstrait (MATTR >= 0,695). On passe de trois
-        #   tons morts sur cinq a un seul, et l'eventail du feuillage de 48 % a
-        #   77 % de son amplitude. Un gain mesure, pas une plage complete.
+        #   ⚠️ `richesse` NE DOIT JAMAIS ENTRER DANS POIDS. C'est toute la
+        #   decision, et un essai la surveille structurellement : le jour ou
+        #   elle y entre, on a refait l'erreur du 9 septembre.
         #
-        #   Reste su, et non regle : le plafond est cale pour que le SEUL vrai
-        #   document disponible garde ses arbres. A revoir avec d'autres
-        #   proses. Et la question de fond est ailleurs — `diversite` a 0,58
-        #   est un identifiant faible pour l'abstrait, ce qu'une borne bien
-        #   calee ne fait que reveler.
-        diversite=borne(mattr(mots), 0.45, 0.72),
+        #   La decision 8 le disait deja sans qu'on l'entende : « la date garde
+        #   la teinte ; le texte prend le nombre de tons ». Deux metiers.
+        diversite=borne(mattr_du_texte, 0.55, 0.80),
+        richesse=borne(mattr_du_texte, 0.42, 0.70),
         ponctuation_rare=borne(rares, 0.3, 3.0),
         reecriture=max(0.0, min(1.0, reecriture)),
     )
