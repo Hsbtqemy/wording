@@ -2236,8 +2236,47 @@ caméra passe.
     est venue de la question la plus bête — à tout le reste constant, le dessin
     grandit-il quand l'extension grandit ?
 
-    Reste ouvert et hérité de là : **la couleur se re-tire encore**. Même
-    mécanisme, même remède. Voir la fin de la décision 18.
+    Hérité de là et **réglé le même jour** : la couleur se re-tirait aussi,
+    pour la même raison. Voir « La couleur aussi » à la décision 18.
+
+16. ⚠️ **Les essais n'ont jamais été audités sur le motif de la graine
+    unique.** Le 9 septembre 2026, en réparant la croissance, on a examiné de
+    près une douzaine d'essais sur soixante-dix. **Quatre ne tenaient pas ce
+    qu'ils annonçaient :**
+
+    | essai | ce qu'il valait vraiment |
+    |---|---|
+    | « la caméra recule, et ne fait que reculer » | 1 graine, 4 jalons ; à 8 jalons, **48 graines sur 50** le font échouer |
+    | « la structure change la silhouette » | **2 graines sur 20** échouaient déjà, code inchangé |
+    | « le vocabulaire ouvre le feuillage » | **7 sur 20** |
+    | « la couleur d'un trait lui appartient » | écrit le jour même, **ne traversait pas les nœuds du tout** |
+
+    ⚠️ **Ce taux n'est pas une mesure, et c'est tout le problème.** Les quatre
+    ont été trouvés en *perturbant le code*, ce qui fait remonter les essais
+    fragiles ; un audit à froid en trouverait peut-être moins. Mais les
+    soixante autres n'ont jamais été éprouvés de cette façon, et le motif est
+    **mécanique** : une graine fixe, un seuil numérique ajusté sur elle.
+
+    **La méthode, pour que l'audit ne se réinvente pas :**
+
+    1. relever les essais qui tirent une graine littérale ET comparent à un
+       seuil numérique — c'est un `grep`, pas un jugement ;
+    2. rejouer la même mesure sur une vingtaine de graines, **sur le code
+       inchangé** ;
+    3. reporter médiane, minimum, et combien de graines tombent sous le seuil.
+       *Une seule qui tombe suffit à dire que l'essai tenait la graine, pas la
+       propriété* ;
+    4. réparer en assertant sur la **médiane d'une douzaine de graines**, en
+       gardant le seuil d'origine — il ne doit pas être réajusté, sinon on
+       recommence la faute ;
+    5. mesurer le surcoût en **tours alternés** (voir `CLAUDE.md`), puisque
+       tout ce qui entre dans `essais.py` est multiplié par cinquante-huit.
+
+    ⚠️ Et vérifier au passage que chaque essai **traverse** ce qu'il prétend
+    surveiller. Le quatrième de la liste ci-dessus tournait à maturité 0,50 en
+    ne lisant que `segments` : or `Toile.noeud()` écrit dans `noeuds` et ne
+    fabrique rien sous maturité 0,55. Il était vert et creux. Seules les
+    mutations l'ont dit.
 
 ---
 
