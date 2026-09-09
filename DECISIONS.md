@@ -1709,6 +1709,51 @@ l'exécution.
     cadeau, c'est le seul instant où l'organisme change de nature sous les yeux
     de la personne — et c'est peut-être bien ainsi : c'est une naissance, pas un
     fondu. À regarder en vrai avant de trancher.
+13. **`diversite` n'utilise que la moitié basse de sa plage, et trois tons sur
+    cinq sont inatteignables.** Deuxième des huit bornes de normalisation à se
+    révéler fausse dès qu'on la mesure — après `longueur`, et par l'autre bout :
+    là le trait saturait au plafond, ici il rampe au plancher.
+
+    | texte | MATTR | `diversite` | tons |
+    |---|---|---|---|
+    | la thèse de l'auteur | 0,6491 | 0,3963 | **2** / 5 |
+    | échantillon végétal | 0,6652 | 0,4607 | 2 |
+    | échantillon architecture | 0,6478 | 0,3912 | 2 |
+    | échantillon abstrait | 0,6412 | 0,3647 | 2 |
+    | échantillon créature | 0,6033 | 0,2130 | 1 |
+    | **la thèse simulée du banc** | **0,5449** | **0,0000** | **1** |
+
+    Le plafond est à 0,80 de MATTR ; le maximum jamais observé est **0,6652**.
+    Sur de la prose continue en fenêtre de 200 mots, 0,80 supposerait un
+    vocabulaire presque sans répétition — aucun texte réel n'y va. Il faudrait
+    0,675 pour trois tons.
+
+    ⚠️ **La thèse simulée du banc est sous le plancher**, à `diversite` =
+    0,0000 exactement. Le corpus qui sert à tout vérifier est écrasé contre la
+    borne basse : c'est pour ça qu'aucune planche n'a jamais pu le montrer.
+
+    ⚠️ **Ça abîme aussi l'ouverture du feuillage du point 8.** `eventail = 0,22
+    + diversite × 0,36` devait parcourir 0,22 à 0,58 rad ; avec `diversite`
+    coincée entre 0,21 et 0,46 elle ne parcourt que 0,30 à 0,39 — **un quart de
+    l'amplitude**. Les 86° → 138° consignés là-haut viennent de traits
+    fabriqués, pas de textes réels.
+
+    Risque du recalibrage : `diversite` ne pèse dans aucune classification sauf
+    **l'abstrait** (poids 0,58). Les trois autres familles ne bougeraient pas,
+    la frontière de l'abstrait si — à mesurer avant, et sur plus de six textes.
+14. **Faire porter une forme au mobilier du document.** Demandé par l'auteur :
+    les images, l'index, la table des matières, la bibliographie ne sont pas de
+    la prose, et ils ne devraient pas pousser comme elle. Aujourd'hui
+    `STYLES_IGNORES` les écarte ou les laisse compter comme du texte ordinaire,
+    selon le style ; rien ne leur donne de physionomie propre.
+
+    Rien n'est décidé, et surtout pas le sens. Ce qu'il faudra trancher
+    d'abord : est-ce une **cinquième famille**, un **motif** appliqué à une
+    famille existante, ou simplement une **parcelle** qui se lit autrement ? Et
+    ⚠️ la question qui commande tout : une bibliographie qui grossit, est-ce de
+    l'extension ou de la maturité ? Elle arrive par blocs collés, souvent
+    d'un coup, et le point 4 la traiterait comme une greffe. Répondre à ça avant
+    de dessiner quoi que ce soit.
 
 ---
 
