@@ -64,10 +64,42 @@ MUTATIONS = [
      "decision 9 : la couleur deborde sur la structure"),
 
     ("grammaire.py",
-     "    part = BUDGET_FEUILLAGE / pointes",
-     "    part = BUDGET_FEUILLAGE // pointes",
+     "    part = BUDGET_FEUILLAGE / pointes_finales",
+     "    part = BUDGET_FEUILLAGE // pointes_finales",
      "decision 1 : le feuillage se divise au lieu de se repartir,"
      " et la couronne perd un tiers de ses traits en gagnant un rameau"),
+
+    # Les quatre suivantes remettent chacune une des fautes qui faisaient
+    # RETRECIR le plant pendant qu'on ecrit — 226 reculs sur 624 pas pour le
+    # seul vegetal, jusqu'a -17,1 %. Toutes doivent tomber sur l'essai
+    # « un plant ne retrecit jamais quand il pousse ».
+    ("grammaire.py",
+     "    part = BUDGET_FEUILLAGE / pointes_finales",
+     "    part = BUDGET_FEUILLAGE / pointes",
+     "la part de feuillage se recalcule sur les pointes COURANTES : chaque"
+     " bouquet maigrit quand l'arbre gagne une pointe"),
+
+    ("grammaire.py",
+     "        ouv = ouverture * (0.85 + al(lignee * FENTES) * 0.30)",
+     "        ouv = ouverture * rng.uniform(0.85, 1.15)",
+     "l'ouverture d'un rameau repasse par le flux partage : un bourgeon qui"
+     " s'ouvre decale tout ce qui est dessine apres lui"),
+
+    ("grammaire.py",
+     "        f = i / (N_FINAL - 1)",
+     "        f = i / max(n - 1, 1)",
+     "le fuselage de la creature se renormalise sur sa longueur courante :"
+     " un segment de plus et toute la bete est redessinee"),
+
+    ("grammaire.py",
+     "        cx = 100 + rang_lateral(k) * SEGMENT * 1.15 \
+"
+     "            + (al(k * FENTES + 2) * 12 - 6)",
+     "        cx = 100 + (k - n_tours / 2) * SEGMENT * 1.15 \
+"
+     "            + (al(k * FENTES + 2) * 12 - 6)",
+     "la position d'une tour redepend du nombre total : ajouter un batiment"
+     " deplace toute la ville"),
 
     ("grammaire.py",
      "    prof_max = 4.0 + extension * 3.0",

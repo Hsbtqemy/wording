@@ -63,8 +63,8 @@ python jardin/essais.py && python jardin/mutations.py \
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `68 passes, 0 en echec` · `50/50` · `aucun ecart` · `23 passes` ·
-`25 passes` · `100/100`.
+Attendu : `69 passes, 0 en echec` · `54/54` · `aucun ecart` · `23 passes` ·
+`25 passes` · `103/103`.
 
 `essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
 qu'aucune parité ne peut couvrir, faute de Python en face. Elle y a trouvé
@@ -86,9 +86,13 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **15 min 38** (9 septembre 2026, à 50
-et 100 mutations). C'était 9 min 38 à 13 min 35 quand la chaîne comptait 47 et
-98 mutations, et 5 min 57 à 36 et 87. Où le temps passe, parce que ça se voit
+Durée mesurée de l'enchaînement complet : **14 min 50** (9 septembre 2026, à 54
+et 103 mutations). C'était 15 min 38 à 50 et 100 mutations, 9 min 38 à 13 min 35
+à 47 et 98, et 5 min 57 à 36 et 87.
+
+⚠️ La chaîne a donc raccourci en gagnant quatre mutations et un essai. Ce n'est
+pas le code qui a accéléré, c'est la machine qui était moins chargée — exactement
+ce que dit l'avertissement plus bas. Ne pas lire ces totaux comme une tendance. Où le temps passe, parce que ça se voit
 mal autrement :
 
 | `essais.py` | `mutations.py` | `parite.py` | les deux `essais*.js` | `mutations.js` |
@@ -107,11 +111,11 @@ dos du même `essais.py` ont donné 14 194 ms et 14 018 ms là où il avait mis
 chaîne, mesurer les deux versions **l'une après l'autre** — sinon on retire du
 travail juste pour rien.
 
-`mutations.py` relance `essais.py` cinquante fois, et `mutations.js`
-relance la parité ou la batterie du volet cent fois. Assez
+`mutations.py` relance `essais.py` cinquante-quatre fois, et `mutations.js`
+relance la parité ou la batterie du volet cent trois fois. Assez
 long pour donner envie de paralléliser, ce qu'il ne faut surtout pas faire.
 
-⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par cinquante.**
+⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par cinquante-quatre.**
 Un essai qui balayait les tailles de massif de 2 à 40 en végétal a coûté 12,8 s
 par passage — neuf minutes de chaîne — pour une propriété qui ne dépend pas de
 la famille. Mesurer le coût d'un essai neuf fait partie de l'écrire : voir la
@@ -123,6 +127,13 @@ entre les deux versions, 13 864 contre 14 672 ms. Sur cinquante relances, une
 quarantaine de secondes. Les tours individuels allaient de 12 993 à 24 592 ms
 selon la charge : sans l'alternance, n'importe quelle conclusion était
 disponible.
+
+De même pour l'essai de croissance additive (décision 18), qui balaie quatre
+familles × quatre graines × vingt pas : **+654 ms** par passage, médiane de
+trois tours alternés, 11 866 contre 12 520 ms. Son échantillonnage n'a pas été
+choisi au flair — il a été **mesuré contre les mutations qu'il doit attraper**,
+et deux d'entre elles ont d'ailleurs révélé qu'il manquait une assertion, pas
+des graines.
 
 ⚠️ Pendant qu'une suite de mutations tourne, ne rien **modifier** dans
 `jardin/*.py` ni `addin/**/*.js` — elle garde en mémoire la version lue au
@@ -160,6 +171,15 @@ Quatre pièges déjà rencontrés, à ne pas refaire :
   à la panne ;
 - un cahier qui a l'air complet et **ne traverse jamais** le mécanisme surveillé
   — sur 616 appels, le verdict `frappe` n'apparaissait pas une fois ;
+- ⚠️ **un essai qui tire UNE graine et compare à un seuil calé sur elle.**
+  Trouvé trois fois dans la même journée. L'essai de caméra passait parce que
+  la graine 11 ne tombait pas dans un creux : à huit jalons au lieu de quatre,
+  48 graines sur 50 le faisaient échouer. « La structure change la silhouette »
+  et « le vocabulaire ouvre le feuillage » échouaient déjà, sur le code
+  inchangé, 2 fois et 7 fois sur 20 graines. Un seuil ajusté sur une
+  réalisation du hasard ne mesure pas la propriété qu'il annonce : prendre une
+  **médiane sur une douzaine de graines**, et vérifier ce que fait le seuil sur
+  les autres avant de l'écrire ;
 - ⚠️ **une borne calée sur le corpus.** `jardin/corpus.py` produit quatre
   familles séparables ; il ne dit rien de l'endroit où poser une borne, et il
   n'en a jamais rien dit. Son abstrait écrit 3,25 à 5,18 signes rares pour cent

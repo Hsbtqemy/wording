@@ -549,15 +549,35 @@ def _():
     300 -> 235, 331 -> 230. L'ancienne version entiere le faisait deja, au
     dernier cran de chaque plant — l'arbre s'eclaircissait en s'achevant.
 
-    LE SEUIL DE 10 % N'EST PAS AJUSTE SUR LE CODE DU JOUR, et c'est
-    volontaire : un seuil colle au comportement actuel s'adapte a la panne au
-    lieu de la voir. En dessous de 10 % il reste un flottement connu, mesure
-    (au pire 6 % des traits, et l'encombrement varie de ±10 %) et NON corrige :
-    ouvrir un rameau decale toutes les valeurs tirees apres lui, donc les
-    longueurs bougent d'un pas a l'autre. Le corriger demande de tirer les
-    perturbations de l'arbre entier avant de dessiner ; c'est un point ouvert.
+    ⚠️ LE POINT OUVERT QUE CE COMMENTAIRE PORTAIT EST FERME (decision 18).
+
+    Il disait, et il avait entierement raison : « il reste un flottement connu,
+    mesure et NON corrige : ouvrir un rameau decale toutes les valeurs tirees
+    apres lui [...] le corriger demande de tirer les perturbations de l'arbre
+    entier avant de dessiner ; c'est un point ouvert. » Le mecanisme, le remede
+    et le statut y etaient. C'est fait : `_tirages()` lit le hasard par
+    IDENTITE de lignee, plus par rang dans le flux.
+
+    ⚠️ ET CE POINT OUVERT N'A JAMAIS FIGURE DANS `DECISIONS.md`. Il a vecu des
+    mois dans ce seul docstring, donc il n'etait visible que de qui ouvrait ce
+    fichier-la. La tolerance de 10 %% ci-dessous couvrait exactement le defaut
+    qu'il decrivait, et l'essai passait au vert en le disant. Un point ouvert
+    qui reste dans un commentaire n'existe pas : il se consigne la ou on le
+    cherche.
+
+    Le seuil vaut donc ZERO desormais, et c'est un seuil DE PRINCIPE — la
+    decision 1 dit que rien ne recule — pas un seuil ajuste sur la mesure du
+    jour, ce que ce docstring interdisait deja. Mesure sur quarante graines :
+    3,91 %% de pire recul et 161 pas en recul sur 2 000 avant, 0,00 %% et zero
+    pas apres.
+
+    ⚠️ Cet essai compte les TRAITS ; celui qui s'appelle « un plant ne
+    retrecit jamais quand il pousse » mesure l'ENCOMBREMENT et les ANCRES sur
+    les quatre familles. C'est pour cette raison que celui-ci n'a jamais pu
+    voir le rapetissement : un arbre peut garder son compte de traits en
+    reculant, et c'est ce qu'il faisait.
     """
-    pire, formes = 0.0, set()
+    pire, formes, reculs = 0.0, set(), 0
     for graine in (7, 41, 903):
         precedent = None
         for mots in range(0, MOTS_PAR_PLANT + 1, 50):
@@ -568,12 +588,16 @@ def _():
             if graine == 7:
                 formes.add(repr(t.segments))
             if precedent:
+                if n < precedent:
+                    reculs += 1
                 pire = max(pire, (precedent - n) / precedent)
             precedent = n
 
-    assert pire < 0.10, (
-        f"le vegetal perd {pire * 100:.0f} % de ses traits en poussant :"
-        f" la forme recule, ce qu'interdit la decision 1")
+    assert not reculs, (
+        f"{reculs} pas de croissance retirent des traits a l'arbre, le pire"
+        f" lui en coute {pire * 100:.2f} % : la forme recule, ce qu'interdit"
+        f" la decision 1. Le seuil est zero et non 10 % depuis que le hasard"
+        f" se lit par lignee — voir la decision 18")
     assert len(formes) >= 30, (
         f"seulement {len(formes)} formes distinctes sur la vie d'un plant :"
         f" l'extension ne fait plus bouger l'arbre qu'a gros crans")
@@ -1182,6 +1206,104 @@ def _():
             f" {tr['diversite']:.2f}, {len(par_richesse)} segments")
 
 
+@essai("grammaire / un plant ne retrecit jamais quand il pousse (decision 1)")
+def _():
+    from grammaire import depuis_plant, TRAITS_NEUTRES
+
+    """
+    ⚠️ L'ESSAI QUI MANQUAIT SOUS TOUS LES AUTRES.
+
+    La decision 1 dit que rien ne recule. Elle etait gardee UN CRAN TROP
+    HAUT — par l'essai de camera, qui mesure le cadre du volet a travers
+    la composition, le gabarit et la teinte. Il regardait une graine a
+    quatre endroits : sur le code qui l'a introduit, 1 graine sur 50 le
+    faisait tomber a quatre jalons, 48 sur 50 a huit. Il passait par
+    chance.
+
+    Ici on ne mesure plus rien d'assemble. TOUT EST CONSTANT SAUF
+    L'EXTENSION — traits neutres, dates figees, maturite figee, graine
+    figee — et on demande la seule chose qui doit etre vraie : ecrire
+    plus ne peut pas faire un plant plus petit.
+
+    ⚠️ CE QUE LE COMMENTAIRE DE `vegetal()` AFFIRMAIT, ET QUI ETAIT FAUX.
+    « Un rameau pas encore sorti reste un BOURGEON [...] pousser consiste
+    a ouvrir un bourgeon en rameau, ce qui est monotone. » Mesure : le
+    vegetal reculait sur 8 graines sur 8, jusqu'a -14,3 %, et jusqu'a
+    -16,3 % pour l'architecture. L'abstrait, lui, etait deja monotone.
+
+    On mesure l'ENCOMBREMENT `max(h, l x 0.52)`, et pas la hauteur seule :
+    c'est exactement la grandeur par laquelle `composer()` divise pour
+    poser un plant dans le paysage, donc celle qui decide de la taille
+    vue. Une hauteur qui tient pendant que la largeur s'effondre serait un
+    retrecissement bien reel, et la hauteur seule ne le dirait pas.
+
+    ⚠️ L'ECHANTILLONNAGE EST MESURE, PAS CHOISI AU FLAIR. A 4 graines et
+    20 pas l'essai coute ~130 ms, soit 6,5 s sur les cinquante relances de
+    `mutations.py`. Verifie avant de le fixer : de 2x10 a 8x60, tous les
+    reglages essayes voyaient les trois familles fautives. Le defaut est
+    dense — c'est le seul point commun qu'il n'a PAS avec celui de la
+    camera, qui lui etait rare et n'a survecu que pour ca.
+    """
+    GRAINES, PAS = 4, 20
+
+    def dessin(famille, graine, extension):
+        return depuis_plant({"famille": famille, "extension": extension,
+                             "maturite": 0.5, "dates": [(30, 1)],
+                             "nuit": False, "rang": 0,
+                             "traits": dict(TRAITS_NEUTRES)}, graine)
+
+    def ancres(t):
+        """Les abscisses du SQUELETTE. Le feuillage se deplace legitimement
+        quand un bourgeon s'ouvre ; l'ossature, non."""
+        return ({round(x[0], 2) for x in t.segments if x[6]}
+                | {round(x[2], 2) for x in t.segments if x[6]})
+
+    pires, effaces = [], []
+    for famille in ("vegetal", "architecture", "creature", "abstrait"):
+        for graine in range(GRAINES):
+            suite = []
+            for n in range(PAS):
+                e = 0.05 + 0.95 * n / (PAS - 1)
+                t = dessin(famille, graine, e)
+                suite.append((e, max(t.hauteur(), t.largeur() * 0.52), ancres(t)))
+            for (e0, a, an0), (e1, b, an1) in zip(suite, suite[1:]):
+                if b < a - 1e-9:
+                    pires.append((1 - b / a, famille, graine, e0, e1, a, b))
+                if an0 - an1:
+                    effaces.append((len(an0 - an1), famille, graine, e0, e1,
+                                    len(an0)))
+
+    pires.sort(reverse=True)
+    assert not pires, (
+        f"{len(pires)} reculs sur {4 * GRAINES * (PAS - 1)} pas de croissance,"
+        f" le pire de {pires[0][0] * 100:.1f} % : {pires[0][1]} graine"
+        f" {pires[0][2]} passe de {pires[0][5]:.1f} a {pires[0][6]:.1f} en"
+        f" grandissant de {pires[0][3]:.2f} a {pires[0][4]:.2f} d'extension."
+        f" Ecrire a fait retrecir le plant — c'est la decision 1, et elle se"
+        f" voit a l'ecran")
+    # ⚠️ ET LA SECONDE PROPRIETE, QUI EST LA PLUS FORTE DES DEUX.
+    #
+    #   Ne pas retrecir ne suffit pas : un plant peut garder sa taille en se
+    #   redessinant entierement, et c'est ce qu'il faisait — 8,6 pour cent de
+    #   ses traits survivaient d'un pas de croissance au suivant. Deux des
+    #   mutations neuves ECHAPPAIENT a l'assertion ci-dessus tout en
+    #   deplacant la moitie de la figure ; c'est en cherchant ce qu'elles
+    #   cassaient qu'on a trouve la bonne formulation.
+    #
+    #   Une abscisse de squelette est une ANCRE : le montant d'une tour, un
+    #   noeud de rameau, un point d'epine. Elle peut s'elever, s'epaissir, se
+    #   colorer — elle ne doit pas DISPARAITRE. Ce qui pousse s'ajoute.
+    effaces.sort(reverse=True)
+    assert not effaces, (
+        f"{len(effaces)} pas de croissance effacent une ancre deja posee ; le"
+        f" pire en perd {effaces[0][0]} sur {effaces[0][5]} : {effaces[0][1]}"
+        f" graine {effaces[0][2]} entre {effaces[0][3]:.2f} et"
+        f" {effaces[0][4]:.2f} d'extension. Le plant ne pousse pas, il se"
+        f" redessine — et ce que la personne regardait a bouge")
+    return (f"{4 * GRAINES * (PAS - 1)} pas de croissance, aucun recul,"
+            f" aucune ancre effacee")
+
+
 @essai("grammaire / la structure du texte change la silhouette de l'arbre")
 def _():
     import grammaire
@@ -1202,19 +1324,40 @@ def _():
     composition divise chaque plant par son encombrement final, donc la taille
     brute ne survit pas au paysage. La proportion, si.
     """
-    def elancement(structure):
+    import statistics
+
+    # ⚠️ CET ESSAI TIRAIT UNE SEULE GRAINE, ET SON SEUIL ETAIT CALE
+    # DESSUS. Mesure sur vingt graines avec le code d'AVANT toute reparation :
+    # mediane 1,351, minimum 1,206, et DEUX graines sur vingt DEJA sous le seuil
+    # de 1,25. Il ne tenait donc pas la propriete, il tenait la graine 3 — et
+    # n'importe quel changement du hasard le faisait tomber sans que rien de
+    # reel n'ait bouge. C'est exactement ce qui est arrive quand la croissance
+    # est devenue additive : la mediane n'a pas bronche (1,336), la graine 3
+    # est passee de l'autre cote.
+    #
+    # On mesure donc la MEDIANE sur douze graines. Meme propriete, meme seuil,
+    # mais il porte enfin sur ce qu'il pretend mesurer.
+
+    GRAINES = 12
+
+    def elancement(structure, graine):
         tr = dict(grammaire.TRAITS_NEUTRES, structure=structure)
         t = grammaire.Toile()
-        grammaire.vegetal(t, 1.0, 0.5, 3, grammaire.Teinte.du_jour(120), traits=tr)
+        grammaire.vegetal(t, 1.0, 0.5, graine, grammaire.Teinte.du_jour(120),
+                          traits=tr)
         x0, y0, x1, y1 = t.bbox()
         return (y1 - y0) / max(x1 - x0, 1.0), len(t.segments)
 
-    plat, n_plat = elancement(0.0)
-    dresse, n_dresse = elancement(0.9)
+    plats = [elancement(0.0, g) for g in range(GRAINES)]
+    dresses = [elancement(0.9, g) for g in range(GRAINES)]
+    plat = statistics.median(e for e, _ in plats)
+    dresse = statistics.median(e for e, _ in dresses)
+    n_plat = statistics.median(n for _, n in plats)
+    n_dresse = statistics.median(n for _, n in dresses)
     assert dresse > plat * 1.25, (
-        f"un texte charpente doit se dresser : elancement {plat:.2f} sans"
-        f" structure contre {dresse:.2f} avec, soit {dresse / plat:.2f} fois"
-        f" — il en faut au moins 1,25")
+        f"un texte charpente doit se dresser : elancement median {plat:.2f}"
+        f" sans structure contre {dresse:.2f} avec, soit {dresse / plat:.2f}"
+        f" fois sur {GRAINES} graines — il en faut au moins 1,25")
     # Et l'axe ne doit PAS ajouter de bois : c'est une difference de port.
     assert abs(n_dresse - n_plat) < n_plat * 0.10, (
         f"l'axe change le nombre de traits ({n_plat} -> {n_dresse}) : il"
@@ -1243,10 +1386,27 @@ def _():
     vocabulaire riche paraitrait plus AVANCE qu'un texte pauvre de meme
     longueur — de la maturite deguisee en extension.
     """
-    def bouquet(richesse):
+    import statistics
+
+    # ⚠️ CET ESSAI TIRAIT UNE SEULE GRAINE, ET SON SEUIL ETAIT CALE
+    # DESSUS. Mesure sur vingt graines avec le code d'AVANT toute reparation :
+    # mediane 1,371, minimum 1,061, et SEPT graines sur vingt DEJA sous le seuil
+    # de 1,30. Il ne tenait donc pas la propriete, il tenait la graine 3 — et
+    # n'importe quel changement du hasard le faisait tomber sans que rien de
+    # reel n'ait bouge. C'est exactement ce qui est arrive quand la croissance
+    # est devenue additive : la mediane n'a pas bronche (1,351), la graine 3
+    # est passee de l'autre cote.
+    #
+    # On mesure donc la MEDIANE sur douze graines. Meme propriete, meme seuil,
+    # mais il porte enfin sur ce qu'il pretend mesurer.
+
+    GRAINES = 12
+
+    def bouquet(richesse, graine):
         tr = dict(grammaire.TRAITS_NEUTRES, richesse=richesse)
         t = grammaire.Toile()
-        grammaire.vegetal(t, 1.0, 0.5, 3, grammaire.Teinte.du_jour(120), traits=tr)
+        grammaire.vegetal(t, 1.0, 0.5, graine, grammaire.Teinte.du_jour(120),
+                          traits=tr)
         par = defaultdict(list)
         for s in t.segments:
             if not s[6]:                       # les feuilles, pas le squelette
@@ -1255,12 +1415,16 @@ def _():
         larges = [max(a) - min(a) for a in par.values() if len(a) > 1]
         return sum(larges) / len(larges), sum(len(a) for a in par.values())
 
-    serre, n_serre = bouquet(0.0)
-    ouvert, n_ouvert = bouquet(1.0)
+    serres = [bouquet(0.0, g) for g in range(GRAINES)]
+    ouverts = [bouquet(1.0, g) for g in range(GRAINES)]
+    serre = statistics.median(a for a, _ in serres)
+    ouvert = statistics.median(a for a, _ in ouverts)
+    n_serre = statistics.median(n for _, n in serres)
+    n_ouvert = statistics.median(n for _, n in ouverts)
     assert ouvert > serre * 1.30, (
         f"un lexique riche doit ouvrir le bouquet : {math.degrees(serre):.0f}"
-        f" degres contre {math.degrees(ouvert):.0f} — il en faut au moins 30 %"
-        f" de plus")
+        f" degres contre {math.degrees(ouvert):.0f} en mediane sur {GRAINES}"
+        f" graines — il en faut au moins 30 % de plus")
     assert n_serre == n_ouvert, (
         f"le nombre de feuilles a bouge ({n_serre} -> {n_ouvert}) : ouvrir le"
         f" feuillage ne doit jamais en ajouter, sinon le vocabulaire simule de"

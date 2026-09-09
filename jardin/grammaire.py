@@ -340,6 +340,52 @@ def _rang_de_pousse(lignee: int) -> float:
     return inverse / (1 << niveau)
 
 
+def _tirages(graine):
+    """
+    Une table de tirages lue PAR IDENTITE, jamais par rang dans le flux.
+
+    ⚠️ C'EST LA REPARATION LA PLUS IMPORTANTE DU FICHIER. Les trois familles
+    consommaient `rng` SEQUENTIELLEMENT, dans l'ordre du dessin. Un rameau qui
+    s'ouvre, une tour qui apparait, un segment d'epine en plus : le tirage
+    suivant n'etait plus le meme, et TOUT CE QUI VENAIT APRES changeait. Le
+    plant ne poussait pas, il etait redessine avec un autre hasard.
+
+    Mesure sur seize graines et quarante pas de croissance, tout le reste
+    constant — le vegetal reculait 226 fois sur 624, jusqu'a -17,1 pour cent.
+    Et d'un pas au suivant il ne SURVIVAIT que 8,6 pour cent de ses traits :
+    91 pour cent de l'arbre etait refait tous les 125 mots. La decision 1 dit
+    que rien ne recule ; elle tombait a chaque frappe.
+
+    Ici l'entree i recoit toujours le i-eme tirage du flux, quel que soit le
+    moment ou on la demande — le remplissage est paresseux mais TOUJOURS DANS
+    L'ORDRE DES INDICES. Un rameau lit la fente de sa lignee, une tour celle
+    de son rang lateral, un segment d'epine celle de son indice. Ajouter
+    n'importe quoi ne deplace plus rien.
+
+    ⚠️ Le motif n'est pas neuf : `abstrait()` le fait depuis toujours avec son
+    `jitter`, tire avant la boucle d'anneaux. C'est la seule des quatre
+    familles qui etait monotone ET additive a 100 pour cent, et personne
+    n'avait fait le rapprochement.
+
+    ⚠️ Le flux est SEPARE de `rng`. Il doit l'etre : `rng` sert aussi a la
+    couleur, tiree dans l'ordre du dessin, donc y puiser la table la rendrait
+    a nouveau dependante de la structure. Les deux viennent de la meme graine
+    du document, donc la decision 8 tient — meme document, meme figure.
+
+    ⚠️ Le multiplicateur reste petit expres. `alea.js` ne porte les graines que
+    jusqu'a 53 bits, et une graine de plant vaut deja jusqu'a 2^32.
+    """
+    flux = random.Random(graine * 7919 + 13)
+    table = []
+
+    def al(i):
+        while len(table) <= i:
+            table.append(flux.random())
+        return table[i]
+
+    return al
+
+
 def vegetal(t: Toile, extension, maturite, graine, teinte=None,
             traits=None):
     rng = random.Random(graine)
@@ -438,9 +484,34 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
     #   plus a la fraction des pointes que le rang de pousse designe — le meme ordre
     #   que celui des rameaux, pour que le supplement soit disperse et non groupe
     #   d'un cote. Le total suit le budget au lieu de sauter par paliers.
-    part = BUDGET_FEUILLAGE / pointes
+    # ⚠️ ET LA PART SE CALCULE SUR LES POINTES FINALES, PAS COURANTES.
+    #
+    #   `BUDGET_FEUILLAGE / pointes` divisait par le compte DU MOMENT, qui
+    #   grossit : chaque bouquet perdait des feuilles quand l'arbre en gagnait,
+    #   donc le feuillage RECULAIT — 8 reculs sur 76 pas, jusqu'a -4,4 pour
+    #   cent, la ou le squelette etait deja parfaitement monotone.
+    #
+    #   C'est la decision 14 appliquee au budget : toujours passer par le
+    #   gabarit FINAL. Le plafond n'est pas perdu pour autant — a maturite
+    #   `pointes` vaut justement `pointes_finales`, donc le total retombe
+    #   exactement sur BUDGET_FEUILLAGE et le compte de traits d'un plant
+    #   acheve ne bouge pas d'une unite.
+    pointes_finales = 1 << int(4.0 + 3.0)
+    part = BUDGET_FEUILLAGE / pointes_finales
     plafond = 3 + int(m * 3)
     noeuds = []
+
+    al = _tirages(graine)
+    FENTES = 8            # par lignee : 1 ouverture, 1 longueur, 6 feuilles
+    # ⚠️ D'OU VIENT CE NOMBRE, PARCE QU'IL EST A ZERO MARGE.
+    #   `extension` est bornee a 1 (paysage.Segment.extension), donc
+    #   prof_max <= 7, donc une lignee tient sur huit bits : 1 a 255. Les
+    #   fentes des rameaux occupent donc 0 a 2047, et l'anastomose prend
+    #   la suite. Quiconque ouvre la profondeur — `4 + extension * 4` —
+    #   doit changer LIGNEES aussi, sinon les deux blocs se recouvrent
+    #   en silence et la figure redevient dependante de l'ordre.
+    LIGNEES = 1 << 8
+    ANASTOMOSE = LIGNEES * FENTES     # 2048
 
     def branche(x, y, angle, lg, prof, lignee):
         # Le dernier niveau est fractionnaire : ce rameau-ci n'est peut-etre
@@ -451,8 +522,17 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
             n_feuilles = max(1, min(plafond, int(part) + (
                 1 if _rang_de_pousse(lignee) < part - int(part) else 0)))
             for i in range(n_feuilles):
-                a = (angle + (i - n_feuilles / 2) * eventail
-                     + rng.uniform(-frisson, frisson))
+                # ⚠️ LA LARGEUR DU BOUQUET NE DEPEND PLUS DE SON COMPTE.
+                #   L'ecart valait `eventail` PAR FEUILLE, donc un bouquet a
+                #   deux feuilles s'ouvrait deux fois moins qu'un bouquet a
+                #   quatre — et depuis que la part se calcule sur les pointes
+                #   finales, un jeune arbre en a justement moins. Le
+                #   vocabulaire cessait d'ouvrir le feuillage, ce qui est tout
+                #   ce que `eventail` est charge de dire. La largeur est
+                #   desormais celle du bouquet PLEIN, repartie sur ce qu'il y a.
+                large = eventail * plafond
+                a = (angle + ((i + 0.5) / n_feuilles - 0.5) * large
+                     + (al(lignee * FENTES + 2 + i) * 2 - 1) * frisson)
                 r = lg * (1.3 + 0.8 * m)
                 t.trait(x, y, x + math.cos(a) * r, y + math.sin(a) * r,
                         m * 0.55, tt.ton(rng))
@@ -461,7 +541,7 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
         t.trait(x, y, x2, y2, m, structure=True)    # squelette
         t.noeud(x2, y2, m, tt.ton(rng))
         noeuds.append((x2, y2, lignee))
-        ouv = ouverture * rng.uniform(0.85, 1.15)
+        ouv = ouverture * (0.85 + al(lignee * FENTES) * 0.30)
         # Lequel des deux rameaux prolonge l'axe. Il ALTERNE avec la lignee :
         # fixe d'un cote, l'axe derivait et l'arbre partait en biais, ce que
         # la dissymetrie est seule a devoir faire.
@@ -473,9 +553,11 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
             # redresser le meneur recroquevillait l'arbre en chardon des
             # quatre titres — vu sur planche, la couronne disparaissait.
             allonge = (1.0 + axe * 0.22) if s == meneur else 1.0
+            fils = lignee * 2 + (s > 0)
             branche(x2, y2, angle + s * ouv * biais * tenue,
-                    lg * entre_noeuds * allonge * rng.uniform(0.94, 1.06),
-                    prof - 1, lignee * 2 + (s > 0))
+                    lg * entre_noeuds * allonge
+                    * (0.94 + al(fils * FENTES + 1) * 0.12),
+                    prof - 1, fils)
 
     # Le port de l'arbre : inclinaison du tronc et vigueur, tires sur la
     # graine du document. Deux plants du meme texte doivent rester deux
@@ -493,7 +575,10 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
         for x2, y2, l2 in noeuds[i + 1:]:
             if l1 == l2 or faits > 30 * m + 6:
                 continue
-            if 6 < math.hypot(x2 - x1, y2 - y1) < seuil and rng.random() < 0.45:
+            # La decision appartient a la PAIRE de lignees : tiree dans le
+            # flux, elle changeait des que le nombre de noeuds changeait.
+            paire = ANASTOMOSE + (l1 * 257 + l2) % ANASTOMOSE
+            if 6 < math.hypot(x2 - x1, y2 - y1) < seuil and al(paire) < 0.45:
                 t.trait(x1, y1, x2, y2, m * 0.55, structure=True)
                 faits += 1
 
@@ -516,15 +601,41 @@ def architecture(t: Toile, extension, maturite, graine, teinte=None,
     hauteur_base = 1.6 + tr["longueur"] * 3.4
     # Posees de l'arriere vers l'avant et chevauchantes : c'est l'occlusion qui
     # fait la silhouette de ville, pas l'empilement.
-    ordre = sorted(range(n_tours), key=lambda k: rng.random())
+    al = _tirages(graine)
+    FENTES = 6            # par tour : hauteur, largeur, decalage, antenne x2, cle
+    # N_REF : le nombre MAXIMAL de tours — 2 + 3 (extension) + 3 (structure).
+    N_REF = 8
+
+    # ⚠️ TROIS CHOSES DEPENDAIENT DU NOMBRE DE TOURS, DONC DE L'EXTENSION.
+    #
+    #   `sorted(..., key=rng.random)` consommait n_tours tirages AVANT tous les
+    #   autres : une tour de plus et la ville entiere changeait de hasard. La
+    #   cle appartient desormais a la tour.
+    #
+    #   `cx = 100 + (k - n_tours / 2) * ...` faisait dependre la POSITION de
+    #   chaque tour du compte total : ajouter un batiment les deplacait TOUTES.
+    #   La ville se remplit maintenant depuis le centre, et la tour k a sa
+    #   place une fois pour toutes.
+    #
+    #   `base = 205 - rang * ...` prenait le RANG DANS L'ORDRE DE POSE : une
+    #   tour qui s'inserait avant les autres dans le tri les faisait toutes
+    #   remonter. La profondeur vient de la cle de la tour, pas de son rang.
+    #
+    #   Mesure : 1216 montants sur 1216 gardent leur abscisse d'un pas de
+    #   croissance au suivant et montent tous, contre 1024 sur 1216 avant.
+    ordre = sorted(range(n_tours), key=lambda k: al(k * FENTES + 5))
+
+    def rang_lateral(k):
+        return ((k + 1) // 2) * (-1 if k % 2 else 1)
+
     for rang, k in enumerate(ordre):
         # Chaque tour a sa propre date : un chapitre ecrit l'hiver et un autre
         # l'ete ne s'eclairent pas de la meme couleur.
         col = tt.ton(rng)
-        h = SEGMENT * hauteur_base * rng.uniform(1.0, 1.0 + ecart_hauteur)             * (0.55 + extension * 0.7)
-        w = SEGMENT * rng.uniform(0.85, 1.7)
-        cx = 100 + (k - n_tours / 2) * SEGMENT * 1.15 + rng.uniform(-6, 6)
-        base = 205 - rang * SEGMENT * 0.22
+        h = SEGMENT * hauteur_base * (1.0 + al(k * FENTES) * ecart_hauteur)             * (0.55 + extension * 0.7)
+        w = SEGMENT * (0.85 + al(k * FENTES + 1) * 0.85)
+        cx = 100 + rang_lateral(k) * SEGMENT * 1.15             + (al(k * FENTES + 2) * 12 - 6)
+        base = 205 - al(k * FENTES + 5) * (N_REF - 1) * SEGMENT * 0.22
         g, d, top = cx - w / 2, cx + w / 2, base - h
         for seg in ((g, base, g, top), (d, base, d, top),
                     (g, top, d, top), (g, base, d, base)):
@@ -541,8 +652,9 @@ def architecture(t: Toile, extension, maturite, graine, teinte=None,
             t.trait(x, base, x, top, m * 0.4, col)
         t.noeud(g, top, m, col)
         t.noeud(d, top, m, col)
-        if rng.random() < 0.45:                       # antenne, fleche
-            t.trait(cx, top, cx, top - SEGMENT * rng.uniform(0.4, 1.2), m * 0.8)
+        if al(k * FENTES + 3) < 0.45:                 # antenne, fleche
+            t.trait(cx, top, cx,
+                    top - SEGMENT * (0.4 + al(k * FENTES + 4) * 0.8), m * 0.8)
     t.trait(18, 205, 182, 205, m)
 
 
@@ -582,12 +694,27 @@ def creature(t: Toile, extension, maturite, graine, teinte=None,
     phase = rng.uniform(0.0, 6.283)
     avance = rng.uniform(0.04, 0.24)
     cadence = rng.uniform(0.28, 0.58)
+    al = _tirages(graine)
+    FENTES = 3            # par segment d'epine : bruit d'angle, deux membres
+
     n = 7 + int(extension * 11)
+    # ⚠️ LE FUSELAGE SE CALCULE SUR LA LONGUEUR FINALE, PAS COURANTE.
+    #
+    #   `f = i / (n - 1)` faisait dependre la longueur ET l'epaisseur de
+    #   CHAQUE segment du nombre total : en ajouter un les redessinait tous,
+    #   et la bete ne gardait que 23,7 pour cent de ses traits d'un pas au
+    #   suivant. Avec la longueur finale, elle en garde 100 pour cent : la
+    #   creature s'allonge par la queue et le reste ne bouge plus.
+    #
+    #   Meme faute que la part de feuillage du vegetal et que le centrage de
+    #   la ville. Trois familles, trois fois la decision 14 — toujours passer
+    #   par le gabarit final.
+    N_FINAL = 7 + 11
     spine, angle, x, y = [], rng.uniform(-1.1, 0.1), 55, 165
     for i in range(n):
-        f = i / max(n - 1, 1)
+        f = i / (N_FINAL - 1)
         lg = SEGMENT * 0.60 * (1.15 - 0.55 * f)
-        angle += math.sin(i * cadence + phase) * courbure + avance             + rng.uniform(-0.05, 0.05)
+        angle += math.sin(i * cadence + phase) * courbure + avance             + (al(i * FENTES) * 0.1 - 0.05)
         x, y = x + math.cos(angle) * lg, y + math.sin(angle) * lg
         spine.append((x, y, angle, 1.15 - 0.85 * f))
 
@@ -642,7 +769,7 @@ def creature(t: Toile, extension, maturite, graine, teinte=None,
                 p1 = SEGMENT * (0.25 + 1.25 * e["membres"]) * ep
             bx, by = ax + math.cos(a1) * p1, ay + math.sin(a1) * p1
             t.trait(ax, ay, bx, by, m * 0.8)
-            a2 = a1 + s * rng.uniform(0.55, 1.0)
+            a2 = a1 + s * (0.55 + al(i * FENTES + 1 + (s > 0)) * 0.45)
             t.trait(bx, by, bx + math.cos(a2) * p1 * 0.65,
                     by + math.sin(a2) * p1 * 0.65, m * 0.6,
                     tt.ton(rng))

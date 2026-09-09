@@ -352,6 +352,31 @@ function _rang_de_pousse(lignee) {
   return inverse / (1 << niveau);
 }
 
+/**
+ * Une table de tirages lue PAR IDENTITE, jamais par rang dans le flux.
+ *
+ * ⚠️ C'EST LA REPARATION LA PLUS IMPORTANTE DU FICHIER. Voir grammaire.py :
+ * les trois familles consommaient `rng` SEQUENTIELLEMENT, dans l'ordre du
+ * dessin, donc un rameau qui s'ouvre decalait tout ce qui venait apres. Le
+ * vegetal reculait 226 fois sur 624 pas de croissance et ne gardait que
+ * 8,6 pour cent de ses traits d'un pas au suivant.
+ *
+ * L'entree i recoit toujours le i-eme tirage, quel que soit le moment ou on
+ * la demande : le remplissage est paresseux mais TOUJOURS DANS L'ORDRE DES
+ * INDICES. C'est ce qui rend la croissance additive.
+ *
+ * ⚠️ Le flux est SEPARE de `rng`, qui sert aussi a la couleur. La graine reste
+ * celle du document, donc la decision 8 tient.
+ */
+function _tirages(graine) {
+  const flux = new Alea(graine * 7919 + 13);
+  const table = [];
+  return function al(i) {
+    while (table.length <= i) table.push(flux.random());
+    return table[i];
+  };
+}
+
 export function vegetal(t, extension, maturite, graine, teinte = null, traits = null) {
   const rng = new Alea(graine);
   const m = maturite;
@@ -418,9 +443,21 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
   //   plus a la fraction des pointes que le rang de pousse designe — le meme ordre
   //   que celui des rameaux, pour que le supplement soit disperse et non groupe
   //   d'un cote. Le total suit le budget au lieu de sauter par paliers.
-  const part = BUDGET_FEUILLAGE / pointes;
+  // ⚠️ LA PART SE CALCULE SUR LES POINTES FINALES, PAS COURANTES — voir
+  //   grammaire.py. Diviser par le compte du moment retirait des feuilles a
+  //   chaque bouquet quand l'arbre en gagnait, donc le feuillage RECULAIT.
+  const pointes_finales = 1 << Math.trunc(4.0 + 3.0);
+  const part = BUDGET_FEUILLAGE / pointes_finales;
   const plafond = 3 + Math.trunc(m * 3);
   const noeuds = [];
+
+  const al = _tirages(graine);
+  const FENTES = 8;       // par lignee : 1 ouverture, 1 longueur, 6 feuilles
+  // ⚠️ A ZERO MARGE — voir grammaire.py. `extension` est bornee a 1, donc
+  //   prof_max <= 7 et une lignee tient sur huit bits. Ouvrir la
+  //   profondeur sans changer LIGNEES ferait se recouvrir les deux blocs.
+  const LIGNEES = 1 << 8;
+  const ANASTOMOSE = LIGNEES * FENTES;   // 2048
 
   function branche(x, y, angle, lg, prof, lignee) {
     // Le dernier niveau est fractionnaire : ce rameau-ci n'est peut-etre pas
@@ -430,8 +467,12 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
       const n_feuilles = Math.max(1, Math.min(plafond, Math.trunc(part)
         + (_rang_de_pousse(lignee) < part - Math.trunc(part) ? 1 : 0)));
       for (let i = 0; i < n_feuilles; i++) {
-        const a = angle + (i - n_feuilles / 2) * eventail
-          + rng.uniform(-frisson, frisson);
+        // ⚠️ La largeur du bouquet ne depend plus de son compte : l'ecart
+        //   valait `eventail` PAR FEUILLE, donc un bouquet a deux feuilles
+        //   s'ouvrait deux fois moins qu'un bouquet a quatre.
+        const large = eventail * plafond;
+        const a = angle + ((i + 0.5) / n_feuilles - 0.5) * large
+          + (al(lignee * FENTES + 2 + i) * 2 - 1) * frisson;
         const r = lg * (1.3 + 0.8 * m);
         t.trait(x, y, x + Math.cos(a) * r, y + Math.sin(a) * r, m * 0.55, tt.ton(rng));
       }
@@ -442,7 +483,7 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
     t.trait(x, y, x2, y2, m, null, true);          // squelette
     t.noeud(x2, y2, m, tt.ton(rng));
     noeuds.push([x2, y2, lignee]);
-    const ouv = ouverture * rng.uniform(0.85, 1.15);
+    const ouv = ouverture * (0.85 + al(lignee * FENTES) * 0.30);
     // Lequel des deux rameaux prolonge l'axe. Il ALTERNE avec la lignee :
     // fixe d'un cote, l'axe derivait et l'arbre partait en biais.
     const meneur = (lignee & 1) ? -1 : 1;
@@ -452,9 +493,10 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
       const allonge = s === meneur ? 1.0 + axe * 0.22 : 1.0;
       // Le tirage de la longueur est evalue AVANT la descente, comme en
       // Python ou c'est un argument. L'ordre de consommation est la figure.
-      const lg2 = lg * entre_noeuds * allonge * rng.uniform(0.94, 1.06);
-      branche(x2, y2, angle + s * ouv * biais * tenue, lg2, prof - 1,
-              lignee * 2 + (s > 0 ? 1 : 0));
+      const fils = lignee * 2 + (s > 0 ? 1 : 0);
+      const lg2 = lg * entre_noeuds * allonge
+        * (0.94 + al(fils * FENTES + 1) * 0.12);
+      branche(x2, y2, angle + s * ouv * biais * tenue, lg2, prof - 1, fils);
     }
   }
 
@@ -476,7 +518,9 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
       const [x2, y2, l2] = noeuds[j];
       if (l1 === l2 || faits > 30 * m + 6) continue;
       const d = Math.hypot(x2 - x1, y2 - y1);
-      if (6 < d && d < seuil && rng.random() < 0.45) {
+      // La decision appartient a la PAIRE de lignees.
+      const paire = ANASTOMOSE + (l1 * 257 + l2) % ANASTOMOSE;
+      if (6 < d && d < seuil && al(paire) < 0.45) {
         t.trait(x1, y1, x2, y2, m * 0.55, null, true);
         faits += 1;
       }
@@ -501,19 +545,29 @@ export function architecture(t, extension, maturite, graine, teinte = null, trai
   const hauteur_base = 1.6 + tr.longueur * 3.4;
   // Posees de l'arriere vers l'avant et chevauchantes : c'est l'occlusion qui
   // fait la silhouette de ville, pas l'empilement.
-  const cles = Array.from({ length: n_tours }, () => rng.random());
+  const al = _tirages(graine);
+  const FENTES = 6;     // hauteur, largeur, decalage, antenne x2, cle
+  const N_REF = 8;      // 2 + 3 (extension) + 3 (structure)
+
+  // ⚠️ TROIS CHOSES DEPENDAIENT DU NOMBRE DE TOURS — voir grammaire.py. La
+  //   cle de tri, la position (`k - n_tours / 2`) et la profondeur (le rang
+  //   dans l'ordre de pose) : ajouter un batiment redessinait la ville.
+  const cles = Array.from({ length: n_tours }, (_, k) => al(k * FENTES + 5));
   const ordre = Array.from({ length: n_tours }, (_, k) => k)
     .sort((a, b) => cles[a] - cles[b]);
+
+  const rang_lateral = (k) => Math.trunc((k + 1) / 2) * (k % 2 ? -1 : 1);
   for (let rang = 0; rang < ordre.length; rang++) {
     const k = ordre[rang];
     // Chaque tour a sa propre date : un chapitre ecrit l'hiver et un autre
     // l'ete ne s'eclairent pas de la meme couleur.
     const col = tt.ton(rng);
-    const h = SEGMENT * hauteur_base * rng.uniform(1.0, 1.0 + ecart_hauteur)
+    const h = SEGMENT * hauteur_base * (1.0 + al(k * FENTES) * ecart_hauteur)
       * (0.55 + extension * 0.7);
-    const w = SEGMENT * rng.uniform(0.85, 1.7);
-    const cx = 100 + (k - n_tours / 2) * SEGMENT * 1.15 + rng.uniform(-6, 6);
-    const base = 205 - rang * SEGMENT * 0.22;
+    const w = SEGMENT * (0.85 + al(k * FENTES + 1) * 0.85);
+    const cx = 100 + rang_lateral(k) * SEGMENT * 1.15
+      + (al(k * FENTES + 2) * 12 - 6);
+    const base = 205 - al(k * FENTES + 5) * (N_REF - 1) * SEGMENT * 0.22;
     const g = cx - w / 2;
     const d = cx + w / 2;
     const top = base - h;
@@ -535,8 +589,9 @@ export function architecture(t, extension, maturite, graine, teinte = null, trai
     }
     t.noeud(g, top, m, col);
     t.noeud(d, top, m, col);
-    if (rng.random() < 0.45) {                    // antenne, fleche
-      t.trait(cx, top, cx, top - SEGMENT * rng.uniform(0.4, 1.2), m * 0.8);
+    if (al(k * FENTES + 3) < 0.45) {              // antenne, fleche
+      t.trait(cx, top, cx,
+              top - SEGMENT * (0.4 + al(k * FENTES + 4) * 0.8), m * 0.8);
     }
   }
   t.trait(18, 205, 182, 205, m);
@@ -578,15 +633,23 @@ export function creature(t, extension, maturite, graine, teinte = null,
   const phase = rng.uniform(0.0, 6.283);
   const avance = rng.uniform(0.04, 0.24);
   const cadence = rng.uniform(0.28, 0.58);
+  const al = _tirages(graine);
+  const FENTES = 3;     // par segment d'epine : bruit d'angle, deux membres
+
   const n = 7 + Math.trunc(extension * 11);
+  // ⚠️ LE FUSELAGE SE CALCULE SUR LA LONGUEUR FINALE — voir grammaire.py.
+  //   `i / (n - 1)` faisait dependre longueur et epaisseur de CHAQUE segment
+  //   du nombre total : en ajouter un les redessinait tous.
+  const N_FINAL = 7 + 11;
   const spine = [];
   let angle = rng.uniform(-1.1, 0.1);
   let x = 55;
   let y = 165;
   for (let i = 0; i < n; i++) {
-    const f = i / Math.max(n - 1, 1);
+    const f = i / (N_FINAL - 1);
     const lg = SEGMENT * 0.60 * (1.15 - 0.55 * f);
-    angle += Math.sin(i * cadence + phase) * courbure + avance + rng.uniform(-0.05, 0.05);
+    angle += Math.sin(i * cadence + phase) * courbure + avance
+      + (al(i * FENTES) * 0.1 - 0.05);
     x += Math.cos(angle) * lg;
     y += Math.sin(angle) * lg;
     spine.push([x, y, angle, 1.15 - 0.85 * f]);
@@ -652,7 +715,7 @@ export function creature(t, extension, maturite, graine, teinte = null,
       const bx = ax + Math.cos(a1) * p1;
       const by = ay + Math.sin(a1) * p1;
       t.trait(ax, ay, bx, by, m * 0.8);
-      const a2 = a1 + s * rng.uniform(0.55, 1.0);
+      const a2 = a1 + s * (0.55 + al(i * FENTES + 1 + (s > 0 ? 1 : 0)) * 0.45);
       t.trait(bx, by, bx + Math.cos(a2) * p1 * 0.65, by + Math.sin(a2) * p1 * 0.65,
               m * 0.6, tt.ton(rng));
       t.noeud(bx, by, m, tt.ton(rng));

@@ -1890,6 +1890,187 @@ l'exécution.
 
 ---
 
+## 18. La croissance est additive
+
+Trouvée en posant le cinquième ton. Pas causée par lui : révélée.
+
+**Ce qui n'allait pas.** Tout le reste constant — traits neutres, dates figées,
+graine figée, maturité figée — on fait croître la seule `extension` et on
+mesure. Le plant **rétrécit** :
+
+| famille | reculs sur 624 pas | pire chute |
+|---|---|---|
+| végétal | **226** | −17,1 % |
+| architecture | 10 | −16,4 % |
+| créature | 8 | −2,3 % |
+| abstrait | 0 | — |
+
+Et la taille n'était que le symptôme visible. Traits survivant d'un pas de
+croissance au suivant : végétal **8,6 %**, architecture 9,4 %, créature 23,7 %,
+abstrait **100 %**. *L'arbre redessinait 91 % de lui-même tous les 125 mots.*
+
+⚠️ **Trois hypothèses successives, toutes fausses, et c'est l'essentiel de ce
+qu'il faut retenir.** (1) « La taille dépend des traits, qui peuvent baisser » —
+défaite en **gelant les traits** : 47/48 trajectoires reculent encore. (2) « Le
+plafond d'anastomose dépend de l'ordre de parcours » — retiré, aucun changement.
+(3) « L'éventail se resserre quand un bouquet perd des feuilles » — largeur
+fixée, aucun changement. Chacune était plausible et aucune n'avait été éprouvée
+avant d'être écrite. La quatrième mesure, elle, a été la bonne parce qu'elle
+posait la question la plus bête possible.
+
+**La cause, en deux règles enfreintes.**
+
+*Le hasard se lisait par rang, pas par identité.* `branche()`, `architecture()`
+et `creature()` consommaient `rng` **séquentiellement, dans l'ordre du dessin**.
+Un bourgeon qui s'ouvre consomme des tirages en plus, donc tout ce qui vient
+après reçoit d'autres valeurs. Le plant ne poussait pas : il était redessiné.
+
+*Et trois quantités se normalisaient sur le compte COURANT.* La part de
+feuillage (`BUDGET / pointes`), la position d'une tour (`k - n_tours / 2`), le
+fuselage de la créature (`i / (n - 1)`). À chaque fois, ajouter un élément
+recalculait tous les autres. **C'est la décision 14 — « toujours passer par le
+gabarit final » — enfreinte trois fois, dans trois familles, par trois auteurs
+de la même erreur.**
+
+⚠️ **ET LE DIAGNOSTIC AUSSI ÉTAIT DÉJÀ DANS LE DÉPÔT.** Le docstring de
+l'essai « le végétal pousse sans jamais reculer » le disait mot pour mot, écrit
+bien avant : « il reste un flottement connu, mesuré et NON corrigé : *ouvrir un
+rameau décale toutes les valeurs tirées après lui* […] le corriger demande de
+tirer les perturbations de l'arbre entier avant de dessiner ; **c'est un point
+ouvert.** » Le mécanisme, le remède et le statut y étaient tous les trois.
+
+Trois raisons pour lesquelles ça a tenu des mois quand même, et ce sont elles
+qu'il faut retenir :
+
+- l'essai comptait les **traits**, pas la taille — un arbre peut garder son
+  compte de traits en rétrécissant, et c'est ce qu'il faisait ;
+- sa tolérance de 10 % couvrait exactement le défaut décrit, donc il passait au
+  vert *en le disant* ;
+- ⚠️ **ce point ouvert n'a jamais figuré dans `DECISIONS.md`.** Il a vécu dans
+  un seul docstring, donc il n'était visible que de qui ouvrait ce fichier-là.
+  **Un point ouvert qui reste dans un commentaire n'existe pas** : il se
+  consigne là où on le cherche. C'est la leçon la plus transposable de la
+  journée.
+
+Ce qui a été apporté ici, ce n'est donc pas le diagnostic : c'est la **mesure de
+l'ampleur** — 226 reculs, 8,6 % de survie, là où le commentaire estimait « au
+pire 6 % des traits » — le rapprochement avec l'abstrait, et la réparation.
+
+**Le remède était déjà dans le dépôt, sur une famille.** `abstrait()` tire son
+`jitter` AVANT la boucle d'anneaux, en un nombre de tirages qui ne dépend pas de
+l'extension. Seule famille monotone, seule famille additive à 100 % : pas une
+coïncidence, et personne n'avait fait le rapprochement.
+
+`_tirages(graine)` généralise le motif : une table remplie **paresseusement mais
+toujours dans l'ordre des indices**, donc l'entrée *i* reçoit toujours le
+*i*-ème tirage quel que soit le moment où on la demande. Un rameau lit la fente
+de sa lignée, une tour celle de son rang latéral, un segment d'épine celle de
+son indice.
+
+⚠️ Le flux est **séparé** de `rng`, qui sert aussi à la couleur. Y puiser la
+table la rendrait à nouveau dépendante de la structure. Les deux viennent de la
+graine du document : la décision 8 tient.
+
+**Résultat mesuré**, seize graines × quarante pas :
+
+| | avant | après |
+|---|---|---|
+| reculs, les quatre familles | 244 / 2496 | **0 / 2496** |
+| survie des traits, végétal | 8,6 % | **93,4 %** |
+| survie des traits, créature | 23,7 % | **100 %** |
+| montants de tours gardant leur abscisse | 1024 / 1216 | **1216 / 1216** |
+
+L'architecture garde une survie basse (≈ 10 %) et c'est **normal** : ses tours
+grandissent en hauteur, donc chaque trait bouge — continûment, pas au hasard. La
+métrique de survie confond « redessiné » et « agrandi » ; c'est la ligne des
+montants qui dit la vérité pour cette famille.
+
+⚠️ Le **feuillage** d'un plant achevé est inchangé par construction : à
+maturité `pointes` vaut exactement `pointes_finales`, donc le budget retombe sur
+ses 210 feuilles. Le compte de traits total, lui, **bouge de quelques unités**
+— mesuré de −8 à +5 sur douze graines, moyenne −0,8 — parce que la terminaison
+`lg < 3.0` du squelette dépend des longueurs tirées, qui ont changé. *(Écrit
+« ne bouge pas d'une unité » d'abord, sur une mesure faite avec un autre
+multiplicateur de graine ; corrigé après vérification.)* En revanche un plant en
+croissance est **deux fois moins feuillu** qu'avant (84 → 37 feuilles à 10 %
+d'extension), parce que le budget ne lui est plus avancé. La croissance du
+feuillage devient réellement visible, 5,7× au lieu de 2,5×.
+
+### Où ça se vérifie, et ce que l'essai a coûté à trouver
+
+L'essai « un plant ne rétrécit jamais quand il pousse » porte **deux**
+assertions sur un seul balayage.
+
+La première est la taille. La seconde a été trouvée en cherchant pourquoi deux
+des cinq mutations neuves **échappaient** : elles ne faisaient plus rétrécir
+quoi que ce soit, mais elles déplaçaient la moitié de la figure. D'où la
+formulation qui manquait — **une abscisse de squelette est une ancre**. Elle
+peut s'élever, s'épaissir, se colorer ; elle ne doit pas disparaître. Les
+cinq mutations tombent maintenant.
+
+L'essai ancien « le végétal pousse sans jamais reculer » voit son seuil passer
+de **10 % à zéro** — un seuil de principe, pas un seuil ajusté : mesure sur
+quarante graines, 3,91 % de pire recul et 161 pas en recul sur 2 000 avant,
+0,00 % et zéro pas après. Vérifié qu'il sait tomber : la mutation « la part de
+feuillage se recalcule sur les pointes courantes » le fait échouer.
+
+⚠️ **Deux essais anciens ont dû être réparés au passage, et pas pour ma
+commodité.** « La structure change la silhouette » et « le vocabulaire ouvre le
+feuillage » tiraient **une seule graine** avec un seuil calé dessus. Mesuré sur
+vingt graines *avec le code d'avant toute réparation* : le premier échouait
+déjà 2 fois sur 20, le second **7 fois sur 20**. Ils ne tenaient pas une
+propriété, ils tenaient la graine 3. Les médianes n'ont pas bougé (1,371 → 1,351
+et 1,351 → 1,336) ; c'est la graine qui est passée de l'autre côté. Ils portent
+désormais sur la médiane de douze graines — même propriété, même seuil.
+
+C'est le **troisième** essai fragile de la même forme trouvé dans la même
+journée, après celui de la caméra. Un essai qui tire une graine et compare à un
+seuil ajusté sur elle ne mesure pas ce qu'il annonce.
+
+Coût : **+654 ms** par passage d'`essais.py` — médiane de trois tours alternés,
+11 866 contre 12 520 ms — soit 35 s sur les cinquante-quatre relances.
+
+### Ce qui reste
+
+⚠️ **La couleur, elle, se re-tire encore.** Elle passe toujours par `rng` dans
+l'ordre du dessin : géométrie stable à 93,4 %, mais 63,5 % seulement en comptant
+la teinte.
+
+Mesuré finement, et ce n'est **pas** un scintillement à la frappe :
+
+| mots ajoutés au plant | traits qui changent de couleur |
+|---|---|
+| +1, +2, +10 | **0 %** |
+| +50 | 34 % |
+| +300 | 38 % |
+
+La couleur tient pour de petits ajouts puis se re-tire **d'un coup**, environ
+une fois par paragraphe, sur un tiers des traits à la fois. La cause est fine :
+`Teinte.jour()` tire `randrange(self._total)` où `_total` est le nombre de mots
+du plant ; `randrange` rejette et retire quand son tirage dépasse la borne, et
+cette probabilité de rejet change avec la borne. **Un seul rejet qui diffère
+décale tout le reste du flux.**
+
+⚠️ **L'argument n'est pas le confort visuel, c'est la décision 9.** La couleur y
+porte la DATE D'ÉCRITURE — un chapitre commencé en février et fini en mai montre
+les deux. Aujourd'hui, quelle date un trait reçoit dépend de **combien de traits
+ont été dessinés avant lui** : ce n'est pas une propriété de ce trait, c'est un
+artefact de l'ordre de parcours. Une feuille « écrite en février » devient une
+feuille de mai sans que rien de ce que la décision 9 décrit n'ait bougé.
+
+C'est la même faute que celle corrigée ici pour la géométrie, un cran plus
+loin — **une valeur lue par rang dans le flux au lieu d'être lue par identité**.
+Même remède. L'amplitude n'est pas négligeable : dans une palette, l'écart de
+luminance entre le ton le plus sombre et le plus clair vaut 22 à 35 % de
+l'échelle. Deux tons voisins, en revanche, sont indiscernables (15 à 19 sur
+255) — donc ça se voit ou non selon le saut.
+
+Ça ne bloque plus rien : la géométrie ne lit plus le flux partagé, donc le
+nombre de tons ne peut plus la décaler. C'est ce qui avait mis le cinquième ton
+de côté.
+
+---
+
 ## Points ouverts
 
 1. **Le creux des phrases — le mécanisme est prêt, les phrases sont à écrire.**
@@ -1971,10 +2152,11 @@ l'exécution.
     Hérité de là : le **cinquième ton** et la **neuvième facette** n'étaient
     atteignables que par écrêtage, faute d'un `int(x × 4)` qui rende cinq
     valeurs. **Fait et mesuré, mais mis de côté** sur la branche
-    `cinquieme-ton` (`9db6158`) : le changement décale le flux aléatoire et
-    fait tomber l'essai de caméra, qui gardait un défaut bien plus ancien —
-    voir le point ouvert 15. Il reviendra se poser dessus une fois le
-    rétrécissement tranché.
+    `cinquieme-ton` (`9db6158`) : le changement décalait le flux aléatoire et
+    faisait tomber l'essai de caméra, qui gardait un défaut bien plus ancien —
+    voir la décision 18. **Depuis que la géométrie ne lit plus le flux
+    partagé, le nombre de tons ne peut plus la décaler** : la branche n'est
+    plus bloquée.
 
 14. **Faire porter une forme au mobilier du document.** Demandé par l'auteur :
     les images, l'index, la table des matières, la bibliographie ne sont pas de
@@ -1990,121 +2172,21 @@ l'exécution.
     d'un coup, et le point 4 la traiterait comme une greffe. Répondre à ça avant
     de dessiner quoi que ce soit.
 
-15. ⚠️ **Le plant rétrécit sous les yeux de la personne, et c'est la décision 1
-    qui tombe.** Trouvé en posant le cinquième ton — pas causé par lui, seulement
-    révélé. Mesuré sur 48 trajectoires (quatre familles × douze graines, dix
-    jalons de croissance) :
+15. ~~**Le plant rétrécit sous les yeux de la personne.**~~ **Réglé** — voir
+    la décision 18. 226 reculs sur 624 pas de croissance pour le seul végétal,
+    et 8,6 % de traits survivants d'un pas au suivant : l'arbre se redessinait
+    à 91 % tous les 125 mots. Le hasard se lisait par rang dans le flux au lieu
+    de se lire par identité, et trois quantités se normalisaient sur le compte
+    courant au lieu du compte final. Zéro recul aujourd'hui sur les quatre
+    familles.
 
-    | | recule | pire chute |
-    |---|---|---|
-    | le cadre du volet | 48 / 48 | −46,6 % |
-    | **le plant tel qu'on le voit** (tracé ÷ cadre) | **46 / 48** | **−20,8 %** |
+    ⚠️ Ce que ce point a coûté à diagnostiquer mérite d'être gardé : **trois
+    hypothèses écrites avant d'être éprouvées, les trois fausses.** La bonne
+    est venue de la question la plus bête — à tout le reste constant, le dessin
+    grandit-il quand l'extension grandit ?
 
-    Ce n'est pas un artefact du cadre : c'est la taille apparente, celle que la
-    personne regarde. Végétal graine 0 : 0,264 → **0,213** entre deux jalons,
-    soit −19 % de plant en écrivant.
-
-    **La cause, en trois couches, de la plus profonde à la plus visible.**
-
-    1. **La taille dessinée dépend des traits, et les traits peuvent baisser.**
-       La richesse d'un texte descend quand il grossit et se répète ; le plant
-       descend avec elle. C'est la cause dominante, et c'est la décision 14
-       énoncée à l'envers — « toujours passer par le gabarit final » vaut pour
-       l'échelle du paysage, mais le **tracé lui-même** n'est passé par rien.
-    2. **`gabarit()` n'est pas une taille finale, c'est une prévision qui se
-       révise.** Il pose `extension = 1.0` puis dessine *avec les traits du
-       moment* : « la taille finale si les traits ne bougeaient plus ». Mesuré,
-       graine 0 : `1948 → 1578 → 846 → 707 → 708 → 709 → 689 → 703`. Un
-       facteur 2,75.
-    3. **La couleur et la forme partagent un flux aléatoire.** `Teinte.ton()`
-       tire dans le rng du dessin ; `randrange(n)` consomme selon `n`. Donc le
-       nombre de tons ET le total de mots (via `randrange(self._total)`)
-       re-tirent la silhouette. Mesuré à traits neutres : `dates [(30,5)]` →
-       h 512,6 ; `[(30,50)]` → 527,3 ; `[(30,500)]` → 560,2.
-
-    ⚠️ **Séparer les flux ne suffit pas, et il fallait le mesurer avant d'y
-    passer du temps** : 46/48 → 35/48 trajectoires, mais la pire chute reste à
-    −20,9 % contre −20,8 %. La couche 3 est réelle et secondaire ; s'y attaquer
-    d'abord aurait donné l'illusion du progrès.
-
-    ⚠️ **L'essai qui garde ça regarde une graine, à quatre endroits.** Sur
-    `main`, avec ses quatre jalons, 1 graine sur 50 le fait tomber ; à huit
-    jalons, **48 sur 50**. Il passait par chance, et la graine 11 était la
-    bonne. C'est le troisième piège de `CLAUDE.md` sous une forme neuve : le
-    cahier traverse bien le mécanisme, mais l'échantillonne trop grossièrement
-    pour voir le creux. Compter les points de mesure fait partie de l'écrire.
-
-    ⚠️ **Et `gabarit()` se contredit dans son propre commentaire.** Pour le
-    germe il prend *le max des quatre familles*, en écrivant que « quand la
-    famille se verrouille, l'échelle ne peut que monter ». C'est vrai du plant
-    et faux du cadre : à la bascule, le cadre tombe de 77,7 %. Les deux moitiés
-    ne peuvent pas être satisfaites ensemble, et personne ne l'avait remarqué
-    parce que le terme du tracé masquait la chute.
-
-    ⚠️ **La direction écrite d'abord était fausse, et la mesure l'a défaite.**
-    On avait conclu « la taille vient des traits, et les traits peuvent
-    baisser ». Vérifié en **gelant les traits** au premier relevé : 47/48
-    trajectoires reculent encore, pire chute −40,6 % contre −39,2 %. Les traits
-    ne sont pour rien dans le rétrécissement. Trois heures de diagnostic tenaient
-    sur une cause plausible que personne n'avait éprouvée — c'est le coût exact
-    de ne pas mesurer une hypothèse avant de l'écrire.
-
-    **La vraie cause, trouvée en posant la question la plus bête :** tout le
-    reste constant — traits neutres, dates figées, maturité figée, graine figée
-    — le dessin grandit-il quand l'extension grandit ? Non.
-
-    | famille | graines qui reculent | pire chute |
-    |---|---|---|
-    | végétal | **8 / 8** | −14,3 % |
-    | architecture | 5 / 8 | −16,3 % |
-    | créature | 3 / 8 | −2,3 % |
-    | **abstrait** | **aucune** | — |
-
-    Le défaut est **dans les fonctions de dessin**, ni dans la caméra, ni dans
-    le gabarit, ni dans les traits. `branche()` consomme un **flux aléatoire
-    séquentiel et partagé** : `ouv = ouverture * rng.uniform(0.85, 1.15)`, puis
-    un `rng.uniform(0.94, 1.06)` par rameau fils. Quand `prof_max` monte d'un
-    cheveu, un bourgeon devient rameau, **consomme des tirages en plus, et tout
-    ce qui est dessiné ensuite reçoit d'autres valeurs.** L'arbre ne pousse pas :
-    il est redessiné avec un autre hasard.
-
-    ⚠️ **Et ce n'est pas la taille le pire.** Combien de traits survivent d'un
-    pas de croissance au suivant, si « pousser consiste à ouvrir un bourgeon en
-    rameau » :
-
-    | famille | survie médiane | pire pas |
-    |---|---|---|
-    | végétal | **8,6 %** | 2,0 % |
-    | architecture | 9,4 % | 1,2 % |
-    | créature | 23,7 % | 11,5 % |
-    | **abstrait** | **100 %** | **100 %** |
-
-    Le végétal **redessine 91 % de lui-même tous les 125 mots**. Le
-    rétrécissement n'était que le symptôme visible d'un objet qui ne se
-    ressemble pas d'un instant à l'autre.
-
-    ⚠️ Cette mesure **élimine la réparation qui paraissait la moins chère** :
-    normaliser l'encombrement sur un barème monotone se fait en un seul
-    endroit et rend la monotonie vraie par construction — mais elle laisserait
-    intact le redessinage à 91 %. Elle traitait le symptôme qu'on avait mesuré
-    parce qu'on n'avait pas mesuré l'autre.
-
-    **Le remède est déjà dans le dépôt, sur une famille.** `abstrait()` tire
-    tout son hasard AVANT la boucle de croissance, en un nombre de tirages qui
-    ne dépend pas de l'extension :
-
-        jitter = [rng.uniform(1 - irreg, 1 + irreg) for _ in range(cotes)]
-        anneaux = 1 + int(extension * 3.4)
-
-    Pousser ajoute un anneau et ne touche à rien. C'est la seule famille
-    monotone ET la seule additive à 100 % — pas une coïncidence. Reste à porter
-    ce motif au végétal, à l'architecture et à la créature : le hasard d'un
-    rameau doit venir de sa **lignée**, jamais de son rang dans le flux.
-
-    ⚠️ Ça change l'allure de tous les plants, dans les deux langages, et la
-    parité se joue exactement là — `alea.js` refait MT19937 à l'identique et
-    son en-tête prévient que **déplacer un `rng.uniform()` suffit à tout
-    décaler**. Une famille à la fois, chacune vérifiée avant la suivante.
+    Reste ouvert et hérité de là : **la couleur se re-tire encore**. Même
+    mécanisme, même remède. Voir la fin de la décision 18.
 
 ---
 

@@ -548,9 +548,24 @@ const MUTATIONS = [
   // trois ne casse le dessin : elles le rendent plus grossier, ou le font
   // reculer — et seule une comparaison au point pres les voit.
   ["grammaire.js",
-   "  const part = BUDGET_FEUILLAGE / pointes;",
-   "  const part = Math.floor(BUDGET_FEUILLAGE / pointes);",
+   "  const part = BUDGET_FEUILLAGE / pointes_finales;",
+   "  const part = Math.floor(BUDGET_FEUILLAGE / pointes_finales);",
    "decision 1 : le feuillage se divise au lieu de se repartir"],
+
+  ["grammaire.js",
+   "  const part = BUDGET_FEUILLAGE / pointes_finales;",
+   "  const part = BUDGET_FEUILLAGE / pointes;",
+   "la part de feuillage se recalcule sur les pointes COURANTES"],
+
+  ["grammaire.js",
+   "    const ouv = ouverture * (0.85 + al(lignee * FENTES) * 0.30);",
+   "    const ouv = ouverture * rng.uniform(0.85, 1.15);",
+   "l'ouverture d'un rameau repasse par le flux partage"],
+
+  ["grammaire.js",
+   "    const f = i / (N_FINAL - 1);",
+   "    const f = i / Math.max(n - 1, 1);",
+   "le fuselage de la creature se renormalise sur sa longueur courante"],
 
   ["grammaire.js",
    "  const prof_max = 4.0 + extension * 3.0;",
