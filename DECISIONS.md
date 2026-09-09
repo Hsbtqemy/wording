@@ -1968,9 +1968,13 @@ l'exécution.
     thèse, l'abstrait n'est pas une frontière parmi quatre : c'est *la*
     frontière.
 
-    Reste ouvert et hérité de là : le **cinquième ton** et la **neuvième
-    facette** ne sont atteignables que par écrêtage, faute d'un `int(x × 4)`
-    qui rend cinq valeurs. Voir la fin de la décision 5.
+    Hérité de là : le **cinquième ton** et la **neuvième facette** n'étaient
+    atteignables que par écrêtage, faute d'un `int(x × 4)` qui rende cinq
+    valeurs. **Fait et mesuré, mais mis de côté** sur la branche
+    `cinquieme-ton` (`9db6158`) : le changement décale le flux aléatoire et
+    fait tomber l'essai de caméra, qui gardait un défaut bien plus ancien —
+    voir le point ouvert 15. Il reviendra se poser dessus une fois le
+    rétrécissement tranché.
 
 14. **Faire porter une forme au mobilier du document.** Demandé par l'auteur :
     les images, l'index, la table des matières, la bibliographie ne sont pas de
@@ -1985,6 +1989,69 @@ l'exécution.
     l'extension ou de la maturité ? Elle arrive par blocs collés, souvent
     d'un coup, et le point 4 la traiterait comme une greffe. Répondre à ça avant
     de dessiner quoi que ce soit.
+
+15. ⚠️ **Le plant rétrécit sous les yeux de la personne, et c'est la décision 1
+    qui tombe.** Trouvé en posant le cinquième ton — pas causé par lui, seulement
+    révélé. Mesuré sur 48 trajectoires (quatre familles × douze graines, dix
+    jalons de croissance) :
+
+    | | recule | pire chute |
+    |---|---|---|
+    | le cadre du volet | 48 / 48 | −46,6 % |
+    | **le plant tel qu'on le voit** (tracé ÷ cadre) | **46 / 48** | **−20,8 %** |
+
+    Ce n'est pas un artefact du cadre : c'est la taille apparente, celle que la
+    personne regarde. Végétal graine 0 : 0,264 → **0,213** entre deux jalons,
+    soit −19 % de plant en écrivant.
+
+    **La cause, en trois couches, de la plus profonde à la plus visible.**
+
+    1. **La taille dessinée dépend des traits, et les traits peuvent baisser.**
+       La richesse d'un texte descend quand il grossit et se répète ; le plant
+       descend avec elle. C'est la cause dominante, et c'est la décision 14
+       énoncée à l'envers — « toujours passer par le gabarit final » vaut pour
+       l'échelle du paysage, mais le **tracé lui-même** n'est passé par rien.
+    2. **`gabarit()` n'est pas une taille finale, c'est une prévision qui se
+       révise.** Il pose `extension = 1.0` puis dessine *avec les traits du
+       moment* : « la taille finale si les traits ne bougeaient plus ». Mesuré,
+       graine 0 : `1948 → 1578 → 846 → 707 → 708 → 709 → 689 → 703`. Un
+       facteur 2,75.
+    3. **La couleur et la forme partagent un flux aléatoire.** `Teinte.ton()`
+       tire dans le rng du dessin ; `randrange(n)` consomme selon `n`. Donc le
+       nombre de tons ET le total de mots (via `randrange(self._total)`)
+       re-tirent la silhouette. Mesuré à traits neutres : `dates [(30,5)]` →
+       h 512,6 ; `[(30,50)]` → 527,3 ; `[(30,500)]` → 560,2.
+
+    ⚠️ **Séparer les flux ne suffit pas, et il fallait le mesurer avant d'y
+    passer du temps** : 46/48 → 35/48 trajectoires, mais la pire chute reste à
+    −20,9 % contre −20,8 %. La couche 3 est réelle et secondaire ; s'y attaquer
+    d'abord aurait donné l'illusion du progrès.
+
+    ⚠️ **L'essai qui garde ça regarde une graine, à quatre endroits.** Sur
+    `main`, avec ses quatre jalons, 1 graine sur 50 le fait tomber ; à huit
+    jalons, **48 sur 50**. Il passait par chance, et la graine 11 était la
+    bonne. C'est le troisième piège de `CLAUDE.md` sous une forme neuve : le
+    cahier traverse bien le mécanisme, mais l'échantillonne trop grossièrement
+    pour voir le creux. Compter les points de mesure fait partie de l'écrire.
+
+    ⚠️ **Et `gabarit()` se contredit dans son propre commentaire.** Pour le
+    germe il prend *le max des quatre familles*, en écrivant que « quand la
+    famille se verrouille, l'échelle ne peut que monter ». C'est vrai du plant
+    et faux du cadre : à la bascule, le cadre tombe de 77,7 %. Les deux moitiés
+    ne peuvent pas être satisfaites ensemble, et personne ne l'avait remarqué
+    parce que le terme du tracé masquait la chute.
+
+    **Direction pressentie :** la taille d'un plant vient de l'`extension`
+    seule — qui ne fait que croître, décision 1 — et les traits ne gouvernent
+    que la **forme à l'intérieur** de cette taille. C'est l'invariant cardinal
+    dit sur l'axe des tailles : l'extension fait pousser, la maturité fait
+    mûrir, et aujourd'hui la maturité fait aussi rapetisser.
+
+    ⚠️ Ce que ça coûte, et pourquoi ce n'est pas un correctif : normaliser le
+    tracé sur `gabarit_ref × extension^a` rend la monotonie vraie **par
+    construction** — donc non mesurable, une garantie et non un résultat — mais
+    **change l'allure de tous les plants**. Sur un cadeau, ça se décide, ça ne
+    se glisse pas dans un commit qui parlait de couleurs.
 
 ---
 
