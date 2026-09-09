@@ -135,7 +135,13 @@ export class Teinte {
   constructor(dates = null, nuit = false, richesse = 0.5) {
     this.dates = dates && dates.length ? dates.map((d) => [d[0], d[1]]) : [[200, 1]];
     this.nuit = Boolean(nuit);
-    this.n_tons = 1 + Math.trunc(Math.min(1.0, Math.max(0.0, richesse)) * 4);
+    // ⚠️ x5 ET Math.min(4, ...), PAS x4. Avec x4 le cinquieme ton ne sort
+    // qu'a richesse == 1,000 exactement — au-dessus du plafond reel
+    // (0,931 sur 120 plants), donc jamais. Pire : chaque famille tenait
+    // dans UN seul niveau — le vegetal toujours 3, l'abstrait toujours 4
+    // — et la richesse ne disait rien A L'INTERIEUR d'une famille, ce
+    // qui est precisement ce qu'elle est la pour dire. Voir grammaire.py.
+    this.n_tons = 1 + Math.min(4, Math.trunc(Math.min(1.0, Math.max(0.0, richesse)) * 5));
     this._poids = [];
     let cumul = 0;
     for (const [, poids] of this.dates) {

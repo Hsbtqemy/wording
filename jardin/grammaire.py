@@ -147,7 +147,16 @@ class Teinte:
     def __init__(self, dates=None, nuit=False, richesse=0.5):
         self.dates = list(dates) if dates else [(200, 1)]
         self.nuit = bool(nuit)
-        self.n_tons = 1 + int(min(1.0, max(0.0, richesse)) * 4)    # 1 a 5
+        # ⚠️ x5 ET min(4, ...), PAS x4. Avec x4 le cinquieme ton ne sort
+        # qu'a richesse == 1,000 exactement — au-dessus du plafond reel
+        # (0,931 sur 120 plants), donc jamais. Pire : chaque famille
+        # tenait dans UN seul niveau — le vegetal toujours 3, l'abstrait
+        # toujours 4 — et la richesse ne disait donc rien A L'INTERIEUR
+        # d'une famille, ce qui est precisement ce qu'elle est la pour
+        # dire. En x5 : vegetal [3,4], abstrait [4,5], et les cinq
+        # niveaux sont atteints sans ecretage. Le min(4, ...) n'est la
+        # que pour richesse == 1,000, qui vaudrait 6.
+        self.n_tons = 1 + min(4, int(min(1.0, max(0.0, richesse)) * 5))  # 1 a 5
         self._poids, cumul = [], 0
         for _, poids in self.dates:
             cumul += max(1, poids)

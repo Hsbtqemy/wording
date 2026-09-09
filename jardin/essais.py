@@ -1001,10 +1001,19 @@ def _():
         f"l'abstrait ({min(abs_):.3f}) ne se detache plus du vegetal"
         f" ({max(veg):.3f}) : les deux se peindront pareil")
 
+    # ⚠️ CINQ NIVEAUX EXACTEMENT, ET AUCUN OBTENU PAR ECRETAGE.
+    #
+    # L'assertion `satures` plus haut garantit qu'aucun plant n'atteint
+    # richesse 1,000. Les deux ensemble disent donc la chose qui compte : le
+    # cinquieme ton est atteint par du texte REEL, pas en butant contre le
+    # plafond. C'est tout l'objet du passage de `x 4` a `x 5` — voir
+    # grammaire.Teinte. L'ancienne assertion, `len(tons) >= 3`, etait vraie
+    # avec quatre niveaux comme avec cinq : elle ne gardait plus rien.
     tons = sorted({Teinte([(251, 1)], False, r).n_tons for r in toutes})
-    assert len(tons) >= 3, (
-        f"la palette n'utilise que {len(tons)} niveaux {tons} : avant le"
-        f" partage il y en avait deux, 1 et 2, sur cinq possibles")
+    assert tons == [1, 2, 3, 4, 5], (
+        f"la palette n'utilise que les niveaux {tons} sur cinq : en `x 4` le"
+        f" cinquieme ne sortait qu'a richesse 1,000 exactement, au-dessus du"
+        f" plafond reel de la population ({max(toutes):.3f}), donc jamais")
     return (f"architecture/creature {max(pauvres):.2f}, vegetal"
             f" {min(veg):.2f}, abstrait {min(abs_):.2f} — tons {tons}")
 
