@@ -1939,8 +1939,20 @@ rameau décale toutes les valeurs tirées après lui* […] le corriger demande 
 tirer les perturbations de l'arbre entier avant de dessiner ; **c'est un point
 ouvert.** » Le mécanisme, le remède et le statut y étaient tous les trois.
 
-Trois raisons pour lesquelles ça a tenu des mois quand même, et ce sont elles
-qu'il faut retenir :
+⚠️ **Et ça n'a pas « tenu des mois », comme écrit d'abord ici et dans le message
+du commit `1125fb3` : le docstring date du 8 septembre 2026, la veille.** Le
+dépôt a cinq jours et quarante-cinq commits. La correction rend la leçon plus
+dure, pas plus douce — un point ouvert écrit **hier**, dans un fichier édité
+toute la journée du lendemain, était déjà invisible. Ce n'est pas une affaire de
+durée, c'est une affaire d'**endroit** : il n'était pas là où on cherche les
+points ouverts, donc il n'existait pas, et il a suffi d'un jour.
+
+⚠️ Le message de `1125fb3` est poussé et porte l'erreur. On ne réécrit pas une
+histoire publiée ; la correction vit ici, ce qui est précisément ce à quoi ce
+fichier sert.
+
+Trois raisons pour lesquelles ça a tenu quand même, et ce sont elles qu'il faut
+retenir :
 
 - l'essai comptait les **traits**, pas la taille — un arbre peut garder son
   compte de traits en rétrécissant, et c'est ce qu'il faisait ;

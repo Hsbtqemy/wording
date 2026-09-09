@@ -558,17 +558,23 @@ def _():
     et le statut y etaient. C'est fait : `_tirages()` lit le hasard par
     IDENTITE de lignee, plus par rang dans le flux.
 
-    ⚠️ ET CE POINT OUVERT N'A JAMAIS FIGURE DANS `DECISIONS.md`. Il a vecu des
-    mois dans ce seul docstring, donc il n'etait visible que de qui ouvrait ce
-    fichier-la. La tolerance de 10 %% ci-dessous couvrait exactement le defaut
-    qu'il decrivait, et l'essai passait au vert en le disant. Un point ouvert
-    qui reste dans un commentaire n'existe pas : il se consigne la ou on le
-    cherche.
+    ⚠️ ET CE POINT OUVERT N'A JAMAIS FIGURE DANS `DECISIONS.md`. Il n'etait
+    donc visible que de qui ouvrait ce fichier-la. La tolerance de 10 %
+    ci-dessous couvrait exactement le defaut qu'il decrivait, et l'essai
+    passait au vert en le disant.
+
+    ⚠️ ET IL A SUFFI D'UN JOUR. Ce docstring date du 8 septembre
+    2026 ; il a ete redecouvert le 9, apres une journee entiere passee a
+    rediagnostiquer ce qu'il disait deja — dans ce fichier meme, edite tout du
+    long. La premiere version de ce commentaire disait « des mois » : c'etait
+    faux, le depot a cinq jours. La lecon n'en est pas adoucie, elle est
+    durcie. Un point ouvert qui reste dans un commentaire n'existe pas ; ce
+    n'est pas une affaire de DUREE, c'est une affaire d'ENDROIT.
 
     Le seuil vaut donc ZERO desormais, et c'est un seuil DE PRINCIPE — la
     decision 1 dit que rien ne recule — pas un seuil ajuste sur la mesure du
     jour, ce que ce docstring interdisait deja. Mesure sur quarante graines :
-    3,91 %% de pire recul et 161 pas en recul sur 2 000 avant, 0,00 %% et zero
+    3,91 % de pire recul et 161 pas en recul sur 2 000 avant, 0,00 % et zero
     pas apres.
 
     ⚠️ Cet essai compte les TRAITS ; celui qui s'appelle « un plant ne
