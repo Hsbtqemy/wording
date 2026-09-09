@@ -63,8 +63,8 @@ python jardin/essais.py && python jardin/mutations.py \
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `69 passes, 0 en echec` · `54/54` · `aucun ecart` · `23 passes` ·
-`25 passes` · `103/103`.
+Attendu : `70 passes, 0 en echec` · `58/58` · `aucun ecart` · `23 passes` ·
+`25 passes` · `106/106`.
 
 `essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
 qu'aucune parité ne peut couvrir, faute de Python en face. Elle y a trouvé
@@ -86,13 +86,15 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **14 min 50** (9 septembre 2026, à 54
-et 103 mutations). C'était 15 min 38 à 50 et 100 mutations, 9 min 38 à 13 min 35
-à 47 et 98, et 5 min 57 à 36 et 87.
+Durée mesurée de l'enchaînement complet : **13 min 14** (9 septembre 2026, à 58
+et 106 mutations). C'était 14 min 50 à 54 et 103, 15 min 38 à 50 et 100, 9 min 38
+à 13 min 35 à 47 et 98, et 5 min 57 à 36 et 87.
 
-⚠️ La chaîne a donc raccourci en gagnant quatre mutations et un essai. Ce n'est
-pas le code qui a accéléré, c'est la machine qui était moins chargée — exactement
-ce que dit l'avertissement plus bas. Ne pas lire ces totaux comme une tendance. Où le temps passe, parce que ça se voit
+⚠️ **Lire cette suite dans l'ordre : 15 min 38, puis 14 min 50, puis 13 min 14 —
+pendant que la chaîne gagnait huit mutations et deux essais.** Le code n'a pas
+accéléré ; la machine était moins chargée. Ces totaux ne sont pas une tendance,
+et le seul usage honnête qu'on peut en faire est de savoir combien de temps
+prévoir, jamais de comparer deux versions. Pour ça, alterner — voir plus bas. Où le temps passe, parce que ça se voit
 mal autrement :
 
 | `essais.py` | `mutations.py` | `parite.py` | les deux `essais*.js` | `mutations.js` |
@@ -111,11 +113,11 @@ dos du même `essais.py` ont donné 14 194 ms et 14 018 ms là où il avait mis
 chaîne, mesurer les deux versions **l'une après l'autre** — sinon on retire du
 travail juste pour rien.
 
-`mutations.py` relance `essais.py` cinquante-quatre fois, et `mutations.js`
-relance la parité ou la batterie du volet cent trois fois. Assez
+`mutations.py` relance `essais.py` cinquante-huit fois, et `mutations.js`
+relance la parité ou la batterie du volet cent six fois. Assez
 long pour donner envie de paralléliser, ce qu'il ne faut surtout pas faire.
 
-⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par cinquante-quatre.**
+⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par cinquante-huit.**
 Un essai qui balayait les tailles de massif de 2 à 40 en végétal a coûté 12,8 s
 par passage — neuf minutes de chaîne — pour une propriété qui ne dépend pas de
 la famille. Mesurer le coût d'un essai neuf fait partie de l'écrire : voir la

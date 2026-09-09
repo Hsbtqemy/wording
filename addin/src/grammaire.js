@@ -160,6 +160,28 @@ export class Teinte {
     return this.dates[this.dates.length - 1][0];
   }
 
+  /** Comme `jour()`, mais sur une uniforme donnee au lieu d'un flux. */
+  _jour_de(u) {
+    const cible = Math.trunc(u * this._total);
+    for (let i = 0; i < this._poids.length; i++) {
+      if (cible < this._poids[i]) return this.dates[i][0];
+    }
+    return this.dates[this.dates.length - 1][0];
+  }
+
+  /**
+   * Le meme ton, tire sur DEUX UNIFORMES au lieu d'un flux.
+   *
+   * ⚠️ La decision 9 l'exige — voir grammaire.py. Avec `ton(rng)`, quelle date
+   * un trait recevait dependait de combien de traits avaient ete dessines
+   * avant lui : un artefact de l'ordre de parcours, pas une propriete du
+   * trait.
+   */
+  ton_de(u_jour, u_ton) {
+    return palette(this._jour_de(u_jour),
+                   Math.trunc(u_ton * this.n_tons), this.nuit);
+  }
+
   ton(rng, jour = null) {
     const j = jour === null ? this.jour(rng) : jour;
     return palette(j, rng.randrange(this.n_tons), this.nuit);
@@ -453,11 +475,14 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
 
   const al = _tirages(graine);
   const FENTES = 8;       // par lignee : 1 ouverture, 1 longueur, 6 feuilles
-  // ⚠️ A ZERO MARGE — voir grammaire.py. `extension` est bornee a 1, donc
-  //   prof_max <= 7 et une lignee tient sur huit bits. Ouvrir la
-  //   profondeur sans changer LIGNEES ferait se recouvrir les deux blocs.
-  const LIGNEES = 1 << 8;
-  const ANASTOMOSE = LIGNEES * FENTES;   // 2048
+  // ⚠️ TROIS TABLES — voir grammaire.py. La couleur a la sienne, donc corriger
+  //   une teinte ne peut pas deplacer une forme ; l'anastomose aussi, ce qui
+  //   supprime l'offset a zero marge qu'elle occupait dans la table des
+  //   lignees.
+  const alc = _tirages(graine * 31 + 7);
+  const ala = _tirages(graine * 131 + 17);
+  const FENTES_C = 14;    // par lignee : 6 feuilles x (jour, ton) + noeud x 2
+  const PAIRES = 4096;
 
   function branche(x, y, angle, lg, prof, lignee) {
     // Le dernier niveau est fractionnaire : ce rameau-ci n'est peut-etre pas
@@ -474,14 +499,17 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
         const a = angle + ((i + 0.5) / n_feuilles - 0.5) * large
           + (al(lignee * FENTES + 2 + i) * 2 - 1) * frisson;
         const r = lg * (1.3 + 0.8 * m);
-        t.trait(x, y, x + Math.cos(a) * r, y + Math.sin(a) * r, m * 0.55, tt.ton(rng));
+        const cf = lignee * FENTES_C + i * 2;
+        t.trait(x, y, x + Math.cos(a) * r, y + Math.sin(a) * r, m * 0.55,
+                tt.ton_de(alc(cf), alc(cf + 1)));
       }
       return;
     }
     const x2 = x + Math.cos(angle) * lg;
     const y2 = y + Math.sin(angle) * lg;
     t.trait(x, y, x2, y2, m, null, true);          // squelette
-    t.noeud(x2, y2, m, tt.ton(rng));
+    const cn = lignee * FENTES_C + 12;
+    t.noeud(x2, y2, m, tt.ton_de(alc(cn), alc(cn + 1)));
     noeuds.push([x2, y2, lignee]);
     const ouv = ouverture * (0.85 + al(lignee * FENTES) * 0.30);
     // Lequel des deux rameaux prolonge l'axe. Il ALTERNE avec la lignee :
@@ -519,8 +547,8 @@ export function vegetal(t, extension, maturite, graine, teinte = null, traits = 
       if (l1 === l2 || faits > 30 * m + 6) continue;
       const d = Math.hypot(x2 - x1, y2 - y1);
       // La decision appartient a la PAIRE de lignees.
-      const paire = ANASTOMOSE + (l1 * 257 + l2) % ANASTOMOSE;
-      if (6 < d && d < seuil && al(paire) < 0.45) {
+      const paire = (l1 * 257 + l2) % PAIRES;
+      if (6 < d && d < seuil && ala(paire) < 0.45) {
         t.trait(x1, y1, x2, y2, m * 0.55, null, true);
         faits += 1;
       }
@@ -546,6 +574,7 @@ export function architecture(t, extension, maturite, graine, teinte = null, trai
   // Posees de l'arriere vers l'avant et chevauchantes : c'est l'occlusion qui
   // fait la silhouette de ville, pas l'empilement.
   const al = _tirages(graine);
+  const alc = _tirages(graine * 31 + 7);   // deux fentes par tour : jour, ton
   const FENTES = 6;     // hauteur, largeur, decalage, antenne x2, cle
   const N_REF = 8;      // 2 + 3 (extension) + 3 (structure)
 
@@ -561,7 +590,7 @@ export function architecture(t, extension, maturite, graine, teinte = null, trai
     const k = ordre[rang];
     // Chaque tour a sa propre date : un chapitre ecrit l'hiver et un autre
     // l'ete ne s'eclairent pas de la meme couleur.
-    const col = tt.ton(rng);
+    const col = tt.ton_de(alc(k * 2), alc(k * 2 + 1));
     const h = SEGMENT * hauteur_base * (1.0 + al(k * FENTES) * ecart_hauteur)
       * (0.55 + extension * 0.7);
     const w = SEGMENT * (0.85 + al(k * FENTES + 1) * 0.85);
@@ -634,7 +663,9 @@ export function creature(t, extension, maturite, graine, teinte = null,
   const avance = rng.uniform(0.04, 0.24);
   const cadence = rng.uniform(0.28, 0.58);
   const al = _tirages(graine);
+  const alc = _tirages(graine * 31 + 7);
   const FENTES = 3;     // par segment d'epine : bruit d'angle, deux membres
+  const FENTES_C = 10;  // par segment : barreau x2, deux membres x 4
 
   const n = 7 + Math.trunc(extension * 11);
   // ⚠️ LE FUSELAGE SE CALCULE SUR LA LONGUEUR FINALE — voir grammaire.py.
@@ -672,17 +703,21 @@ export function creature(t, extension, maturite, graine, teinte = null,
   }
   const pas = Math.max(1, Math.trunc(3 - e.corps * 2));
   for (let i = 0; i < spine.length; i += pas) {
-    t.trait(gauche[i][0], gauche[i][1], droite[i][0], droite[i][1], m * 0.55, tt.ton(rng));
+    t.trait(gauche[i][0], gauche[i][1], droite[i][0], droite[i][1], m * 0.55,
+            tt.ton_de(alc(i * FENTES_C), alc(i * FENTES_C + 1)));
   }
 
   // TETE : le rayon suit le curseur, pas seulement le nombre d'appendices.
+  // La tete a son bloc APRES celui de l'epine — voir grammaire.py.
+  const TETE = N_FINAL * FENTES_C;
   const [hx, hy, ha] = spine[0];
   const rayon = SEGMENT * (0.22 + e.tete * 1.15);
   const n_tete = 3 + Math.trunc(e.tete * 6);
   for (let k = 0; k < n_tete; k++) {
     const a = ha + Math.PI + (k - n_tete / 2) * (1.9 / Math.max(n_tete, 1));
     t.trait(hx, hy, hx + Math.cos(a) * rayon, hy + Math.sin(a) * rayon,
-            m * 0.85, tt.ton(rng));
+            m * 0.85,
+            tt.ton_de(alc(TETE + k * 2), alc(TETE + k * 2 + 1)));
   }
   if (e.tete > 0.5) {                             // calotte : ferme la tete
     const pts = [];
@@ -716,9 +751,10 @@ export function creature(t, extension, maturite, graine, teinte = null,
       const by = ay + Math.sin(a1) * p1;
       t.trait(ax, ay, bx, by, m * 0.8);
       const a2 = a1 + s * (0.55 + al(i * FENTES + 1 + (s > 0 ? 1 : 0)) * 0.45);
+      const dc = i * FENTES_C + 2 + (s < 0 ? 0 : 4);
       t.trait(bx, by, bx + Math.cos(a2) * p1 * 0.65, by + Math.sin(a2) * p1 * 0.65,
-              m * 0.6, tt.ton(rng));
-      t.noeud(bx, by, m, tt.ton(rng));
+              m * 0.6, tt.ton_de(alc(dc), alc(dc + 1)));
+      t.noeud(bx, by, m, tt.ton_de(alc(dc + 2), alc(dc + 3)));
     }
   }
 }

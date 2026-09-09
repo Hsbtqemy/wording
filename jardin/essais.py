@@ -1304,6 +1304,116 @@ def _():
             f" aucune ancre effacee")
 
 
+@essai("grammaire / la couleur d'un trait lui appartient (decision 9)")
+def _():
+    from grammaire import depuis_plant, TRAITS_NEUTRES
+
+    """
+    ⚠️ LA DECISION 9 FAIT PORTER LA COULEUR PAR LA DATE D'ECRITURE.
+
+    Un chapitre commence en fevrier et fini en mai montre les deux : chaque
+    trait tire sa date dans la distribution {jour: mots} du plant. Encore
+    faut-il que la date d'un trait soit une propriete DE CE TRAIT.
+
+    Elle ne l'etait pas. `Teinte.ton(rng)` tirait dans le flux du dessin, donc
+    la date d'un trait dependait de COMBIEN DE TRAITS AVAIENT ETE DESSINES
+    AVANT LUI. Une feuille « ecrite en fevrier » devenait une feuille de mai a
+    la frappe suivante, sans que rien de ce que la decision 9 decrit n'ait
+    bouge. Mesure : un tiers des traits du vegetal, 18 pour cent de ceux de la
+    creature, 4,6 pour cent des tours de la ville.
+
+    ⚠️ CE N'ETAIT PAS UN SCINTILLEMENT A LA FRAPPE, et c'est ce qui l'a rendu
+    invisible : 0 pour cent de changement a +1, +2 et +10 mots, puis un
+    re-tirage d'un coup tous les quelques dizaines de mots. `randrange(n)`
+    rejette et retire quand son tirage depasse n, et cette probabilite change
+    avec n — or n vaut le nombre de mots du plant. Un seul rejet qui differe
+    decale tout le reste du flux.
+
+    ⚠️ DEUX ASSERTIONS, PARCE QU'UNE SEULE NE COUVRE PAS L'ARCHITECTURE. Ses
+    tours GRANDISSENT en hauteur, donc presque aucun de ses traits ne se
+    retrouve a l'identique d'un pas au suivant : la premiere assertion y est
+    vraie sans rien dire. La seconde suit les tours par leur abscisse, qui,
+    elle, ne bouge plus depuis la decision 18.
+    """
+    GRAINES, PAS = 3, 10
+    DATES = [(200, 400), (201, 300), (205, 250)]   # trois jours, sinon la
+    # date est constante et l'essai ne peut rien distinguer
+
+    # ⚠️ MATURITE 0,70 ET NON 0,50, ET CE N'EST PAS UN DETAIL.
+    #   `Toile.noeud()` ne fabrique RIEN tant que la maturite ne depasse pas
+    #   0,55 — et les noeuds ne vont pas dans `segments` mais dans `noeuds`.
+    #   Ecrit d'abord a 0,50 en ne regardant que `segments`, cet essai ne
+    #   traversait donc pas du tout la couleur des noeuds : deux mutations
+    #   passaient au travers sans qu'il bronche. C'est le troisieme piege de
+    #   CLAUDE.md — un cahier qui a l'air complet et ne traverse jamais le
+    #   mecanisme surveille — repris a une ligne pres.
+    MATURITE = 0.70
+
+    def dessin(famille, graine, extension):
+        return depuis_plant({"famille": famille, "extension": extension,
+                             "maturite": MATURITE, "dates": DATES,
+                             "nuit": False, "rang": 0,
+                             "traits": dict(TRAITS_NEUTRES)}, graine)
+
+    def couleurs(t):
+        """Traits ET noeuds : les seconds portent aussi une date."""
+        d = {(round(x[0], 3), round(x[1], 3),
+              round(x[2], 3), round(x[3], 3)): x[5] for x in t.segments}
+        for x in t.noeuds:
+            d[("noeud", round(x[0], 3), round(x[1], 3))] = x[3]
+        return d
+
+    vires = []
+    for famille in ("vegetal", "architecture", "creature", "abstrait"):
+        for graine in range(GRAINES):
+            precedent = None
+            for n in range(PAS):
+                e = 0.05 + 0.95 * n / (PAS - 1)
+                cour = couleurs(dessin(famille, graine, e))
+                if precedent is not None:
+                    for cle in set(precedent) & set(cour):
+                        if precedent[cle] != cour[cle]:
+                            vires.append((famille, graine, e,
+                                          precedent[cle], cour[cle]))
+                precedent = cour
+    assert not vires, (
+        f"{len(vires)} traits gardent leur place et CHANGENT de couleur ; le"
+        f" premier est un {vires[0][0]} de graine {vires[0][1]} a"
+        f" {vires[0][2]:.2f} d'extension, {vires[0][3]} devenu {vires[0][4]}."
+        f" La date d'un trait ne lui appartient plus : elle depend de combien"
+        f" de traits ont ete dessines avant lui")
+
+    assert any(isinstance(k, tuple) and k and k[0] == "noeud"
+               for k in couleurs(dessin("vegetal", 0, 1.0))), (
+        "l'essai ne voit aucun noeud : ils ne naissent qu'au-dessus de"
+        " maturite 0,55 et ne sont pas dans `segments`. Sans eux il ne"
+        " traverse pas la moitie des points de couleur")
+
+    def tours(t):
+        """Une tour, ce sont ses horizontales de trame, reperees par abscisse."""
+        par = {}
+        for x in t.segments:
+            if not x[6] and abs(x[1] - x[3]) < 1e-9:
+                par.setdefault(round((x[0] + x[2]) / 2, 1), set()).add(x[5])
+        return {a: sorted(c) for a, c in par.items()}
+
+    bougees = []
+    for graine in range(GRAINES + 3):
+        precedent = None
+        for n in range(PAS):
+            cour = tours(dessin("architecture", graine, 0.05 + 0.95 * n / (PAS - 1)))
+            if precedent is not None:
+                for a in set(precedent) & set(cour):
+                    if precedent[a] != cour[a]:
+                        bougees.append((graine, a))
+            precedent = cour
+    assert not bougees, (
+        f"{len(bougees)} tours changent de couleur en restant a leur place,"
+        f" la premiere a l'abscisse {bougees[0][1]} de la graine"
+        f" {bougees[0][0]} : la ville se recolore quand elle s'agrandit")
+    return "quatre familles, aucune couleur ne bouge sous un trait qui reste"
+
+
 @essai("grammaire / la structure du texte change la silhouette de l'arbre")
 def _():
     import grammaire

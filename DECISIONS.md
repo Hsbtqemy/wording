@@ -2030,13 +2030,20 @@ seuil ajusté sur elle ne mesure pas ce qu'il annonce.
 Coût : **+654 ms** par passage d'`essais.py` — médiane de trois tours alternés,
 11 866 contre 12 520 ms — soit 35 s sur les cinquante-quatre relances.
 
-### Ce qui reste
+### La couleur aussi : une date qui appartient au trait
 
-⚠️ **La couleur, elle, se re-tire encore.** Elle passe toujours par `rng` dans
-l'ordre du dessin : géométrie stable à 93,4 %, mais 63,5 % seulement en comptant
-la teinte.
+Corrigée dans la foulée, parce que c'est **la même faute un cran plus loin**.
 
-Mesuré finement, et ce n'est **pas** un scintillement à la frappe :
+La décision 9 fait porter la couleur par la **date d'écriture** : chaque trait
+tire sa date dans la distribution `{jour: mots}` du plant, pour qu'un chapitre
+commencé en février et fini en mai montre les deux. Encore faut-il que la date
+d'un trait soit une propriété *de ce trait*. Elle ne l'était pas : `ton(rng)`
+tirait dans le flux du dessin, donc **la date d'une feuille dépendait de combien
+de traits avaient été dessinés avant elle**. Une feuille « écrite en février »
+devenait une feuille de mai à la frappe suivante.
+
+⚠️ **Ce n'était pas un scintillement à la frappe, et c'est ce qui l'a rendu
+invisible.**
 
 | mots ajoutés au plant | traits qui changent de couleur |
 |---|---|
@@ -2044,30 +2051,62 @@ Mesuré finement, et ce n'est **pas** un scintillement à la frappe :
 | +50 | 34 % |
 | +300 | 38 % |
 
-La couleur tient pour de petits ajouts puis se re-tire **d'un coup**, environ
-une fois par paragraphe, sur un tiers des traits à la fois. La cause est fine :
-`Teinte.jour()` tire `randrange(self._total)` où `_total` est le nombre de mots
-du plant ; `randrange` rejette et retire quand son tirage dépasse la borne, et
-cette probabilité de rejet change avec la borne. **Un seul rejet qui diffère
-décale tout le reste du flux.**
+La teinte tient pour de petits ajouts puis se re-tire **d'un coup**, environ une
+fois par paragraphe. `randrange(n)` rejette et retire quand son tirage dépasse
+`n` ; cette probabilité change avec `n`, or `n` vaut le nombre de mots du plant.
+Un seul rejet qui diffère décale tout le reste du flux.
 
-⚠️ **L'argument n'est pas le confort visuel, c'est la décision 9.** La couleur y
-porte la DATE D'ÉCRITURE — un chapitre commencé en février et fini en mai montre
-les deux. Aujourd'hui, quelle date un trait reçoit dépend de **combien de traits
-ont été dessinés avant lui** : ce n'est pas une propriété de ce trait, c'est un
-artefact de l'ordre de parcours. Une feuille « écrite en février » devient une
-feuille de mai sans que rien de ce que la décision 9 décrit n'ait bougé.
+| famille | traits (ou tours) qui se recoloraient | après |
+|---|---|---|
+| végétal | 36 % des traits | **0** |
+| créature | 18 % | **0** |
+| architecture | 4,6 % des tours | **0** |
+| abstrait | **0** | 0 |
 
-C'est la même faute que celle corrigée ici pour la géométrie, un cran plus
-loin — **une valeur lue par rang dans le flux au lieu d'être lue par identité**.
-Même remède. L'amplitude n'est pas négligeable : dans une palette, l'écart de
-luminance entre le ton le plus sombre et le plus clair vaut 22 à 35 % de
-l'échelle. Deux tons voisins, en revanche, sont indiscernables (15 à 19 sur
-255) — donc ça se voit ou non selon le saut.
+L'abstrait était déjà sain, pour la même raison qu'il était déjà additif : il
+**ajoute ses anneaux à la fin** de sa boucle, donc ses tirages s'empilent sans
+déranger les précédents.
 
-Ça ne bloque plus rien : la géométrie ne lit plus le flux partagé, donc le
-nombre de tons ne peut plus la décaler. C'est ce qui avait mis le cinquième ton
-de côté.
+**Le remède** : `Teinte.ton_de(u_jour, u_ton)` — le même ton, calculé sur deux
+uniformes au lieu d'un flux — et une **table de couleur séparée** de celle des
+formes.
+
+⚠️ **La séparation est ce qui rend le changement sûr, et il faut la garder :
+la géométrie est identique TRAIT POUR TRAIT dans les quatre familles.** Une
+correction de teinte ne peut donc pas déplacer une forme, et le portage se
+vérifie sur cette égalité exacte. L'anastomose a reçu sa table elle aussi, ce
+qui supprime la constante `ANASTOMOSE` à zéro marge signalée plus haut — plus
+d'offset à tenir, plus de blocs qui peuvent se recouvrir en silence.
+
+Coût : **non mesurable à ce niveau de bruit**. Écart des médianes −8 ms sur six
+tours alternés, écart apparié médian +283 ms, mais les tours individuels vont de
+−2 141 à +669 ms. Entre « gratuit » et « +300 ms », impossible de trancher plus
+finement sans une machine au repos — et le dire vaut mieux que citer un chiffre
+qui n'existe pas.
+
+#### L'essai, et le piège qu'il a failli reproduire
+
+⚠️ **Écrit d'abord à maturité 0,50 en ne regardant que `segments`, il ne
+traversait pas du tout la couleur des nœuds.** `Toile.noeud()` n'écrit pas dans
+`segments` mais dans `noeuds`, et **ne fabrique rien tant que la maturité ne
+dépasse pas 0,55**. Deux mutations passaient au travers sans qu'il bronche.
+C'est le troisième piège de `CLAUDE.md` — *un cahier qui a l'air complet et ne
+traverse jamais le mécanisme surveillé* — repris à une ligne près, et attrapé
+seulement parce qu'on a vérifié que chaque mutation tombait. L'essai tourne
+désormais à 0,70 et **asserte qu'il voit des nœuds**.
+
+Deux réversions **échappent légitimement**, et c'est instructif : les barreaux
+et les membres de la créature. Tous deux sont dessinés en fin de séquence et
+leurs tirages s'*ajoutent*, donc ils n'ont jamais été la partie instable —
+l'instabilité venait des blocs qui les précédaient. Une mutation en un seul
+point ne peut pas reproduire ça, et l'exiger d'elle serait se tromper de cible.
+
+### Ce qui reste
+
+Rien de connu sur cet axe. La forme et la couleur se lisent toutes deux par
+identité ; la parité couvre les deux ; et le cinquième ton, mis de côté sur la
+branche `cinquieme-ton`, n'est plus bloqué — vérifié en rebasant, l'essai de
+caméra passe.
 
 ---
 

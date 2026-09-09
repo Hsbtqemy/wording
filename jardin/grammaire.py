@@ -171,6 +171,39 @@ class Teinte:
         j = self.jour(rng) if jour is None else jour
         return palette(j, rng.randrange(self.n_tons), self.nuit)
 
+    def _jour_de(self, u) -> int:
+        """Comme `jour()`, mais sur une uniforme donnee au lieu d'un flux."""
+        cible = int(u * self._total)
+        for i, seuil in enumerate(self._poids):
+            if cible < seuil:
+                return self.dates[i][0]
+        return self.dates[-1][0]
+
+    def ton_de(self, u_jour, u_ton) -> str:
+        """
+        Le meme ton, tire sur DEUX UNIFORMES au lieu d'un flux.
+
+        ⚠️ C'EST LA DECISION 9 QUI L'EXIGE. La couleur y porte la DATE
+        D'ECRITURE : un chapitre commence en fevrier et fini en mai montre les
+        deux. Avec `ton(rng)`, quelle date un trait recevait dependait de
+        COMBIEN DE TRAITS AVAIENT ETE DESSINES AVANT LUI — pas une propriete
+        du trait, un artefact de l'ordre de parcours. Une feuille « ecrite en
+        fevrier » devenait une feuille de mai a la frappe suivante.
+
+        Mesure : la teinte ne bougeait pas a chaque mot (0 %% a +1, +2, +10)
+        mais se re-tirait d'un coup tous les quelques dizaines de mots, sur un
+        tiers des traits du vegetal et 4,6 %% des tours de la ville. La cause
+        est fine : `randrange(n)` rejette et retire quand son tirage depasse
+        n, et cette probabilite change avec n — or n vaut le nombre de mots du
+        plant. Un seul rejet qui differe decale tout le reste du flux.
+
+        C'est exactement la faute corrigee pour la geometrie a la decision 18,
+        un cran plus loin : une valeur lue par RANG au lieu de l'etre par
+        IDENTITE.
+        """
+        return palette(self._jour_de(u_jour),
+                       int(u_ton * self.n_tons), self.nuit)
+
 
 def graine_du_document(nom: str) -> int:
     """La graine vient du document, jamais de l'horloge : c'est ce qui garantit
@@ -503,15 +536,25 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
 
     al = _tirages(graine)
     FENTES = 8            # par lignee : 1 ouverture, 1 longueur, 6 feuilles
-    # ⚠️ D'OU VIENT CE NOMBRE, PARCE QU'IL EST A ZERO MARGE.
-    #   `extension` est bornee a 1 (paysage.Segment.extension), donc
-    #   prof_max <= 7, donc une lignee tient sur huit bits : 1 a 255. Les
-    #   fentes des rameaux occupent donc 0 a 2047, et l'anastomose prend
-    #   la suite. Quiconque ouvre la profondeur — `4 + extension * 4` —
-    #   doit changer LIGNEES aussi, sinon les deux blocs se recouvrent
-    #   en silence et la figure redevient dependante de l'ordre.
-    LIGNEES = 1 << 8
-    ANASTOMOSE = LIGNEES * FENTES     # 2048
+
+    # ⚠️ TROIS TABLES, ET LA SEPARATION EST LE POINT.
+    #
+    #   La couleur a la sienne : corriger une teinte ne peut alors pas
+    #   deplacer une forme, et le portage se verifie a geometrie IDENTIQUE
+    #   trait pour trait. Mesure : les quatre familles rendent exactement les
+    #   memes coordonnees avant et apres.
+    #
+    #   L'anastomose a la sienne aussi. Elle vivait a l'offset 2048 dans la
+    #   table des lignees, ce qui tenait a un cheveu — `extension` bornee a 1
+    #   donne prof_max <= 7 donc lignee < 256 donc fentes < 2048 — et
+    #   quiconque aurait ouvert la profondeur aurait fait se recouvrir les
+    #   deux blocs EN SILENCE. Une table propre supprime la contrainte, et
+    #   evite au passage de remplir 4096 entrees quand 2048 suffisent.
+    alc = _tirages(graine * 31 + 7)
+    ala = _tirages(graine * 131 + 17)
+    FENTES_C = 14         # par lignee : 6 feuilles x (jour, ton) + noeud x 2
+    PAIRES = 4096         # collisions admises : deux paires peuvent partager
+
 
     def branche(x, y, angle, lg, prof, lignee):
         # Le dernier niveau est fractionnaire : ce rameau-ci n'est peut-etre
@@ -534,12 +577,14 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
                 a = (angle + ((i + 0.5) / n_feuilles - 0.5) * large
                      + (al(lignee * FENTES + 2 + i) * 2 - 1) * frisson)
                 r = lg * (1.3 + 0.8 * m)
+                cf = lignee * FENTES_C + i * 2
                 t.trait(x, y, x + math.cos(a) * r, y + math.sin(a) * r,
-                        m * 0.55, tt.ton(rng))
+                        m * 0.55, tt.ton_de(alc(cf), alc(cf + 1)))
             return
         x2, y2 = x + math.cos(angle) * lg, y + math.sin(angle) * lg
         t.trait(x, y, x2, y2, m, structure=True)    # squelette
-        t.noeud(x2, y2, m, tt.ton(rng))
+        cn = lignee * FENTES_C + 12
+        t.noeud(x2, y2, m, tt.ton_de(alc(cn), alc(cn + 1)))
         noeuds.append((x2, y2, lignee))
         ouv = ouverture * (0.85 + al(lignee * FENTES) * 0.30)
         # Lequel des deux rameaux prolonge l'axe. Il ALTERNE avec la lignee :
@@ -577,8 +622,8 @@ def vegetal(t: Toile, extension, maturite, graine, teinte=None,
                 continue
             # La decision appartient a la PAIRE de lignees : tiree dans le
             # flux, elle changeait des que le nombre de noeuds changeait.
-            paire = ANASTOMOSE + (l1 * 257 + l2) % ANASTOMOSE
-            if 6 < math.hypot(x2 - x1, y2 - y1) < seuil and al(paire) < 0.45:
+            paire = (l1 * 257 + l2) % PAIRES
+            if 6 < math.hypot(x2 - x1, y2 - y1) < seuil and ala(paire) < 0.45:
                 t.trait(x1, y1, x2, y2, m * 0.55, structure=True)
                 faits += 1
 
@@ -602,6 +647,7 @@ def architecture(t: Toile, extension, maturite, graine, teinte=None,
     # Posees de l'arriere vers l'avant et chevauchantes : c'est l'occlusion qui
     # fait la silhouette de ville, pas l'empilement.
     al = _tirages(graine)
+    alc = _tirages(graine * 31 + 7)   # deux fentes par tour : jour, ton
     FENTES = 6            # par tour : hauteur, largeur, decalage, antenne x2, cle
     # N_REF : le nombre MAXIMAL de tours — 2 + 3 (extension) + 3 (structure).
     N_REF = 8
@@ -631,7 +677,7 @@ def architecture(t: Toile, extension, maturite, graine, teinte=None,
     for rang, k in enumerate(ordre):
         # Chaque tour a sa propre date : un chapitre ecrit l'hiver et un autre
         # l'ete ne s'eclairent pas de la meme couleur.
-        col = tt.ton(rng)
+        col = tt.ton_de(alc(k * 2), alc(k * 2 + 1))
         h = SEGMENT * hauteur_base * (1.0 + al(k * FENTES) * ecart_hauteur)             * (0.55 + extension * 0.7)
         w = SEGMENT * (0.85 + al(k * FENTES + 1) * 0.85)
         cx = 100 + rang_lateral(k) * SEGMENT * 1.15             + (al(k * FENTES + 2) * 12 - 6)
@@ -695,7 +741,9 @@ def creature(t: Toile, extension, maturite, graine, teinte=None,
     avance = rng.uniform(0.04, 0.24)
     cadence = rng.uniform(0.28, 0.58)
     al = _tirages(graine)
+    alc = _tirages(graine * 31 + 7)
     FENTES = 3            # par segment d'epine : bruit d'angle, deux membres
+    FENTES_C = 10         # par segment : barreau x2, deux membres x 4
 
     n = 7 + int(extension * 11)
     # ⚠️ LE FUSELAGE SE CALCULE SUR LA LONGUEUR FINALE, PAS COURANTE.
@@ -731,16 +779,23 @@ def creature(t: Toile, extension, maturite, graine, teinte=None,
                 structure=True)                                     # squelette
     pas = max(1, int(3 - e["corps"] * 2))
     for i in range(0, len(spine), pas):
-        t.trait(*gauche[i], *droite[i], m * 0.55, tt.ton(rng))
+        t.trait(*gauche[i], *droite[i], m * 0.55,
+                tt.ton_de(alc(i * FENTES_C), alc(i * FENTES_C + 1)))
 
     # TETE : le rayon suit le curseur, pas seulement le nombre d'appendices.
+    # La tete a son bloc APRES celui de l'epine : son compte depend des
+    # traits, pas de l'extension, mais ses tirages suivaient ceux des
+    # barreaux — qui, eux, grandissent. Elle changeait donc de couleur a
+    # chaque segment gagne.
+    TETE = N_FINAL * FENTES_C
     hx, hy, ha, _ = spine[0]
     rayon = SEGMENT * (0.22 + e["tete"] * 1.15)
     n_tete = 3 + int(e["tete"] * 6)
     for k in range(n_tete):
         a = ha + math.pi + (k - n_tete / 2) * (1.9 / max(n_tete, 1))
         t.trait(hx, hy, hx + math.cos(a) * rayon, hy + math.sin(a) * rayon,
-                m * 0.85, tt.ton(rng))
+                m * 0.85,
+                tt.ton_de(alc(TETE + k * 2), alc(TETE + k * 2 + 1)))
     if e["tete"] > 0.5:                               # calotte : ferme la tete
         pts = [(hx + math.cos(ha + math.pi + (k - 3) * 0.32) * rayon * 0.8,
                 hy + math.sin(ha + math.pi + (k - 3) * 0.32) * rayon * 0.8)
@@ -770,10 +825,11 @@ def creature(t: Toile, extension, maturite, graine, teinte=None,
             bx, by = ax + math.cos(a1) * p1, ay + math.sin(a1) * p1
             t.trait(ax, ay, bx, by, m * 0.8)
             a2 = a1 + s * (0.55 + al(i * FENTES + 1 + (s > 0)) * 0.45)
+            d = i * FENTES_C + 2 + (0 if s < 0 else 4)
             t.trait(bx, by, bx + math.cos(a2) * p1 * 0.65,
                     by + math.sin(a2) * p1 * 0.65, m * 0.6,
-                    tt.ton(rng))
-            t.noeud(bx, by, m, tt.ton(rng))
+                    tt.ton_de(alc(d), alc(d + 1)))
+            t.noeud(bx, by, m, tt.ton_de(alc(d + 2), alc(d + 3)))
 
 
 # --------------------------------------------------------------------------

@@ -63,6 +63,31 @@ MUTATIONS = [
      "        t.trait(x, y, x2, y2, m, tt.ton(rng), structure=True)",
      "decision 9 : la couleur deborde sur la structure"),
 
+    # La couleur repasse par le flux du dessin : la date d'un trait redevient
+    # un artefact de son rang. Toutes doivent tomber sur l'essai
+    # « la couleur d'un trait lui appartient ».
+    ("grammaire.py",
+     "                        m * 0.55, tt.ton_de(alc(cf), alc(cf + 1)))",
+     "                        m * 0.55, tt.ton(rng))",
+     "la feuille reprend sa couleur dans le flux du dessin"),
+
+    ("grammaire.py",
+     "        t.noeud(x2, y2, m, tt.ton_de(alc(cn), alc(cn + 1)))",
+     "        t.noeud(x2, y2, m, tt.ton(rng))",
+     "le noeud d'un rameau reprend sa couleur dans le flux"),
+
+    ("grammaire.py",
+     "        col = tt.ton_de(alc(k * 2), alc(k * 2 + 1))",
+     "        col = tt.ton(rng)",
+     "une tour reprend sa couleur dans le flux : la ville se recolore"
+     " quand elle s'agrandit"),
+
+    ("grammaire.py",
+     "    TETE = N_FINAL * FENTES_C",
+     "    TETE = n * FENTES_C",
+     "le bloc de couleur de la tete suit la longueur COURANTE de l'epine :"
+     " la bete change de tete a chaque segment gagne"),
+
     ("grammaire.py",
      "    part = BUDGET_FEUILLAGE / pointes_finales",
      "    part = BUDGET_FEUILLAGE // pointes_finales",

@@ -558,6 +558,21 @@ const MUTATIONS = [
    "la part de feuillage se recalcule sur les pointes COURANTES"],
 
   ["grammaire.js",
+   "    const col = tt.ton_de(alc(k * 2), alc(k * 2 + 1));",
+   "    const col = tt.ton(rng);",
+   "une tour reprend sa couleur dans le flux du dessin"],
+
+  ["grammaire.js",
+   "  const TETE = N_FINAL * FENTES_C;",
+   "  const TETE = n * FENTES_C;",
+   "le bloc de couleur de la tete suit la longueur courante de l'epine"],
+
+  ["grammaire.js",
+   "    const cible = Math.trunc(u * this._total);",
+   "    const cible = Math.round(u * this._total);",
+   "piege de portage : Math.round au lieu de Math.trunc dans _jour_de"],
+
+  ["grammaire.js",
    "    const ouv = ouverture * (0.85 + al(lignee * FENTES) * 0.30);",
    "    const ouv = ouverture * rng.uniform(0.85, 1.15);",
    "l'ouverture d'un rameau repasse par le flux partage"],
