@@ -152,14 +152,20 @@ compilation, ignorés par git et régénérés en quelques secondes.
 des régressions réellement commises et vérifient qu'on les rattrape. Une
 mutation qui ÉCHAPPE est un trou dans les cas, pas une bonne nouvelle.
 
-Trois pièges déjà rencontrés, à ne pas refaire :
+Quatre pièges déjà rencontrés, à ne pas refaire :
 
 - un essai qui **recalcule lui-même** la valeur attendue teste sa propre
   arithmétique, pas le code ;
 - un essai qui **compare à la constante** qu'on est en train de casser s'adapte
   à la panne ;
 - un cahier qui a l'air complet et **ne traverse jamais** le mécanisme surveillé
-  — sur 616 appels, le verdict `frappe` n'apparaissait pas une fois.
+  — sur 616 appels, le verdict `frappe` n'apparaissait pas une fois ;
+- ⚠️ **une borne calée sur le corpus.** `jardin/corpus.py` produit quatre
+  familles séparables ; il ne dit rien de l'endroit où poser une borne, et il
+  n'en a jamais rien dit. Son abstrait écrit 3,25 à 5,18 signes rares pour cent
+  mots, sa créature jusqu'à 11,73 — la vraie prose visée en écrit **1,38**. Une
+  borne ne se cale que contre du texte réellement écrit. Coût de l'oubli :
+  vingt-deux arbres sur trente-cinq, en une nuit. Voir la décision 5.
 
 Compter ce qui est réellement traversé, ne pas le supposer.
 

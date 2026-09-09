@@ -425,9 +425,79 @@ donc double, là où un point-virgule coûte un ; ses « (1483-1546) » pèsent 
 que deux points-virgules. Constaté, pas corrigé : toucher au motif redéplacerait
 toute la calibration.
 
-**Les six autres bornes de normalisation n'ont toujours été payées de rien.**
-Deux ont été mesurées, deux se sont révélées fausses. Le taux n'est pas
-rassurant.
+#### Les dix bornes, enfin mesurées — et ce que le corpus ne peut pas dire
+
+Les six autres bornes n'avaient été payées de rien. Elles le sont : cent vingt
+plants engendrés (quatre familles × cinq tailles × six graines), et pour chaque
+trait, la part de la population **écrasée** à 0,000 ou à 1,000. Un trait écrêté
+n'informe plus — c'est la panne qui avait coûté les vingt-deux arbres, et on ne
+l'avait jamais comptée ailleurs.
+
+| trait | la thèse | population | écrasés bas / haut | lecture |
+|---|---|---|---|---|
+| `longueur` | 0,614 | 0,080–0,966 | 0 / 0 | saine |
+| `richesse` | 0,789 | 0,052–0,931 | 0 / 0 | **le partage tient** |
+| `regularite` | 0,417 | 0,142–1,000 | 0 / 11 | saine |
+| `rythme` | 0,365 | 0,000–0,549 | 41 / 0 | ⚠️ voir plus bas |
+| `subordination` | 0,533 | 0,000–1,000 | 11 / 30 | large mais parcourue |
+| `structure` | 0,000 | 0,000–1,000 | 86 / 15 | bimodal **voulu** |
+| `dialogue` | 0,105 | 0,000–1,000 | 90 / 29 | bimodal **voulu** |
+| `interrogation` | 0,000 | 0,000–1,000 | 45 / 45 | bimodal **voulu** |
+| `diversite` | 0,364 | 0,000–0,523 | 59 / 0 | serré **exprès**, il classe |
+| `ponctuation_rare` | 0,379 | 0,000–1,000 | 39 / 60 | ⚠️ voir plus bas |
+
+⚠️ **Trois écrêtages sur sept ne sont pas des pannes.** `structure`, `dialogue`
+et `interrogation` existent pour dire « ce texte en a, ou il n'en a pas » : leur
+écrasement *est* le signal. Les compter comme des défauts aurait déclenché
+quatre chantiers pour rien — c'est le premier piège d'une mesure de population,
+et il s'évite en regardant à quoi sert le trait avant de lire son chiffre.
+
+⚠️ **Le corpus écrit une ponctuation que personne n'écrit.** Signes rares pour
+cent mots, valeur brute avant normalisation :
+
+| | mesuré |
+|---|---|
+| corpus végétal | 0,00 – 0,25 |
+| corpus architecture | 0,00 – 0,98 |
+| **corpus abstrait** | **3,25 – 5,18** |
+| **corpus créature** | **5,80 – 11,73** |
+| **la thèse de l'auteur** | **1,38** |
+
+L'abstrait synthétique est **2,4 à 3,8 fois plus dense** que la vraie prose de
+l'auteur ; la créature va jusqu'à un signe rare tous les huit mots et demi. La
+borne `0,3..3,0` a été posée pour que ces caricatures saturent — elles saturent
+toutes les douze sur douze — pendant que le document visé vit à 0,379 de
+l'échelle.
+
+**C'est le mécanisme des vingt-deux arbres, en plus général, et il faut
+l'écrire une fois pour toutes : le corpus sait produire quatre familles
+séparables, il ne sait pas où poser une borne.** Ce sont deux métiers, il n'en
+exerce qu'un, et rien ne le disait. Une borne ne se cale que contre du texte
+réellement écrit.
+
+⚠️ **`rythme` : toute l'architecture vaut exactement 0,000.** Son cv de
+longueurs de phrase plafonne à 0,295, sous le plancher de 0,300. Sans
+conséquence *aujourd'hui* — `rythme` ne pèse que dans la créature (0,33), qui
+vit à 0,535–0,648, largement au-dessus. C'est une mine, pas un défaut : le jour
+où `rythme` prendrait du poids ailleurs, une famille entière lui répondrait par
+une constante. Et le haut de sa plage (0,66 sur 1,00) n'est jamais approché.
+
+#### La borne de l'abstrait est gardée aux deux bouts, sauf par le bas
+
+Le témoin de « une thèse lexicalement riche garde ses arbres » avait été écrit
+pour `diversite`. Mesuré : il garde **aussi** `ponctuation_rare`, l'autre moitié
+de l'abstrait. Trois mutations de sa borne, jouées sur une copie :
+
+| mutation | verdict |
+|---|---|
+| plafond 3,0 → 2,0 | **rattrapée** par le témoin |
+| plafond 3,0 → 6,0 (calé sur la créature du corpus) | **rattrapée** par le témoin |
+| plancher 0,3 → 0,0 | **échappe** |
+
+L'échappée est comprise, pas subie : baisser le plancher fait passer la thèse de
+0,400 à 0,460 sur le trait, soit **+0,025** sur le score abstrait — contre un
+`MARGE_DOMINANCE` de 0,060. Elle ne renverse rien *seule*. Elle en consomme
+quarante pour cent, sans qu'aucun essai le dise.
 
 Et la question de fond est ailleurs : **`diversite` à 0,58 est un identifiant
 faible pour l'abstrait**, ce qu'une borne bien calée ne fait que révéler.
