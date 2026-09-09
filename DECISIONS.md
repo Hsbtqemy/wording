@@ -2041,17 +2041,70 @@ l'exécution.
     ne peuvent pas être satisfaites ensemble, et personne ne l'avait remarqué
     parce que le terme du tracé masquait la chute.
 
-    **Direction pressentie :** la taille d'un plant vient de l'`extension`
-    seule — qui ne fait que croître, décision 1 — et les traits ne gouvernent
-    que la **forme à l'intérieur** de cette taille. C'est l'invariant cardinal
-    dit sur l'axe des tailles : l'extension fait pousser, la maturité fait
-    mûrir, et aujourd'hui la maturité fait aussi rapetisser.
+    ⚠️ **La direction écrite d'abord était fausse, et la mesure l'a défaite.**
+    On avait conclu « la taille vient des traits, et les traits peuvent
+    baisser ». Vérifié en **gelant les traits** au premier relevé : 47/48
+    trajectoires reculent encore, pire chute −40,6 % contre −39,2 %. Les traits
+    ne sont pour rien dans le rétrécissement. Trois heures de diagnostic tenaient
+    sur une cause plausible que personne n'avait éprouvée — c'est le coût exact
+    de ne pas mesurer une hypothèse avant de l'écrire.
 
-    ⚠️ Ce que ça coûte, et pourquoi ce n'est pas un correctif : normaliser le
-    tracé sur `gabarit_ref × extension^a` rend la monotonie vraie **par
-    construction** — donc non mesurable, une garantie et non un résultat — mais
-    **change l'allure de tous les plants**. Sur un cadeau, ça se décide, ça ne
-    se glisse pas dans un commit qui parlait de couleurs.
+    **La vraie cause, trouvée en posant la question la plus bête :** tout le
+    reste constant — traits neutres, dates figées, maturité figée, graine figée
+    — le dessin grandit-il quand l'extension grandit ? Non.
+
+    | famille | graines qui reculent | pire chute |
+    |---|---|---|
+    | végétal | **8 / 8** | −14,3 % |
+    | architecture | 5 / 8 | −16,3 % |
+    | créature | 3 / 8 | −2,3 % |
+    | **abstrait** | **aucune** | — |
+
+    Le défaut est **dans les fonctions de dessin**, ni dans la caméra, ni dans
+    le gabarit, ni dans les traits. `branche()` consomme un **flux aléatoire
+    séquentiel et partagé** : `ouv = ouverture * rng.uniform(0.85, 1.15)`, puis
+    un `rng.uniform(0.94, 1.06)` par rameau fils. Quand `prof_max` monte d'un
+    cheveu, un bourgeon devient rameau, **consomme des tirages en plus, et tout
+    ce qui est dessiné ensuite reçoit d'autres valeurs.** L'arbre ne pousse pas :
+    il est redessiné avec un autre hasard.
+
+    ⚠️ **Et ce n'est pas la taille le pire.** Combien de traits survivent d'un
+    pas de croissance au suivant, si « pousser consiste à ouvrir un bourgeon en
+    rameau » :
+
+    | famille | survie médiane | pire pas |
+    |---|---|---|
+    | végétal | **8,6 %** | 2,0 % |
+    | architecture | 9,4 % | 1,2 % |
+    | créature | 23,7 % | 11,5 % |
+    | **abstrait** | **100 %** | **100 %** |
+
+    Le végétal **redessine 91 % de lui-même tous les 125 mots**. Le
+    rétrécissement n'était que le symptôme visible d'un objet qui ne se
+    ressemble pas d'un instant à l'autre.
+
+    ⚠️ Cette mesure **élimine la réparation qui paraissait la moins chère** :
+    normaliser l'encombrement sur un barème monotone se fait en un seul
+    endroit et rend la monotonie vraie par construction — mais elle laisserait
+    intact le redessinage à 91 %. Elle traitait le symptôme qu'on avait mesuré
+    parce qu'on n'avait pas mesuré l'autre.
+
+    **Le remède est déjà dans le dépôt, sur une famille.** `abstrait()` tire
+    tout son hasard AVANT la boucle de croissance, en un nombre de tirages qui
+    ne dépend pas de l'extension :
+
+        jitter = [rng.uniform(1 - irreg, 1 + irreg) for _ in range(cotes)]
+        anneaux = 1 + int(extension * 3.4)
+
+    Pousser ajoute un anneau et ne touche à rien. C'est la seule famille
+    monotone ET la seule additive à 100 % — pas une coïncidence. Reste à porter
+    ce motif au végétal, à l'architecture et à la créature : le hasard d'un
+    rameau doit venir de sa **lignée**, jamais de son rang dans le flux.
+
+    ⚠️ Ça change l'allure de tous les plants, dans les deux langages, et la
+    parité se joue exactement là — `alea.js` refait MT19937 à l'identique et
+    son en-tête prévient que **déplacer un `rng.uniform()` suffit à tout
+    décaler**. Une famille à la fois, chacune vérifiée avant la suivante.
 
 ---
 
