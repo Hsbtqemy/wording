@@ -5,12 +5,14 @@ statut: interrompu
 
 # PHR-2 — le message de nuit et les phrases, dans l'add-in
 
-**Arrêté sur** — `5091d60`, 11 septembre : `message.js` et `phrases.js` sont portés,
-sans un écart sur 221 218 comparaisons, et leurs treize mutations sont attrapées
-(119/119). En chemin, le raccord du paquet s'est révélé faux pour toute nuit d'avant
-2027 — corrigé dans la spec d'abord (`84026f4`). Rien n'est câblé : `volet.js`
-n'importe aucun des deux. La suite est le câblage, en commençant par lire le profil
-derrière le `#` ; les deux modules y ajouteront 7,1 Ko compressés.
+**Arrêté sur** — `92ad1cb`, 11 septembre : le câblage est fait et éprouvé contre
+l'hôte simulé — le profil lu derrière le `#`, la question du prénom posée une fois, le
+message de nuit dans le ciel du volet, révélé aux mots et non à l'heure (`286f23a`).
+Une relecture à froid y a trouvé trois promesses sans essai, et un essai du `#` qui ne
+lisait rien : 38 essais du volet, 137 mutations. Le volet charge 74,7 Ko compressés au
+lieu de 61,6. La question reste muette tant que son texte n'est pas écrit (PHR-1). La
+suite est la zone Vrai Word : la passe `qa/profil.md` sur l'Office LTSC 2021, et
+`LISEZMOI.md` pour mettre le profil dans le manifeste.
 
 ## Reste
 
@@ -30,18 +32,18 @@ derrière le `#` ; les deux modules y ajouteront 7,1 Ko compressés.
   sa jumelle dans `addin/parite/mutations.js`, et la batterie l'attrape
 
 ### Câblage
-- [ ] Le volet lit `prenom` et `accord` derrière le `#` de son adresse, et
+- [x] Le volet lit `prenom` et `accord` derrière le `#` de son adresse, et
   `essais_volet.js` le vérifie
-- [ ] Sans prénom dans l'adresse, le volet le demande une fois ; ignorée, la question
+- [x] Sans prénom dans l'adresse, le volet le demande une fois ; ignorée, la question
   n'est jamais reposée — `essais_volet.js` le vérifie
-- [ ] Répondre n'écrit rien dans le document : le prénom part avec la prochaine copie du
+- [x] Répondre n'écrit rien dans le document : le prénom part avec la prochaine copie du
   paysage — `essais_volet.js` le vérifie
-- [ ] Un signe du prénom que l'alphabet ne dessine pas est signalé à la saisie
-- [ ] Le volet affiche le message de nuit dans les conditions de la décision 10, et
+- [x] Un signe du prénom que l'alphabet ne dessine pas est signalé à la saisie
+- [x] Le volet affiche le message de nuit dans les conditions de la décision 10, et
   `essais_volet.js` le vérifie contre l'hôte simulé
-- [ ] Un registre vide retombe sur le paquet dans le volet comme en Python : `CREUX` vide
+- [x] Un registre vide retombe sur le paquet dans le volet comme en Python : `CREUX` vide
   ne casse rien (décision 15)
-- [ ] Le poids ajouté à ce que charge le volet est mesuré, brut et compressé, et écrit
+- [x] Le poids ajouté à ce que charge le volet est mesuré, brut et compressé, et écrit
   dans le corps du commit
 
 ### Vrai Word
