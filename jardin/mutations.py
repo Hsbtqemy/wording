@@ -290,13 +290,13 @@ MUTATIONS = [
 
     # ------------------------------------------------------------------ guet
     # Le guet remplace les evenements de paragraphe, absents de la machine
-    # cible (point ouvert 15). Aucune de ces regressions ne fait planter quoi
+    # cible (point ouvert 19). Aucune de ces regressions ne fait planter quoi
     # que ce soit : elles decalent des identifiants, et le paysage pousse de
     # travers sans que rien ne le dise.
     ("guet.py",
      r'SEPARATEURS_LIGNE = ("\x0b", "\n")',
      r'SEPARATEURS_LIGNE = ()',
-     "point 14 : le saut de ligne cesse de separer, 35 pages font un paragraphe"),
+     "point 18 : le saut de ligne cesse de separer, 35 pages font un paragraphe"),
 
     # Le style appartient au PARAGRAPHE, la ligne en herite. Confondre
     # les deux indices est la faute naturelle a cet endroit.

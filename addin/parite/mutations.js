@@ -408,7 +408,7 @@ const MUTATIONS = [
   ["guet.js",
    'export const SEPARATEURS_LIGNE = ["\\u000B", "\\n"];',
    'export const SEPARATEURS_LIGNE = ["\\n"];',
-   "point 14 : le saut de ligne cesse de separer, 35 pages font une seule ligne"],
+   "point 18 : le saut de ligne cesse de separer, 35 pages font une seule ligne"],
 
   ["guet.js",
    "    while (libres && libres.length) {",

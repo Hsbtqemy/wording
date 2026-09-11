@@ -5,7 +5,7 @@ POURQUOI CE MODULE EXISTE
 
 Word ne previent pas toujours. Les evenements de paragraphe demandent WordApi
 1.6, et la machine a qui ce cadeau est destine est un Office LTSC 2021, gele a
-sa version de sortie : elle ne les aura jamais. Le point ouvert 15 le mesure.
+sa version de sortie : elle ne les aura jamais. Le point ouvert 19 le mesure.
 
 Il reste a regarder. Mesure sur cette machine : relire le document objet par
 objet coute ~1,7 ms PAR PARAGRAPHE — deux secondes et demie sur une these, soit
@@ -37,7 +37,7 @@ retrouve ce qu'elle a ecrit quelle que soit la touche employee.
 # appartient au PARAGRAPHE. Decouper d'abord sur le retour chariot donne les
 # paragraphes de Word, donc l'echelle a laquelle les styles se lisent ; decouper
 # ensuite chaque paragraphe donne les lignes de la personne, qui est l'unite du
-# paysage (point 14). Une ligne herite du style de son paragraphe, exactement.
+# paysage (point 18). Une ligne herite du style de son paragraphe, exactement.
 SEPARATEUR_PARAGRAPHE = "\r"
 SEPARATEURS_LIGNE = ("\x0b", "\n")
 
@@ -119,7 +119,7 @@ def decouper_marque(texte):
     donner un style a une ligne sans le demander a Word ligne par ligne.
 
     Toutes les separations valent pour l'unite du paysage : celle qui vient
-    d'Entree comme celle qui vient de Maj+Entree (point 14).
+    d'Entree comme celle qui vient de Maj+Entree (point 18).
     """
     if not texte:
         return [], []

@@ -923,7 +923,7 @@ public, et rien de plus à administrer.
 paysage vit dans le `localStorage`, qui est indexé par *origine* : changer
 d'hébergeur, ou passer à un domaine propre, perdrait le jardin. Pour un cadeau
 censé durer le temps d'une thèse, c'est la mauvaise dépendance — voir le point
-ouvert 13.
+ouvert 17.
 
 Cible ≈ 30–40 Ko : pas de framework, pas de bibliothèque d'icônes ni
 d'animation, polices système. Moins pour la vitesse que pour la durabilité — un
@@ -2280,7 +2280,11 @@ caméra passe.
 
 ---
 
-13. ~~**Sortir le paysage du `localStorage`.**~~ **Réglé** — voir la décision 16.
+*Les trois points qui suivent ont été numérotés 13, 14 et 15 jusqu'au
+11 septembre 2026 — en double avec ceux du dessus. Les commits d'avant cette date
+les citent sous leur ancien numéro.*
+
+17. ~~**Sortir le paysage du `localStorage`.**~~ **Réglé** — voir la décision 16.
     Chaque document garde une copie de l'état dans son `.docx` ; à l'ouverture,
     c'est celle qui a le plus d'empreintes qui fait autorité. L'origine qui
     change, la machine neuve et les données de site vidées sont couvertes.
@@ -2290,7 +2294,7 @@ caméra passe.
     découle — copie rare, jamais pour rien, et le réglage d'identité qui attend
     la première pousse au lieu de partir à l'ouverture.
 
-14. ~~**L'unité du paysage n'est pas celle de tout le monde.**~~ **Réglé** —
+18. ~~**L'unité du paysage n'est pas celle de tout le monde.**~~ **Réglé** —
     voir la décision 17 : le guet découpe sur tous les séparateurs de ligne. Le
     premier vrai document ouvert avec le volet faisait trente-cinq pages — et
     **un seul paragraphe**. Mesuré : `0 CR · 1119 VT · 0 LF · 1 objets`. Aucune
@@ -2322,7 +2326,7 @@ caméra passe.
     l'extension prise pour de la maturité. L'identification doit passer par le
     contenu, donc par un rapprochement des deux états, jamais par l'indice.
 
-15. ~~**Un Office LTSC ne verra jamais les événements de paragraphe.**~~
+19. ~~**Un Office LTSC ne verra jamais les événements de paragraphe.**~~
     **Réglé** — voir la décision 17 : le volet regarde au lieu d'être prévenu,
     et ne demande plus que WordApi 1.1. La machine cible est un Office LTSC
     Professionnel Plus 2021, version 2108 — gelé à sa version de sortie pour
@@ -2351,7 +2355,7 @@ caméra passe.
     `body.text`, le découpe sur `\r` **et** sur `\u000B`, et le compare au
     précédent. Deux propriétés le recommandent au-delà du dépannage :
 
-    - il règle le point 14 par construction, puisqu'il retrouve les lignes que
+    - il règle le point 18 par construction, puisqu'il retrouve les lignes que
       la personne a écrites quelle que soit la touche employée ;
     - c'est de la **logique pure sur des tableaux de chaînes**, donc
       spécifiable en Python et **couverte par la parité** — ce que `pont.js`

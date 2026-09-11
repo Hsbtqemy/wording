@@ -1827,7 +1827,7 @@ def _():
     # Le document reel qui a motive tout ceci : 1119 sauts, zero retour chariot.
     melange = decouper("a\rb\x0bc\nd")
     assert melange == ["a", "b", "c", "d"], melange
-    return "point 14 : l'unite est la ligne ecrite, pas le paragraphe de Word"
+    return "point 18 : l'unite est la ligne ecrite, pas le paragraphe de Word"
 
 
 @essai("guet / le premier instantane ne fait rien pousser")
@@ -1908,7 +1908,7 @@ def _():
     g.amorcer("A\x0bB\x0bC")
     avant = list(g.ids)
     faits = g.relever("A\x0bX\x0bB\x0bC")
-    # LE cas du point 14. Identifier par le rang aurait rendu trois retouches
+    # LE cas du point 18. Identifier par le rang aurait rendu trois retouches
     # et une naissance : de l'extension prise pour de la maturite.
     assert [f["type"] for f in faits] == ["nee"], [f["type"] for f in faits]
     assert g.ids[0] == avant[0] and g.ids[2] == avant[1] and g.ids[3] == avant[2], \
