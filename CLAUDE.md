@@ -86,26 +86,36 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **13 min 14** (9 septembre 2026, à 58
-et 106 mutations). C'était 14 min 50 à 54 et 103, 15 min 38 à 50 et 100, 9 min 38
-à 13 min 35 à 47 et 98, et 5 min 57 à 36 et 87.
+Durée mesurée de l'enchaînement complet : **13 min 42** (11 septembre 2026, à 58
+et 106 mutations). C'était 13 min 14 le 9 septembre au même compte, 14 min 50 à
+54 et 103, 15 min 38 à 50 et 100, 9 min 38 à 13 min 35 à 47 et 98, et 5 min 57 à
+36 et 87.
 
 ⚠️ **Lire cette suite dans l'ordre : 15 min 38, puis 14 min 50, puis 13 min 14 —
 pendant que la chaîne gagnait huit mutations et deux essais.** Le code n'a pas
-accéléré ; la machine était moins chargée. Ces totaux ne sont pas une tendance,
+accéléré ; la machine était moins chargée — et deux jours plus tard, au même
+compte et sans une ligne de code changée, la même chaîne a pris 28 s de plus.
+Ces totaux ne sont pas une tendance,
 et le seul usage honnête qu'on peut en faire est de savoir combien de temps
 prévoir, jamais de comparer deux versions. Pour ça, alterner — voir plus bas. Où le temps passe, parce que ça se voit
 mal autrement :
 
 | `essais.py` | `mutations.py` | `parite.py` | les deux `essais*.js` | `mutations.js` |
 |---|---|---|---|---|
-| 13–16 s | **≈ 13 min** | 4–5 s | < 1 s | ≈ 2 min |
+| 13–16 s | **11 min 19** | 4–5 s | < 1 s | **2 min 04** |
 
-⚠️ Les deux colonnes en ≈ sont **déduites**, pas chronométrées : total mesuré
-moins les quatre suites courtes, elles chronométrées. Un chiffre déduit d'un
-total où l'essentiel est justement ce qu'on déduit ne vaut pas grand-chose —
-si la question est « où passe le temps », c'est `mutations.py` qu'il faut
-chronométrer directement, et personne ne l'a fait.
+Les deux colonnes lourdes sont **chronométrées** depuis le 11 septembre 2026 —
+678 939 ms et 123 525 ms, chaque suite enveloppée d'un chronomètre dans la même
+commande, sur une seule passe dont la charge n'est pas connue.
+
+⚠️ Elles étaient jusque-là **déduites** du total, et les deux déductions —
+« ≈ 13 min » et « ≈ 2 min » — dépassaient ensemble les 13 min 14 dont elles
+étaient tirées. Un chiffre déduit d'un total où l'essentiel est justement ce
+qu'on déduit ne valait rien, et ça se voyait à l'addition.
+
+`mutations.py` fait donc 11,7 s par relance, moins qu'un `essais.py` seul : ce
+n'est pas un raccourci — chaque relance est un passage entier, aucun essai ne
+s'arrête au premier échec —, c'est la fourchette de la charge.
 
 ⚠️ La fourchette est de la **charge machine, pas du code** : deux mesures dos à
 dos du même `essais.py` ont donné 14 194 ms et 14 018 ms là où il avait mis
