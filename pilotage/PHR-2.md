@@ -5,14 +5,13 @@ statut: interrompu
 
 # PHR-2 — le message de nuit et les phrases, dans l'add-in
 
-**Arrêté sur** — `92ad1cb`, 11 septembre : le câblage est fait et éprouvé contre
+**Arrêté sur** — `472b042`, 11 septembre : le câblage est fait et éprouvé contre
 l'hôte simulé — le profil lu derrière le `#`, la question du prénom posée une fois, le
-message de nuit dans le ciel du volet, révélé aux mots et non à l'heure (`286f23a`).
-Une relecture à froid y a trouvé trois promesses sans essai, et un essai du `#` qui ne
-lisait rien : 38 essais du volet, 137 mutations. Le volet charge 74,7 Ko compressés au
-lieu de 61,6. La question reste muette tant que son texte n'est pas écrit (PHR-1). La
-suite est la zone Vrai Word : la passe `qa/profil.md` sur l'Office LTSC 2021, et
-`LISEZMOI.md` pour mettre le profil dans le manifeste.
+message de nuit dans le ciel du volet, révélé aux mots et non à l'heure (`286f23a`,
+puis `92ad1cb` pour trois promesses sans essai et un essai du `#` qui ne lisait rien).
+La question a son texte, donné par qui offre : « Ton prénom ? ». `LISEZMOI.md` dit où
+poser le profil dans le manifeste. Il ne reste que la passe `qa/profil.md` sur
+l'Office LTSC 2021 — à jouer d'abord avec le manifeste qui porte le profil.
 
 ## Reste
 
@@ -49,7 +48,7 @@ suite est la zone Vrai Word : la passe `qa/profil.md` sur l'Office LTSC 2021, et
 ### Vrai Word
 - [ ] La passe `qa/profil.md` est jouée sur l'Office LTSC 2021, et chacune de ses cases
   est cochée par qui l'a jouée
-- [ ] `addin/LISEZMOI.md` dit comment mettre le profil dans le manifeste, aux deux
+- [x] `addin/LISEZMOI.md` dit comment mettre le profil dans le manifeste, aux deux
   adresses du volet
 
 ## Contexte

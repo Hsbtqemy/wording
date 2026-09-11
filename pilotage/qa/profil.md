@@ -13,7 +13,13 @@ vrai.
 
 À jouer une fois PHR-2 porté, sur Word pour le bureau — Office LTSC Professionnel Plus
 2021, version 2108. Il faut deux manifestes : l'un dont l'adresse porte
-`#prenom=…&accord=…`, l'autre sans rien derrière `volet.html`.
+`#prenom=…&accord=…`, l'autre sans rien derrière `volet.html`. Comment les écrire :
+`addin/LISEZMOI.md`, « Le prénom et l'accord ».
+
+⚠️ **Jouer d'abord le manifeste qui porte le profil.** La question, une fois posée, ne
+revient jamais — c'est voulu. Jouée après l'autre, la première case ne distinguerait
+plus rien : le volet se tairait avec ou sans `#`. Sur une machine où il a déjà demandé,
+elle ne se joue plus.
 
 Ne couvre pas le message lui-même : il ne sort qu'entre 2 h et 5 h, et se révèle sur
 800 mots. Sa forme se vérifie par la parité, pas au bureau.

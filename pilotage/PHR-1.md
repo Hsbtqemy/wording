@@ -16,7 +16,8 @@ d'une même phrase plafonne donc à dix nuits (point ouvert 10).
 - [ ] Le registre `CREUX` porte des phrases écrites par celui qui offre le cadeau
 - [ ] Le paquet compte vingt phrases écrites par l'auteur, et l'écart moyen mesuré
   dépasse dix nuits
-- [ ] Le texte de la question du prénom est écrit par celui qui offre (décision 10)
+- [x] Le texte de la question du prénom est écrit par celui qui offre (décision 10) —
+  « Ton prénom ? », dans le `label` de `addin/volet.html`
 
 ## Contexte
 
@@ -28,11 +29,12 @@ l'écart moyen une fois le paquet rempli ; rien de plus.
 Ce qu'il ne faut pas mettre dans `CREUX`, tel que le registre le dit lui-même : rien qui
 félicite, rien qui encourage, rien qui demande quoi que ce soit.
 
-⚠️ Tant que PHR-2 n'est pas livré, rien de ce qui s'écrit ici n'arrive dans Word : le
-message de nuit et les phrases n'existent que dans `jardin/`.
+⚠️ Depuis `286f23a`, ce qui s'écrit ici arrive dans Word. Une phrase ajoutée à
+`jardin/phrases.py` doit l'être aussi, à l'identique, dans `addin/src/phrases.js` : la
+parité compare les deux registres.
 
 Deux contraintes de forme, venues de la décision 10 révisée : une phrase qui s'accorde
 porte ses trois formes, `{fort|forte|fort.e}` ; et tout ne s'écrit qu'avec ce que
-l'alphabet du message sait dessiner — A à Z, l'espace, `! ' , . ?`, bientôt `-`. Les
+l'alphabet du message sait dessiner — A à Z, l'espace, `! ' , . ? -`. Les
 accents tombent au tracé. Sans prénom connu, une phrase nominative ne sort pas ; sans
 accord, une phrase qui s'accorde non plus.
