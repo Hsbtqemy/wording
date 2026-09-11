@@ -39,8 +39,8 @@ export default {
   // Pas de `veille`, et c'est une decision. Elle veut UN fichier et un seuil en
   // lignes ; la seule limite reelle du depot n'a pas cette forme. Ce qui coute ici,
   // c'est le TEMPS d'essais.py, multiplie par cinquante-huit — des lignes ne le
-  // mesurent pas — et la cible de 30 a 40 Ko porte sur tout le livrable, pas sur un
-  // fichier. Un seuil pose pour remplir le champ serait une borne calee sur rien :
+  // mesurent pas — et le poids du livrable se mesure sans se borner (decision 13).
+  // Un seuil pose pour remplir le champ serait une borne calee sur rien :
   // exactement ce que CLAUDE.md interdit.
   //
   // Pas de `documentation` non plus : `dossier` doit etre un DOSSIER (l'outil teste
