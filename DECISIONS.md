@@ -929,6 +929,16 @@ Cible ≈ 30–40 Ko : pas de framework, pas de bibliothèque d'icônes ni
 d'animation, polices système. Moins pour la vitesse que pour la durabilité — un
 projet sans dépendances se recharge encore dans cinq ans.
 
+⚠️ **Le chiffre n'a pas tenu ; la raison qu'il servait, si.** Mesuré le
+11 septembre 2026 sur ce que charge le volet — `volet.html` et les neuf modules
+qu'il importe, hors `office.js` que Word impose : **163,7 Ko bruts, 61,3 Ko
+compressés**. Sans ses 885 commentaires, retirés au parseur et non à la regex :
+72,9 Ko et 23,7 Ko. Les commentaires font 55 % du poids, et ils ne se
+retranchent pas : c'est la mémoire du projet.
+
+La règle est donc celle que le chiffre servait : **aucune dépendance**. Le poids
+se mesure, il ne se borne pas.
+
 **Manifeste XML classique**, pas le manifeste unifié JSON : ce dernier ne peut
 pas être chargé manuellement sur Mac.
 

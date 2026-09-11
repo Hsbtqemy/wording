@@ -46,7 +46,9 @@ navigateur, donc MurmurHash3 au lieu de blake2s. Les deux registres ne se
 relisent jamais ; seule la largeur (48 bits) et le pouvoir séparateur comptent.
 
 **Aucune dépendance, jamais.** Ni côté Python, ni côté JavaScript. Un cadeau
-adossé à une bibliothèque meurt le jour où elle casse. Cible ≈ 30–40 Ko.
+adossé à une bibliothèque meurt le jour où elle casse. Le poids n'est pas la
+règle : le volet charge 61 Ko compressés, dont plus de la moitié de
+commentaires qui ne se retranchent pas — voir la décision 13.
 
 ---
 
