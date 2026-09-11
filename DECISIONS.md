@@ -2228,6 +2228,18 @@ caméra passe.
     même phrase deux soirs de suite. Corrigé en chaînant les tours ; l'écart
     minimum passe à 4. Mais avec dix phrases dans le paquet, l'écart moyen
     plafonne à 10 nuits. La vraie réponse reste d'atteindre vingt phrases.
+
+    ⚠️ **Et il ne portait que dans un sens.** Le raccord ne jouait que pour
+    les tours positifs, or l'origine du paquet est le 1er janvier 2027 : toute
+    nuit d'avant porte un numéro négatif — celle du 11 septembre 2026 est la
+    −112. Mesuré ce jour-là sur l'année 2026 : écart minimum d'**une** nuit,
+    sept écarts d'une ou deux nuits, et la même phrase le 31 décembre et le
+    1er janvier. L'essai commençait au 1er janvier 2027 : il ne traversait
+    jamais le cas, et le message n'étant pas porté, personne ne l'aurait vu
+    avant la première nuit de la personne. Corrigé : le raccord se fait vers
+    le tour 0, des deux côtés — un tour positif contre la fin du tour d'avant,
+    un tour négatif contre le début du tour d'après. Les tours positifs se
+    comportent exactement comme avant, et l'essai couvre désormais 2025 à 2029.
 11. ~~**Le paysage complet fait 13 000 px de large.**~~ **Réglé** — voir le
     point 14, « deux vues, pas une échelle », et le décalage aux deux tiers qui
     règle le volet d'un plant qui vient de naître.
@@ -2327,7 +2339,7 @@ caméra passe.
        gardant le seuil d'origine — il ne doit pas être réajusté, sinon on
        recommence la faute ;
     5. mesurer le surcoût en **tours alternés** (voir `CLAUDE.md`), puisque
-       tout ce qui entre dans `essais.py` est multiplié par soixante-quatre.
+       tout ce qui entre dans `essais.py` est multiplié par soixante-cinq.
 
     ⚠️ Et vérifier au passage que chaque essai **traverse** ce qu'il prétend
     surveiller. Le quatrième de la liste ci-dessus tournait à maturité 0,50 en

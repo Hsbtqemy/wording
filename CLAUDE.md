@@ -65,7 +65,7 @@ python jardin/essais.py && python jardin/mutations.py \
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `74 passes, 0 en echec` · `64/64` · `aucun ecart` · `23 passes` ·
+Attendu : `74 passes, 0 en echec` · `65/65` · `aucun ecart` · `23 passes` ·
 `25 passes` · `106/106`.
 
 `essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
@@ -128,11 +128,11 @@ dos du même `essais.py` ont donné 14 194 ms et 14 018 ms là où il avait mis
 chaîne, mesurer les deux versions **l'une après l'autre** — sinon on retire du
 travail juste pour rien.
 
-`mutations.py` relance `essais.py` soixante-quatre fois, et `mutations.js`
+`mutations.py` relance `essais.py` soixante-cinq fois, et `mutations.js`
 relance la parité ou la batterie du volet cent six fois. Assez
 long pour donner envie de paralléliser, ce qu'il ne faut surtout pas faire.
 
-⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par soixante-quatre.**
+⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par soixante-cinq.**
 Un essai qui balayait les tailles de massif de 2 à 40 en végétal a coûté 12,8 s
 par passage — neuf minutes de chaîne — pour une propriété qui ne dépend pas de
 la famille. Mesurer le coût d'un essai neuf fait partie de l'écrire : voir la

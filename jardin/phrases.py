@@ -270,10 +270,26 @@ def _paquet(tour: int, corpus: list) -> list:
     garde = max(2, min(4, len(corpus) // 3))
     paquet = list(corpus)
     random.Random(tour * 7919).shuffle(paquet)
+    # Le raccord se fait vers le tour 0, DES DEUX COTES. Il ne jouait que pour
+    # les tours positifs — or ORIGINE est le 1er janvier 2027, et toute nuit
+    # d'avant porte un numero negatif. Mesure le 11 septembre 2026, nuit -112 :
+    # ecart minimum d'UNE nuit sur l'annee 2026, sept ecarts d'une ou deux
+    # nuits, et la meme phrase le 31 decembre et le 1er janvier. L'essai du
+    # paquet commencait au 1er janvier 2027 : il ne traversait jamais le cas.
+    #
+    # Un tour positif s'accorde avec la FIN du tour d'avant, un tour negatif
+    # avec le DEBUT du tour d'apres ; le tour 0 est la souche. Les tours
+    # positifs se comportent donc exactement comme avant.
+    voisin, bord = None, None
     if tour > 0:
-        queue = set(_paquet(tour - 1, corpus)[-garde:])
+        voisin = set(_paquet(tour - 1, corpus)[-garde:])
+        bord = lambda p: set(p[:garde])
+    elif tour < 0:
+        voisin = set(_paquet(tour + 1, corpus)[:garde])
+        bord = lambda p: set(p[-garde:])
+    if tour != 0:
         essai = 0
-        while set(paquet[:garde]) & queue and essai < 200:
+        while bord(paquet) & voisin and essai < 200:
             essai += 1
             random.Random(tour * 7919 + essai * 104729).shuffle(paquet)
     _MEMOIRE_PAQUETS[cle] = paquet
@@ -380,7 +396,7 @@ def verifier(profils=PROFILS) -> bool:
     print(f"\n  routage des trois evenements : {'ok' if ok else 'ECHEC'}")
     if not CREUX:
         print("")
-        print("  /!\ le registre CREUX est vide - point ouvert 1 non clos.")
+        print("  /!\\ le registre CREUX est vide - point ouvert 1 non clos.")
         print("       Le mecanisme l'attend ; les phrases sont a ecrire.")
     return ok
 

@@ -518,8 +518,12 @@ def _():
     from phrases import phrase_de_la_nuit, PROFILS
     from datetime import date
     vues, ecarts = {}, []
-    for n in range(1095):                     # trois ans
-        d = date.fromordinal(date(2027, 1, 1).toordinal() + n).isoformat()
+    # De 2025 a 2029 : les nuits d'avant le 1er janvier 2027 portent un numero
+    # NEGATIF, et l'essai qui commencait a cette date ne les a jamais vues — le
+    # raccord n'y portait pas, et la meme phrase revenait deux soirs de suite
+    # (point ouvert 10).
+    for n in range(1826):                     # cinq ans, dont deux avant l'origine
+        d = date.fromordinal(date(2025, 1, 1).toordinal() + n).isoformat()
         ph = phrase_de_la_nuit(PROFILS["camille"], d)
         if ph in vues:
             ecarts.append(n - vues[ph])

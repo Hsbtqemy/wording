@@ -284,9 +284,15 @@ MUTATIONS = [
      "point ouvert 9 : le message se recentre a chaque lettre"),
 
     ("phrases.py",
-     "        queue = set(_paquet(tour - 1, corpus)[-garde:])",
-     "        queue = set()",
+     "        voisin = set(_paquet(tour - 1, corpus)[-garde:])",
+     "        voisin = set()",
      "point ouvert 10 : le raccord du paquet ne porte plus"),
+
+    ("phrases.py",
+     "        voisin = set(_paquet(tour + 1, corpus)[:garde])",
+     "        voisin = set()",
+     "point ouvert 10 : avant 2027, le raccord ne porte plus — la meme phrase"
+     " deux soirs de suite"),
 
     # ---------------------------------------------------------------- profil
     # Decision 10 revisee : le profil peut etre incomplet, et le paquet se
