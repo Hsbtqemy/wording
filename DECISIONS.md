@@ -821,8 +821,44 @@ tirages indépendants produisent des répétitions immédiates. État actuel : �
 moyen de 11 nuits, minimum 5. La vraie réponse est d'atteindre 20 phrases, pas
 d'empiler de la logique de brassage.
 
-Le prénom et l'accord de genre sont un **profil**, demandé au rattachement du
-dossier. Le cadeau peut être offert à plusieurs personnes.
+Le prénom et l'accord de genre sont un **profil**. Le cadeau peut être offert à
+plusieurs personnes.
+
+~~Demandé au rattachement du dossier.~~ **Révisé le 11 septembre 2026 :**
+demander, c'est dévoiler. Montrer « fort / forte / fort.e » pour faire choisir
+l'accord annonçait une phrase du paquet avant sa première nuit — sur un message
+qui est une surprise, c'est le gâcher. D'où :
+
+- **L'accord est fixé par celui qui offre, dans le manifeste**, derrière un `#`
+  de l'adresse du volet : `volet.html#prenom=…&accord=…`. Le fragment ne part
+  jamais vers le serveur et ne change pas l'origine, donc pas le magasin
+  (décision 16). Il ne se demande pas : c'est une forme — masculine, féminine ou
+  inclusive — que celui qui offre sait être la bonne, pas une case à cocher.
+- **Une phrase qui s'accorde porte ses trois formes**, `{fort|forte|fort.e}`, et
+  l'accord choisit laquelle. Le suffixe collé à `fort` ne tenait que pour les
+  adjectifs dont le féminin prend un e : « heureux » ne donne pas « heureuxe ».
+- **Le prénom peut y être aussi.** S'il n'y est pas, le volet le demande **une
+  fois**, à la première ouverture : un prénom demandé dévoile qu'une voix
+  viendra, pas ce qu'elle dira. Ignoré, il n'est **jamais redemandé** — ce
+  serait un rappel.
+- **Répondre n'écrit pas dans le document.** Le prénom va au `localStorage` et
+  part dans le `.docx` avec la prochaine copie du paysage, jamais dans une copie
+  pour lui seul : Word demanderait d'enregistrer un fichier où l'on n'a rien
+  tapé.
+- **Sans prénom, les nominatives sortent du paquet ; sans accord, les phrases
+  qui s'accordent aussi.** Rien ne casse, il y a moins de phrases — et l'écart
+  moyen baisse avec elles.
+- **Le prénom ne s'écrit qu'avec ce que l'alphabet sait dessiner.** Accents
+  retirés et `’` ramené à `'`, comme au tracé ; l'alphabet gagne un « - » pour
+  les prénoms composés ; un signe qu'il ne dessine pas se signale à la saisie
+  au lieu de disparaître en silence.
+
+⚠️ Le texte de la question est la voix de celui qui offre, comme les phrases :
+il ne s'écrit pas à sa place.
+
+⚠️ Personne ne sait si le `#` survit à l'adresse que Word compose pour le volet
+dans l'Office LTSC 2021. S'il ne survit pas, le repli est un `?` — et le prénom
+passe alors par les serveurs de GitHub.
 
 ⚠️ Les phrases sont le seul endroit du système où la voix de celui qui offre
 passe. Tout le reste marcherait pour n'importe qui. Elles ne se génèrent pas.
