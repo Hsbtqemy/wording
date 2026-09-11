@@ -401,6 +401,95 @@ const MUTATIONS = [
    + " document ou personne n'a tape",
    "volet"],
 
+  // ---------------------------------------------------------------- la nuit
+  // Le profil, la question du prenom et le message de nuit (decision 10). Ce
+  // qui choisit la phrase et ce qui la trace a sa parite ; ce qui suit est du
+  // cablage, et chacune de ces regressions laisserait un volet parfaitement
+  // presentable — qui gacherait la surprise, ou ne la ferait jamais.
+  ["volet.js",
+   "  const lu = profil_de_l_adresse(window.location.href);",
+   "  const lu = { prenom: null, accord: null };",
+   "decision 10 : le manifeste ne compte plus, ni prenom ni accord ne sont lus",
+   "volet"],
+
+  ["volet.js",
+   "  const du_fichier = Office.context.document.settings.get(REGLAGE_PRENOM) || null;",
+   "  const du_fichier = null;",
+   "le prenom venu dans le document ne compte pas : une autre machine le redemande",
+   "volet"],
+
+  ["volet.js",
+   "    localStorage.setItem(CLE_DEMANDE, \"1\");",
+   "    localStorage.getItem(CLE_DEMANDE);",
+   "ignoree, la question revient a chaque ouverture : un rappel",
+   "volet"],
+
+  ["nuit.js",
+   "  return !profil.prenom && !deja_demande && question.trim() !== \"\";",
+   "  return !profil.prenom && !deja_demande;",
+   "la question s'affiche sans son texte, et se consume avant qu'il soit ecrit",
+   "volet"],
+
+  ["volet.js",
+   "  Office.context.document.settings.set(REGLAGE_PRENOM, prenom);\n"
+   + "  profil = { ...profil, prenom };",
+   "  Office.context.document.settings.set(REGLAGE_PRENOM, prenom);\n"
+   + "  Office.context.document.settings.saveAsync();\n"
+   + "  profil = { ...profil, prenom };",
+   "repondre enregistre le document : Word demande d'enregistrer un fichier ou"
+   + " l'on n'a rien tape",
+   "volet"],
+
+  ["volet.js",
+   "    if (hors) hors.textContent = signalement(champ.value);",
+   "    if (hors) hors.textContent = \"\";",
+   "un signe que l'alphabet ne dessine pas disparait en silence",
+   "volet"],
+
+  ["volet.js",
+   "  const svg = dans_le_ciel(travail, veille);",
+   "  const svg = travail;",
+   "le message de nuit n'est jamais pose",
+   "volet"],
+
+  ["nuit.js",
+   "    for (const v of verdicts) this.nuit.enregistrer(v.verdict);",
+   "",
+   "les verdicts ne nourrissent plus la nuit : un deblocage sert le paquet",
+   "volet"],
+
+  ["nuit.js",
+   "    if (this.phrase === null) {",
+   "    if (true) {",
+   "la phrase se retire a chaque releve : un deblocage change les lettres deja"
+   + " tracees",
+   "volet"],
+
+  ["nuit.js",
+   "      this.depart = avant;",
+   "      this.depart = 0;",
+   "les mots des nuits d'avant revelent celle-ci : tout apparait au premier mot",
+   "volet"],
+
+  ["nuit.js",
+   "    this.avancement = Math.min(1.0, ecrits / MOTS_POUR_TOUT_REVELER);",
+   "    this.avancement = Math.min(1.0, (instant.getHours() - HEURE_NUIT[0]"
+   + " + instant.getMinutes() / 60) / 3);",
+   "decision 10 : la revelation suit l'horloge, rester assis suffit",
+   "volet"],
+
+  ["nuit.js",
+   "    if (!dans_la_fenetre(instant)) return;",
+   "    if (!dans_la_fenetre(instant)) {\n      this.phrase = null;\n      return;\n    }",
+   "a 5 h, le message s'efface sous les yeux de qui ecrit encore",
+   "volet"],
+
+  ["nuit.js",
+   "  const haut = vy + vh * CIEL_MARGE;",
+   "  const haut = vy + vh * 0.6;",
+   "le message tombe du ciel sur le plant",
+   "volet"],
+
   // ------------------------------------------------------------------- guet
   // Le guet est le premier morceau du cablage Word couvert par la PARITE : le
   // rapprochement de deux instantanes a un Python en face. Ces mutations se

@@ -871,6 +871,50 @@ quelqu'un qu'on ne sait pas nommer. Coût : 1,9 ms par passage d'`essais.py`,
 chronométré dans le processus ; la mesure en tours alternés donnait +716 ms de
 médiane, mais un tour sur trois allait dans l'autre sens — c'était la charge.
 
+**Dans le volet, tranché le 11 septembre 2026 avant le câblage** — trois
+arbitrages que la décision laissait ouverts :
+
+- **Dans le ciel.** Le message se pose en haut de la vue de travail, dans le
+  même SVG, après les plants : il appartient au dessin, et la caméra ne bouge
+  pas pour lui. Il peut chevaucher la cime d'un plant haut. Quatorze signes par
+  ligne au lieu de vingt-deux : dans une colonne de 340 px, une lettre passe
+  d'une dizaine de pixels à près de seize — au calcul, pas encore vu dans un
+  vrai volet.
+- **Fixée au premier mot.** La phrase est tirée quand le premier mot de la
+  nuit arrive, puis ne bouge plus : des lettres déjà tracées ne changent pas
+  sous les yeux. Un déblocage arrive à temps — cinq reprises ne comptent aucun
+  mot, et c'est le paragraphe qui les suit qui ouvre la nuit. Un élan, qui
+  vient après six paragraphes, n'en donne jamais ; son registre est vide.
+- **Jusqu'à la fermeture.** À 5 h, les mots ne révèlent plus rien, mais ce qui
+  est tracé reste tant que le volet est ouvert. Rien n'est rangé : à la
+  réouverture, il n'est plus là. Le revoir le lendemain sans avoir écrit la
+  nuit ressemblerait à un rappel.
+
+La révélation se lit dans les `mots_de_nuit` que le paysage compte déjà pour la
+palette (décision 9), depuis le début de la nuit : le capital de départ et les
+nuits d'avant ne révèlent rien. Le prénom répondu va au `localStorage` et au
+réglage `paysage.prenom` par `set()` sans `saveAsync` — le chemin de
+`paysage.identifiant` (décision 16).
+
+⚠️ **À quatorze signes, un prénom composé ouvrait le message sur un blanc.**
+`_mise_en_page` pousse une ligne vide quand le premier mot dépasse la largeur,
+et « MARIE-ANTOINETTE, » en fait dix-sept. Le volet élargit jusqu'à ce que le
+premier mot tienne. La spec a le même défaut à vingt-deux, pour un premier mot
+de vingt-deux signes ou plus ; aucune phrase ni aucun prénom connu ne
+l'atteint.
+
+⚠️ **Un paragraphe de nuit tapé d'un coup est un collage.** Les premiers essais
+du volet entraient dix-sept mots dans le relevé qui suivait l'Entrée :
+au-dessus de `SEUIL_COLLAGE`, donc une greffe, qui ne crédite aucun mot. Le
+message n'apparaissait jamais, et le câblage était juste. Les essais écrivent
+désormais comme une personne, le texte trente secondes après l'Entrée.
+
+**Où ça se vérifie, côté volet :** `essais_volet.js`, dix essais — contre
+l'hôte simulé, ou sur `nuit.js` seul — et treize mutations, chacune attrapée
+par l'essai qui la vise. Le volet charge 74,7 Ko compressés au lieu de 61,6,
+`volet.html` compris (décision 13) : `message.js` 4,1, `nuit.js` 4,0,
+`phrases.js` 3,0, et le reste dans `volet.js` et `volet.html`.
+
 ⚠️ Les phrases sont le seul endroit du système où la voix de celui qui offre
 passe. Tout le reste marcherait pour n'importe qui. Elles ne se génèrent pas.
 
@@ -983,6 +1027,14 @@ compressés**. Sans ses 885 commentaires, retirés au parseur et non à la regex
 72,9 Ko et 23,7 Ko. Les commentaires font 55 % du poids, et ils ne se
 retranchent pas : c'est la mémoire du projet.
 
+**Remesuré le même jour, après le câblage du message de nuit** : `volet.html`
+et les douze modules qu'il importe désormais — `message.js`, `phrases.js` et
+`nuit.js` en plus — font **199,2 Ko bruts et 74,7 Ko compressés**, contre 164,3
+et 61,6 pour la version d'avant mesurée de la même façon (gzip fichier par
+fichier) : +34,9 et +13,1 Ko. L'écart avec les 163,7 et 61,3 ci-dessus tient à
+la mesure, pas au code : on ne compare qu'à méthode égale. Les commentaires
+n'ont pas été recomptés.
+
 La règle est donc celle que le chiffre servait : **aucune dépendance**. Le poids
 se mesure, il ne se borne pas.
 
@@ -1026,9 +1078,9 @@ paysage parfaitement présentable, et faux.
 `addin/src/phrases.js`, le 11 septembre 2026 (chantier PHR-2). La parité les
 couvre : 37 messages et leurs 5 773 segments, 1 800 nuits servies, 40
 événements routés, 84 remplissages de profil, identiques des deux côtés.
-**Ils ne sont pas encore câblés** : `volet.js` ne les importe pas, et l'add-in
-tient debout sans eux — le message de nuit est un easter egg, et le registre
-`creux` de `phrases.py` appartient de toute façon à l'auteur.
+**Câblés le même jour**, par `addin/src/nuit.js` — voir la décision 10.
+L'add-in tiendrait debout sans eux : le message de nuit est un easter egg, et
+le registre `creux` de `phrases.py` appartient de toute façon à l'auteur.
 
 Le cahier traverse les nuits d'avant le 1er janvier 2027, dont le numéro est
 négatif : c'est là que les deux langages ne comptent pas pareil, et c'est là
@@ -2508,8 +2560,9 @@ deux divergent, c'est le JavaScript qui a un bug.
 | `src/grammaire.js` | portage de `grammaire.py`, sans les planches |
 | `src/traits.js` | portage de `traits.py` |
 | `src/paysage.js` | portage de `paysage.py` |
-| `src/message.js` | portage de `message.py` — pas encore câblé |
-| `src/phrases.js` | portage de `phrases.py` — pas encore câblé |
+| `src/message.js` | portage de `message.py` |
+| `src/phrases.js` | portage de `phrases.py` |
+| `src/nuit.js` | le profil, la phrase de la nuit et où elle se pose — sans Python en face |
 | `parite/parite.js` | rejoue le cahier et compare — **code de sortie** |
 | `parite/mutations.js` | le vérificateur sait-il échouer ? |
 

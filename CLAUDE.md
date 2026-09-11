@@ -47,7 +47,8 @@ relisent jamais ; seule la largeur (48 bits) et le pouvoir séparateur comptent.
 
 **Aucune dépendance, jamais.** Ni côté Python, ni côté JavaScript. Un cadeau
 adossé à une bibliothèque meurt le jour où elle casse. Le poids n'est pas la
-règle : le volet charge 61 Ko compressés, dont plus de la moitié de
+règle : le volet charge 75 Ko compressés depuis que le message de nuit y
+est câblé — 61 avant, dont plus de la moitié de
 commentaires qui ne se retranchent pas — voir la décision 13.
 
 ---
@@ -66,7 +67,7 @@ PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
 Attendu : `74 passes, 0 en echec` · `65/65` · `aucun ecart` · `23 passes` ·
-`25 passes` · `119/119`.
+`35 passes` · `132/132`.
 
 `essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
 qu'aucune parité ne peut couvrir, faute de Python en face. Elle y a trouvé
@@ -88,27 +89,31 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **18 min 05** (11 septembre 2026 à
-14 h 25, à 65 et 119 mutations). C'était 18 min 06 plus tôt dans l'après-midi à
-64 et 106, 13 min 42 le matin même à 58 et 106, 13 min 14 le 9 septembre au même compte, 14 min 50 à 54 et 103, 15 min 38 à
+Durée mesurée de l'enchaînement complet : **25 min 19** (11 septembre 2026 à
+15 h 18, à 65 et 132 mutations). C'était 18 min 05 à 14 h 25, à 65 et 119,
+18 min 06 plus tôt dans l'après-midi à 64 et 106, 13 min 42 le matin même à 58
+et 106, 13 min 14 le 9 septembre au même compte, 14 min 50 à 54 et 103, 15 min 38 à
 50 et 100, 9 min 38 à 13 min 35 à 47 et 98, et 5 min 57 à 36 et 87.
 
 ⚠️ **Lire cette suite dans l'ordre : 15 min 38, puis 14 min 50, puis 13 min 14 —
 pendant que la chaîne gagnait huit mutations et deux essais.** Le code n'a pas
 accéléré ; la machine était moins chargée — et deux jours plus tard, au même
 compte et sans une ligne de code changée, la même chaîne a pris 28 s de plus.
-Et à quatorze mutations de plus, une seconde de moins. Ces totaux ne sont pas une tendance,
+Et à quatorze mutations de plus, une seconde de moins — puis, une heure après,
+sept minutes de plus pour treize mutations JavaScript et pas une ligne de
+Python changée, toutes prises par `mutations.py`. Ces totaux ne sont pas une tendance,
 et le seul usage honnête qu'on peut en faire est de savoir combien de temps
 prévoir, jamais de comparer deux versions. Pour ça, alterner — voir plus bas. Où le temps passe, parce que ça se voit
 mal autrement :
 
 | `essais.py` | `mutations.py` | `parite.py` | les deux `essais*.js` | `mutations.js` |
 |---|---|---|---|---|
-| 11–16 s | **14 min 39** | 4–7 s | < 1 s | **3 min 05** |
+| 11–16 s | **14 min 39 à 21 min 44** | 4–7 s | < 1 s | **3 min 05 à 3 min 14** |
 
 Les deux colonnes lourdes sont **chronométrées**, chaque suite enveloppée d'un
-chronomètre dans la même commande : 878 893 ms et 184 837 ms le 11 septembre
-2026 à 14 h 25, à 65 et 119 mutations ; 918 453 ms et 148 856 ms plus tôt dans
+chronomètre dans la même commande : 1 303 693 ms et 194 423 ms le 11 septembre
+2026 à 15 h 18, à 65 et 132 mutations ; 878 893 ms et 184 837 ms à 14 h 25, à
+65 et 119 ; 918 453 ms et 148 856 ms plus tôt dans
 l'après-midi, à 64 et 106 ; 678 939 ms et 123 525 ms le matin, à 58 et 106.
 ⚠️ `mutations.js`, dont pas une ligne n'avait changé entre le matin et
 l'après-midi, a pris 20 % de plus : les six mutations ajoutées à
@@ -117,13 +122,16 @@ d'écart, la charge le reste. Puis `mutations.py` a pris 40 s de **moins** avec
 une mutation de plus. `mutations.js` a pris 36 s de plus pour treize
 mutations, 1,55 s par relance au lieu de 1,40 : cohérent avec un cahier de
 parité passé de 12,2 à 13,7 Mo, que chaque relance de la parité relit.
+⚠️ Et `mutations.py` a pris **sept minutes de plus** entre 14 h 25 et 15 h 18,
+sur un Python identique à l'octet près : 20 s par relance au lieu de 13,5. La
+plus forte variation mesurée à code égal — rien d'autre que la charge.
 
 ⚠️ Elles étaient jusque-là **déduites** du total, et les deux déductions —
 « ≈ 13 min » et « ≈ 2 min » — dépassaient ensemble les 13 min 14 dont elles
 étaient tirées. Un chiffre déduit d'un total où l'essentiel est justement ce
 qu'on déduit ne valait rien, et ça se voyait à l'addition.
 
-`mutations.py` fait donc 11,7 à 14,4 s par relance selon la charge — parfois
+`mutations.py` fait donc 11,7 à 20 s par relance selon la charge — parfois
 moins qu'un `essais.py` seul : ce n'est pas un raccourci, chaque relance est un
 passage entier, aucun essai ne s'arrête au premier échec.
 
@@ -134,7 +142,7 @@ chaîne, mesurer les deux versions **l'une après l'autre** — sinon on retire 
 travail juste pour rien.
 
 `mutations.py` relance `essais.py` soixante-cinq fois, et `mutations.js`
-relance la parité ou la batterie du volet cent dix-neuf fois. Assez
+relance la parité ou la batterie du volet cent trente-deux fois. Assez
 long pour donner envie de paralléliser, ce qu'il ne faut surtout pas faire.
 
 ⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par soixante-cinq.**
@@ -298,6 +306,11 @@ déclaration.
 ⚠️ **Le registre `creux` de `phrases.py` est délibérément vide.** C'est le seul
 endroit du système où passe la voix de celui qui offre le cadeau. Ne pas
 l'écrire, ne pas le remplir « en attendant », ne pas proposer de brouillon.
+
+⚠️ **Le texte de la question du prénom est de la même main**, entre les deux
+balises du `label` de `addin/volet.html`. Vide, la question se tait et n'est
+pas comptée comme posée ; les essais lui donnent un texte à eux, qui ne part
+jamais dans le livrable. Ne pas l'écrire non plus.
 
 Restent aussi à l'auteur : atteindre vingt phrases pour que l'écart moyen du
 paquet dépasse dix nuits (point ouvert 10), et décider si la transition

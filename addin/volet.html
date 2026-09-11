@@ -10,8 +10,9 @@
   Rien ne doit ressembler a une barre de progression, a un score, ni a un
   rappel : pas de chiffre, pas de pourcentage, pas de compteur de mots. Ce qui
   est montre est le paysage, et rien d'autre. Le seul texte est le bouton qui
-  ouvre la vue d'ensemble, et le mot qui s'affiche quand quelque chose empeche
-  le paysage de pousser.
+  ouvre la vue d'ensemble, le mot qui s'affiche quand quelque chose empeche
+  le paysage de pousser, et la question du prenom — une fois, et seulement si
+  celui qui offre l'a ecrite.
 
   Office.js vient du CDN de Microsoft, qui est la seule dependance possible :
   Word refuse de charger un add-in autrement. Le reste du code est a nous, sans
@@ -44,6 +45,22 @@
      respirer. Sans ca les retours a la ligne se replient en espaces. */
   #mot { color: var(--pale); font-size: 12px; font-style: italic;
          white-space: pre-line; }
+  /* La question du prenom : posee une fois, aussi discrete que le reste.
+     [hidden] doit gagner sur le display du formulaire, sinon il s'affiche
+     avant que le volet ait decide de le montrer. */
+  #demande {
+    flex: 0 0 auto;
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 8px 12px 0;
+  }
+  #demande[hidden] { display: none; }
+  #question { font-size: 12px; font-style: italic; }
+  #prenom {
+    font: inherit; font-size: 13px; color: var(--encre);
+    background: none; border: 0; border-bottom: 1px solid var(--pale);
+    padding: 2px 0; outline: none;
+  }
+  #hors { color: var(--pale); font-size: 11px; min-height: 1em; }
   /* Un bouton discret : il ne demande rien, il ouvre. */
   button {
     font: inherit; font-size: 12px; color: var(--pale);
@@ -57,6 +74,21 @@
 </head>
 <body>
   <div id="paysage"></div>
+  <!--
+    La question du prenom (decision 10). Posee une fois, a la premiere
+    ouverture, si le manifeste ne donne pas de prenom ; ignoree, jamais
+    reposee.
+
+    ⚠️ SON TEXTE EST A ECRIRE PAR CELUI QUI OFFRE, entre les deux balises du
+    label. C'est sa voix, comme les phrases de nuit : il ne s'ecrit pas a sa
+    place. Tant qu'il est vide, la question ne s'affiche pas.
+  -->
+  <form id="demande" hidden>
+    <label id="question" for="prenom"></label>
+    <input id="prenom" type="text" autocomplete="given-name" maxlength="40"
+           spellcheck="false">
+    <span id="hors"></span>
+  </form>
   <div id="pied">
     <span id="mot"></span>
     <button id="apercu" type="button">tout voir</button>

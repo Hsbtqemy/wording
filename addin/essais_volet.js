@@ -19,13 +19,16 @@
 
 import { readFileSync } from "node:fs";
 import { choisir } from "./src/magasin.js";
+import { Veille } from "./src/nuit.js";
+import { phrase_de_la_nuit, DEBLOCAGE, CREUX } from "./src/phrases.js";
 
 // --------------------------------------------------------------------------
 // Le faux Office
 // --------------------------------------------------------------------------
 function monter_hote({ plafond = 109, url = "C:/These/chapitre1.docx",
                        paragraphes = [], reglages = {},
-                       refus_sauvegarde = false } = {}) {
+                       refus_sauvegarde = false,
+                       fragment = "", question = "" } = {}) {
   const etat = {
     paras: [],        // {id, text, style}
     suivant: 0,
@@ -197,10 +200,28 @@ function monter_hote({ plafond = 109, url = "C:/These/chapitre1.docx",
     return el;
   };
   const elements = { paysage: faireElement(), mot: faireElement(),
-                     apercu: faireElement() };
+                     apercu: faireElement(),
+                     // La question du prenom, comme dans volet.html : cachee, et
+                     // son texte vide tant que celui qui offre ne l'a pas ecrit.
+                     demande: faireElement(), question: faireElement(),
+                     prenom: faireElement(), hors: faireElement() };
+  elements.demande.hidden = true;
+  elements.question.textContent = question;
+  elements.prenom.value = "";
+  elements.demande.soumettre = function soumettre() {
+    if (!this.ecouteurs.submit) throw new Error("rien n'ecoute la reponse");
+    this.ecouteurs.submit({ preventDefault() {} });
+  };
+  elements.prenom.taper = function taper(v) {
+    this.value = v;
+    if (!this.ecouteurs.input) throw new Error("rien n'ecoute la saisie");
+    this.ecouteurs.input();
+  };
   globalThis.document = { getElementById: (id) => elements[id] || null };
   globalThis.window = {
-    location: { href: "https://exemple.invalid/paysage/volet.html" },
+    // Le profil vit derriere le # : volet.html#prenom=…&accord=…
+    location: { href: "https://exemple.invalid/paysage/volet.html"
+                      + (fragment ? `#${fragment}` : "") },
     addEventListener() {},
   };
   globalThis.setInterval = (f) => { etat.tic = f; return 1; };
@@ -864,6 +885,280 @@ suite.push(["une copie illisible dans le document ne casse pas l'ouverture",
     vrai(etat.elements.paysage.innerHTML.includes("<svg"),
          "le volet dessine quand meme");
   }]);
+
+// --------------------------------------------------------------------------
+// La nuit (decision 10)
+// --------------------------------------------------------------------------
+// Le profil, la question du prenom, et le message qui se revele entre 2 h et
+// 5 h. Ce qui choisit la phrase et ce qui la trace est eprouve par la parite ;
+// ici, le cablage — et nuit.js, qui n'a pas de Python en face.
+
+/**
+ * Fige l'horloge. En heure LOCALE : c'est ainsi que le volet lit la fenetre de
+ * nuit, et un essai qui tournerait sur l'heure reelle changerait de verdict
+ * selon le moment ou on le lance.
+ */
+async function a_l_heure(quand, f) {
+  const vraie = Date.now;
+  Date.now = () => quand.getTime();
+  try {
+    return await f();
+  } finally {
+    Date.now = vraie;
+  }
+}
+
+const le_12_a = (h, m = 0) => new Date(2026, 8, 12, h, m);
+const NUIT = (i) => `Une ligne ecrite dans la nuit, la numero ${i}, sans lever `
+  + "les mains du clavier ni regarder l'heure.";
+const QUESTION = "(texte d'essai, pas celui du cadeau)";
+
+/** Les traits du message dans le volet, ou -1 s'il n'y a pas de message. */
+function traits_du_message(etat) {
+  const s = etat.elements.paysage.innerHTML;
+  const i = s.indexOf('<g class="message">');
+  return i < 0 ? -1 : (s.slice(i).match(/<line/g) || []).length;
+}
+
+/** Meme machine, meme localStorage : un second volet sur le stockage du premier. */
+function partager(etat, stockage) {
+  etat.stockage = stockage;
+  globalThis.localStorage.getItem = (k) => (stockage.has(k) ? stockage.get(k) : null);
+  globalThis.localStorage.setItem = (k, v) => { stockage.set(k, String(v)); };
+}
+
+/**
+ * Ecrire un paragraphe de nuit comme une personne : Entree, puis le texte
+ * trente secondes plus tard.
+ *
+ * ⚠️ PAS D'UN COUP. Tape dans le meme releve que l'Entree, un paragraphe de
+ * dix-sept mots depasse SEUIL_COLLAGE — quinze mots par intervalle : c'est un
+ * collage pour la decision 4, et un collage ne credite aucun mot, ni au
+ * paysage ni a la nuit. Les premiers essais de la nuit tapaient ainsi, et le
+ * message n'apparaissait jamais : le cablage etait juste, la frappe ne l'etait
+ * pas.
+ */
+async function ecrire_la_nuit(etat, quand, texte) {
+  const id = await a_l_heure(quand, () => entrer(etat));
+  await a_l_heure(new Date(quand.getTime() + 30 * 1000), async () => {
+    etat.paras.find((p) => p.id === id).text = texte;
+    await etat.tic();
+  });
+}
+
+suite.push(["le message de nuit se revele aux mots ecrits, pas a l'horloge",
+  async () => {
+    const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
+    await a_l_heure(le_12_a(3), () => demarrer(etat));
+    egal(traits_du_message(etat), -1, "pas de message avant le premier mot de la nuit");
+    await ecrire_la_nuit(etat, le_12_a(3, 5), NUIT(0));
+    const premiers = traits_du_message(etat);
+    vrai(premiers > 0, "le premier paragraphe de la nuit ouvre le message");
+    // Rester assis ne suffit pas : une heure et demie plus tard, une Entree
+    // seule — un releve, des verdicts, et pas un mot.
+    await a_l_heure(le_12_a(4, 35), () => entrer(etat));
+    egal(traits_du_message(etat), premiers,
+         "une heure et demie sans ecrire ne revele rien de plus");
+    await ecrire_la_nuit(etat, le_12_a(4, 40), NUIT(1));
+    vrai(traits_du_message(etat) > premiers, "ecrire revele la suite");
+  }]);
+
+suite.push(["a 5 h le message reste, et la reouverture l'efface", async () => {
+  const a = monter_hote({ paragraphes: [{ texte: PHRASE }] });
+  await a_l_heure(le_12_a(4, 50), () => demarrer(a));
+  await ecrire_la_nuit(a, le_12_a(4, 55), NUIT(0));
+  const traces = traits_du_message(a);
+  vrai(traces > 0, "le message a commence avant 5 h");
+  // On ecrit encore apres 5 h : plus rien ne se revele, et rien ne s'efface
+  // sous les yeux.
+  await ecrire_la_nuit(a, le_12_a(5, 10), NUIT(1));
+  egal(traits_du_message(a), traces, "apres 5 h, ce qui est trace reste tel quel");
+
+  // Word se ferme et se rouvre, la matinee venue : rien n'a ete range.
+  const b = monter_hote({ paragraphes: [{ texte: PHRASE }], reglages: a.persistes });
+  partager(b, a.stockage);
+  await a_l_heure(le_12_a(9), () => demarrer(b));
+  await ecrire_la_nuit(b, le_12_a(9, 5), NUIT(2));
+  egal(traits_du_message(b), -1, "la reouverture ne ramene pas le message");
+}]);
+
+suite.push(["la nuit ne se revele qu'avec ses propres mots, entiere vers 800",
+  async () => {
+    const profil = { prenom: "Camille", accord: "f" };
+    // Cinq cents mots ecrits lors de nuits d'avant : ils sont au paysage, pas
+    // a cette nuit-ci.
+    const v = new Veille(profil, 500);
+    v.suivre([{ verdict: "ecriture" }], 540, le_12_a(3));
+    vrai(v.phrase !== null, "le premier mot tire la phrase");
+    vrai(v.avancement > 0 && v.avancement < 0.1,
+         `quarante mots ne revelent presque rien, obtenu ${v.avancement}`);
+    v.suivre([{ verdict: "ecriture" }], 900, le_12_a(3, 30));
+    vrai(v.avancement > 0.4 && v.avancement < 0.6,
+         `quatre cents mots en revelent la moitie, obtenu ${v.avancement}`);
+    v.suivre([{ verdict: "ecriture" }], 1300, le_12_a(4));
+    egal(v.avancement, 1, "huit cents mots, et la phrase est entiere");
+  }]);
+
+suite.push(["la phrase est fixee au premier mot, et un deblocage arrive a temps",
+  async () => {
+    const profil = { prenom: "Camille", accord: "f" };
+    const cinq = Array.from({ length: 5 }, () => ({ verdict: "reprise" }));
+
+    // Cinq reprises ne comptent aucun mot : rien n'est tire. Le paragraphe qui
+    // les suit ouvre la nuit, et c'est un deblocage.
+    const a = new Veille(profil, 0);
+    a.suivre(cinq, 0, le_12_a(3));
+    egal(a.phrase, null, "des reprises seules ne tirent rien");
+    a.suivre([{ verdict: "ecriture" }], 14, le_12_a(3, 10));
+    vrai(DEBLOCAGE.includes(a.phrase),
+         `le deblocage donne sa phrase, obtenu "${a.phrase}"`);
+
+    // Une nuit ordinaire tire dans le paquet, puis un deblocage survient : la
+    // phrase ne change pas sous les yeux.
+    const b = new Veille(profil, 0);
+    b.suivre([{ verdict: "ecriture" }], 14, le_12_a(3));
+    const premiere = b.phrase;
+    vrai(premiere !== null && !DEBLOCAGE.includes(premiere),
+         "une nuit ordinaire tire dans le paquet");
+    b.suivre(cinq, 14, le_12_a(3, 20));
+    b.suivre([{ verdict: "ecriture" }], 30, le_12_a(3, 30));
+    egal(b.nuit.evenement(), "deblocage", "le deblocage est bien survenu");
+    egal(b.phrase, premiere, "mais la phrase tiree au premier mot reste");
+  }]);
+
+suite.push(["un registre vide retombe sur le paquet, comme en Python", async () => {
+  const profil = { prenom: "Camille", accord: "f" };
+  const v = new Veille(profil, 0);
+  v.suivre(Array.from({ length: 4 }, () => ({ verdict: "reprise" })), 0, le_12_a(3));
+  v.suivre([{ verdict: "frappe" }], 9, le_12_a(3, 5));
+  egal(v.nuit.evenement(), "creux",
+       "quatre reprises sans paragraphe neuf font un creux");
+  vrai(v.phrase !== null, "un registre vide ne casse rien : une phrase est servie");
+  // CREUX est vide tant que celui qui offre ne l'a pas ecrit. Le jour ou il le
+  // sera, c'est lui qui servira, et cette derniere verification se taira.
+  if (!CREUX.length) {
+    egal(v.phrase, phrase_de_la_nuit(profil, "2026-09-12"), "celle du paquet, a sa date");
+  }
+}]);
+
+suite.push(["le volet lit le prenom et l'accord derriere le # de son adresse",
+  async () => {
+    const profils = [["prenom=Camille&accord=f", { prenom: "Camille", accord: "f" }],
+                     ["prenom=Camille", { prenom: "Camille", accord: null }],
+                     ["", { prenom: null, accord: null }]];
+    // Une nuit ou les trois profils tirent trois phrases qui ne commencent pas
+    // par la meme lettre — sinon les premiers traits se ressembleraient. On la
+    // CHERCHE, on ne la suppose pas.
+    const iso = (j) => `2026-09-${String(j).padStart(2, "0")}`;
+    const tetes = (j) => new Set(profils.map(([, p]) => phrase_de_la_nuit(p, iso(j))[0]));
+    let jour = 12;
+    while (jour < 30 && tetes(jour).size < 3) jour += 1;
+    vrai(jour < 30, "aucune nuit de septembre ne separe les trois profils");
+
+    const dessins = [];
+    for (const [fragment] of profils) {
+      const etat = monter_hote({ paragraphes: [{ texte: PHRASE }], fragment });
+      // eslint-disable-next-line no-await-in-loop
+      await a_l_heure(new Date(2026, 8, jour, 3), () => demarrer(etat));
+      for (let i = 0; i < 3; i++) {
+        // eslint-disable-next-line no-await-in-loop
+        await ecrire_la_nuit(etat, new Date(2026, 8, jour, 3, 5 + i), NUIT(i));
+      }
+      const s = etat.elements.paysage.innerHTML;
+      vrai(s.includes('<g class="message">'), `#${fragment} : le message doit etre la`);
+      dessins.push(s.slice(s.indexOf('<g class="message">')));
+    }
+    egal(new Set(dessins).size, 3, "trois adresses, trois messages : le # est lu");
+  }]);
+
+suite.push(["sans prenom dans l'adresse, la question est posee une fois", async () => {
+  const paras = [{ texte: PHRASE }];
+  const a = monter_hote({ paragraphes: paras, question: QUESTION });
+  await demarrer(a);
+  egal(a.elements.demande.hidden, false, "posee a la premiere ouverture");
+
+  // Ignoree : Word se ferme sans reponse. Meme machine, deuxieme ouverture.
+  const b = monter_hote({ paragraphes: paras, question: QUESTION, reglages: a.persistes });
+  partager(b, a.stockage);
+  await demarrer(b);
+  egal(b.elements.demande.hidden, true, "ignoree, elle n'est jamais reposee");
+
+  const c = monter_hote({ paragraphes: paras, question: QUESTION,
+                          fragment: "prenom=Camille" });
+  await demarrer(c);
+  egal(c.elements.demande.hidden, true, "un prenom dans l'adresse : rien a demander");
+
+  // Le document arrive d'une autre machine, ou le prenom avait ete donne.
+  const d = monter_hote({ paragraphes: paras, question: QUESTION,
+                          reglages: { "paysage.prenom": "Camille" } });
+  await demarrer(d);
+  egal(d.elements.demande.hidden, true, "un prenom venu dans le document : rien non plus");
+
+  // Sans son texte, la question se tait — et n'est pas comptee comme posee.
+  const e = monter_hote({ paragraphes: paras });
+  await demarrer(e);
+  egal(e.elements.demande.hidden, true, "sans texte, pas de question");
+  egal(e.stockage.has("paysage:prenom:demande"), false,
+       "et elle reste a poser, pour le jour ou le texte sera ecrit");
+}]);
+
+suite.push(["repondre n'ecrit rien dans le document", async () => {
+  const etat = monter_hote({ paragraphes: [{ texte: PHRASE }], question: QUESTION });
+  await demarrer(etat);
+  etat.elements.prenom.value = "Camille";
+  etat.elements.demande.soumettre();
+  egal(etat.elements.demande.hidden, true, "la question se retire une fois repondue");
+  egal(etat.sauvegardes, 0, "repondre ne sauvegarde pas le document");
+  egal(etat.persistes["paysage.prenom"], undefined, "rien dans le fichier");
+  egal(etat.reglages["paysage.prenom"], "Camille", "le reglage attend dans la session");
+  egal(etat.stockage.get("paysage:prenom"), "Camille", "et le dossier le garde");
+  await pousser(etat, "Un paragraphe tape a la main, du premier au dernier mot.");
+  egal(etat.persistes["paysage.prenom"], "Camille",
+       "il part avec la prochaine copie du paysage");
+}]);
+
+suite.push(["un signe que l'alphabet ne dessine pas est signale a la saisie",
+  async () => {
+    const etat = monter_hote({ paragraphes: [{ texte: PHRASE }], question: QUESTION });
+    await demarrer(etat);
+    const { prenom, hors } = etat.elements;
+    prenom.taper("Zoé");
+    egal(hors.textContent, "", "un accent se retire au trace : rien a signaler");
+    prenom.taper("Marie-Anne N’Dri");
+    egal(hors.textContent, "", "l'espace, le trait d'union et l'apostrophe se dessinent");
+    prenom.taper("Søren");
+    vrai(hors.textContent.includes("Ø"),
+         `le Ø doit etre signale, obtenu "${hors.textContent}"`);
+  }]);
+
+suite.push(["le message se pose dans le ciel, par-dessus le paysage", async () => {
+  const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
+  await a_l_heure(le_12_a(3), () => demarrer(etat));
+  for (let i = 0; i < 20; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    await ecrire_la_nuit(etat, le_12_a(3, 1 + i), NUIT(i));
+  }
+  const s = etat.elements.paysage.innerHTML;
+  const i = s.indexOf('<g class="message">');
+  vrai(i > s.lastIndexOf("<g opacity="), "le message vient apres les plants, donc par-dessus");
+  const [vx, vy, vw, vh] = s.match(/viewBox="([^"]+)"/)[1].split(" ").map(Number);
+  const [, ox, oy, k] = s.slice(i)
+    .match(/translate\(([-\d.]+),([-\d.]+)\) scale\(([-\d.]+)\)/).map(Number);
+  let bas = -Infinity;
+  let gauche = Infinity;
+  let droite = -Infinity;
+  for (const m of s.slice(i).matchAll(
+    /x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"/g)) {
+    const [, x1, y1, x2, y2] = m.map(Number);
+    bas = Math.max(bas, oy + y1 * k, oy + y2 * k);
+    gauche = Math.min(gauche, ox + x1 * k, ox + x2 * k);
+    droite = Math.max(droite, ox + x1 * k, ox + x2 * k);
+  }
+  vrai(bas > -Infinity, "le message doit porter des traits");
+  vrai(bas < vy + vh * 0.45,
+       `le message doit rester dans le haut de la vue, il descend a ${((bas - vy) / vh).toFixed(2)}`);
+  vrai(gauche >= vx && droite <= vx + vw, "et tenir dans sa largeur");
+}]);
 
 // --------------------------------------------------------------------------
 // Le manifeste

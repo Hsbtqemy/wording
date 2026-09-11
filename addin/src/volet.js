@@ -31,13 +31,17 @@
  *   - la cle du DOSSIER, tiree de l'URL du document (decision 11) ;
  *   - les deux magasins branches sur l'hote (decision 16) ;
  *   - la lecture du corps, et celle des styles quand la structure bouge ;
- *   - le tic de deux secondes (decision 12).
+ *   - le tic de deux secondes (decision 12) ;
+ *   - le profil, la question du prenom, et la nuit branchee sur le tic
+ *     (decision 10) — ce qui en decide est dans nuit.js.
  */
 
 import { Guet, INTERVALLE, compter_paragraphes } from "./guet.js";
 import { Magasin, CLE_ETAT, REGLAGE_ID } from "./magasin.js";
 import { graine_du_document } from "./grammaire.js";
 import { vue_de_travail } from "./composition.js";
+import { Veille, dans_le_ciel, mots_de_nuit, profil_de_l_adresse,
+         faut_il_demander, signalement } from "./nuit.js";
 
 let paysage = null;
 let guet = null;
@@ -45,6 +49,9 @@ let magasin = null;
 let graine = 1;
 let dialogue = null;
 let aEcrire = false;
+// La nuit (decision 10) : le profil, et ce que la nuit en cours a revele.
+let profil = { prenom: null, accord: null };
+let veille = null;
 
 /**
  * Combien de temps entre deux ecritures dans le dossier.
@@ -134,6 +141,97 @@ function ranger() {
 }
 
 // --------------------------------------------------------------------------
+// Le profil (decision 10)
+// --------------------------------------------------------------------------
+// Le prenom, quand il a ete DONNE en reponse : au dossier, et dans le document
+// par la prochaine copie du paysage — jamais par une copie a lui seul.
+const CLE_PRENOM = "paysage:prenom";
+const REGLAGE_PRENOM = "paysage.prenom";
+// La question a ete posee. Ignoree, elle n'est jamais reposee : ce serait un
+// rappel.
+const CLE_DEMANDE = "paysage:prenom:demande";
+
+/**
+ * Le profil : l'adresse d'abord — c'est celui qui offre qui l'a posee dans le
+ * manifeste —, puis un prenom deja donne en reponse, au dossier, ou dans le
+ * document s'il vient d'une autre machine. L'accord ne vient QUE de l'adresse :
+ * il ne se demande pas, parce que le demander devoilerait une phrase.
+ */
+function profil_du_volet() {
+  const lu = profil_de_l_adresse(window.location.href);
+  if (lu.prenom) return lu;
+  let prenom = null;
+  try {
+    prenom = localStorage.getItem(CLE_PRENOM);
+  } catch { /* donnees de site bloquees : le document peut encore le rendre */ }
+  const du_fichier = Office.context.document.settings.get(REGLAGE_PRENOM) || null;
+  if (!prenom) {
+    prenom = du_fichier;
+  } else if (du_fichier !== prenom) {
+    // set() sans saveAsync, comme l'identifiant : il partira avec la
+    // prochaine copie, et ouvrir ne marque rien comme modifie.
+    Office.context.document.settings.set(REGLAGE_PRENOM, prenom);
+  }
+  return { prenom, accord: lu.accord };
+}
+
+/**
+ * La question du prenom, une fois (decision 10).
+ *
+ * ⚠️ SON TEXTE N'EST PAS ICI. Il est dans volet.html, et il est vide : c'est la
+ * voix de celui qui offre, comme les phrases. Tant qu'il n'est pas ecrit, la
+ * question se tait — voir faut_il_demander().
+ *
+ * Posee, elle est marquee AUSSITOT, pas a la reponse : ignoree, elle n'est
+ * jamais reposee.
+ */
+function demander_prenom() {
+  const forme = document.getElementById("demande");
+  const question = document.getElementById("question");
+  const champ = document.getElementById("prenom");
+  if (!forme || !question || !champ) return;
+  let deja = true;
+  try {
+    deja = localStorage.getItem(CLE_DEMANDE) === "1";
+  } catch { /* sans memoire de l'avoir posee, on ne la pose pas */ }
+  if (!faut_il_demander(profil, question.textContent || "", deja)) return;
+  try {
+    localStorage.setItem(CLE_DEMANDE, "1");
+  } catch {
+    return;
+  }
+  forme.hidden = false;
+  const hors = document.getElementById("hors");
+  // Un signe que l'alphabet ne dessine pas se signale A LA SAISIE, au lieu de
+  // disparaitre en silence au trace.
+  champ.addEventListener("input", () => {
+    if (hors) hors.textContent = signalement(champ.value);
+  });
+  forme.addEventListener("submit", (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    repondre(champ.value);
+    forme.hidden = true;
+  });
+}
+
+/**
+ * ⚠️ REPONDRE N'ECRIT PAS DANS LE DOCUMENT. Le prenom va au dossier, et au
+ * reglage de la session par set() SANS saveAsync : il part avec la prochaine
+ * copie du paysage, jamais dans une copie pour lui seul — Word demanderait
+ * d'enregistrer un fichier ou l'on n'a rien tape.
+ */
+function repondre(texte) {
+  const prenom = (texte || "").trim();
+  if (!prenom) return;
+  try {
+    localStorage.setItem(CLE_PRENOM, prenom);
+  } catch { /* il vivra la session, et partira quand meme avec la copie */ }
+  Office.context.document.settings.set(REGLAGE_PRENOM, prenom);
+  profil = { ...profil, prenom };
+  if (veille) veille.profil = profil;
+}
+
+// --------------------------------------------------------------------------
 // La lecture du document
 // --------------------------------------------------------------------------
 /**
@@ -189,9 +287,13 @@ async function lire_corps() {
   return texte;
 }
 
-/** Le jour de l'annee, base zero, et l'heure : ce que la palette attend. */
-function horloge() {
-  const d = new Date();
+/**
+ * Le jour de l'annee, base zero, et l'heure : ce que la palette attend.
+ *
+ * Date.now() et non new Date() : c'est l'horloge que les essais savent figer,
+ * et la fenetre de nuit ne s'eprouve pas autrement.
+ */
+function horloge(d = new Date(Date.now())) {
   const debut = Date.UTC(d.getFullYear(), 0, 1);
   const jour = Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())
     - debut) / 86400000);
@@ -205,8 +307,10 @@ function dessiner() {
   const hote = document.getElementById("paysage");
   if (!hote || !paysage) return;
   const plants = paysage.etat().plants;
-  const svg = vue_de_travail(plants, graine, hote.clientWidth || 340,
-                             hote.clientHeight || 430);
+  const travail = vue_de_travail(plants, graine, hote.clientWidth || 340,
+                                 hote.clientHeight || 430);
+  // Le message de nuit, s'il y en a un, dans le ciel de la meme vue.
+  const svg = dans_le_ciel(travail, veille);
   // Poser innerHTML fait reparser tout le document SVG. Sur un paysage mur
   // c'est le poste le plus cher du tic, et il est le plus souvent inutile.
   if (svg === dernier_svg) return;
@@ -241,8 +345,14 @@ async function tic() {
   try {
     const faits = guet.relever(await lire_corps(), styles);
     if (faits.length) {
-      const { jour, heure } = horloge();
-      guet.nourrir(paysage, faits, jour, heure, guet.debit(faits, ecoule));
+      const instant = new Date(maintenant);
+      const { jour, heure } = horloge(instant);
+      const verdicts = guet.nourrir(paysage, faits, jour, heure,
+                                    guet.debit(faits, ecoule));
+      // La nuit lit les memes verdicts, et les mots de nuit que le paysage vient
+      // de compter — a la MEME heure que lui, sinon un paragraphe a cheval sur
+      // 2 h serait compte par l'un et pas par l'autre.
+      veille.suivre(verdicts, mots_de_nuit(paysage), instant);
       dessiner();
       aEcrire = true;
     }
@@ -331,6 +441,7 @@ Office.onReady(async (info) => {
   paysage.cle_dossier = dossier;
   graine = graine_du_document(id);
   guet = new Guet();
+  profil = profil_du_volet();
 
   // Le premier instantane : tout ce qui est deja la est acquis (decision 11).
   // rattacher() passe par le registre, donc rouvrir le fichier ne fait rien
@@ -352,6 +463,11 @@ Office.onReady(async (info) => {
   } catch (e) {
     console.warn("paysage : premier instantane manque", e);
   }
+
+  // La nuit part des mots de nuit deja la : le capital de depart est acquis,
+  // il ne revele rien (decision 11).
+  veille = new Veille(profil, mots_de_nuit(paysage));
+  demander_prenom();
 
   dessiner();
   setInterval(tic, INTERVALLE);
