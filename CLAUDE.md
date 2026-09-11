@@ -201,7 +201,9 @@ Compter ce qui est réellement traversé, ne pas le supposer.
   données qui en ont besoin (jeux d'essai, texte affiché à un lecteur).
 - **Messages de commit** : le sujet énonce la trouvaille, pas la tâche — « La
   planche des membres montrait le curseur, pas la correction ». Sans accents.
-  Le corps donne les chiffres mesurés et ce qu'on a compris.
+  Le corps donne les chiffres mesurés et ce qu'on a compris. Quand le commit
+  sert un chantier, son code vient en tête : « GRA-1 : Chaque famille tenait
+  dans un seul niveau de palette » — voir « Pilotage ».
 - Tout est en français, y compris les noms de variables.
 - Les commentaires disent **pourquoi**, et surtout ce qui a été essayé avant et
   pourquoi ça ne marchait pas. C'est la mémoire du projet.
@@ -210,6 +212,64 @@ Compter ce qui est réellement traversé, ne pas le supposer.
 `grammaire2.py` à `grammaire6.py`. Ils ont servi à trancher et leurs planches
 sont les preuves ; le code de référence est `grammaire.py`, `paysage.py`,
 `message.py`. Voir le tableau en fin de `DECISIONS.md`.
+
+---
+
+## Pilotage
+
+Ce qui reste à faire vit dans `pilotage/`, lu par
+[`pilote`](https://github.com/Hsbtqemy/pilote) :
+
+```bash
+npx github:Hsbtqemy/pilote --port 4125            # le journal, localhost:4125
+npx github:Hsbtqemy/pilote verifier               # avant de clore une session
+npx github:Hsbtqemy/pilote arreter --port 4125
+```
+
+Par npx, pas en dépendance : « aucune dépendance, jamais » vaut aussi pour
+l'outillage, et le prix est de quatre secondes par lancement. Port 4125 parce
+que 4123 sert le journal d'AGRAFES et 4124 celui de BD_ditor sur cette machine.
+
+Un chantier a sa fiche `pilotage/<CODE>.md` ; une vérification dans un vrai
+Word est une passe rejouable dans `pilotage/qa/<nom>.md`. Voir
+`pilotage/_TEMPLATE.md`. **`DECISIONS.md` reste la colonne** : une fiche dit ce
+qui reste à faire, jamais pourquoi une constante vaut ce qu'elle vaut. Un
+arbitrage tranché se consigne là.
+
+IMPORTANT — respecter exactement `## Reste` et les H3 de zone : l'outil ne lit
+que ces sections.
+
+- **Un préfixe par domaine**, arrêté le 11 septembre 2026, avant le premier
+  commit à en porter un : `GRA` grammaire (forme, couleur) · `PAY` paysage
+  (axes, familles, composition) · `ESS` essais et mutations · `PHR` phrases de
+  nuit · `VOL` volet, Office.js, le vrai Word. Quatre majuscules au plus :
+  `journal-contrat.mjs` ne lit pas au-delà.
+- **Le commit de code cite son code en tête de sujet**, puis énonce la
+  trouvaille. Sans citation : `0 commit`, aucune date, aucune barre, quel que
+  soit le travail. Les commits d'avant le 11 septembre 2026 n'en portent aucun
+  et n'en porteront jamais.
+- **Le commit de code d'abord, le commit de fiche ensuite, séparément**, sujet
+  « Pilotage : … ». Une fiche ne peut pas citer le commit qui la met à jour, et
+  les commits qui ne touchent que `pilotage/` sont exclus du datage.
+- Fin de session : mettre à jour le `Reste` du chantier travaillé, et son
+  `**Arrêté sur**` — l'écran le signale décalé dès qu'il ne cite plus le dernier
+  commit de code.
+- `statut:` se prend dans `à venir` · `interrompu` · `différé` · `clos` ·
+  `livré` · `abandonné`, rien d'autre. Un `différé` dit ce qui le rouvrira.
+  `livré` est démenti tant que le dernier commit n'est pas sur `origin/main` —
+  c'est aussi ce qui le met chez la personne, puisque chaque push sur `main`
+  republie le volet.
+- Une case = une affirmation vérifiable, avec son attendu.
+- ⚠️ **Ne jamais cocher soi-même une case d'une passe de QA** : la rédiger, la
+  rendre, laisser cocher qui l'a jouée.
+- Pas de fiche pour une trouvaille traitée en un seul commit.
+
+Attendu du contrôleur : code de retour 0. **Un avertissement est assumé, ne pas
+partir le corriger** : « N items ouverts sans `audit:` », sur toutes les fiches.
+Elles viennent des points ouverts de `DECISIONS.md`, qui ne portent pas de
+tableau de constats ; y pointer `audit:` changerait « manquant » en « inconnu »,
+et inventer un audit pour éteindre l'avertissement serait une fausse
+déclaration.
 
 ---
 
@@ -222,4 +282,5 @@ l'écrire, ne pas le remplir « en attendant », ne pas proposer de brouillon.
 Restent aussi à l'auteur : atteindre vingt phrases pour que l'écart moyen du
 paquet dépasse dix nuits (point ouvert 10), et décider si la transition
 germe → famille doit rester une coupure — à regarder dans le vrai add-in, pas
-sur planche (point ouvert 12).
+sur planche (point ouvert 12). Leurs fiches, `PHR-1` et `GRA-2`, les suivent ;
+elles ne se remplissent pas à la place de l'auteur.
