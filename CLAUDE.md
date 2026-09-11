@@ -312,9 +312,10 @@ endroit du système où passe la voix de celui qui offre le cadeau. Ne pas
 l'écrire, ne pas le remplir « en attendant », ne pas proposer de brouillon.
 
 ⚠️ **Le texte de la question du prénom est de la même main**, entre les deux
-balises du `label` de `addin/volet.html`. Vide, la question se tait et n'est
-pas comptée comme posée ; les essais lui donnent un texte à eux, qui ne part
-jamais dans le livrable. Ne pas l'écrire non plus.
+balises du `label` de `addin/volet.html` : « Ton prénom ? », donné le
+11 septembre 2026. Ne pas le changer à sa place. Vide, la question se tairait
+et ne serait pas comptée comme posée ; les essais lui donnent un texte à eux,
+qui ne part jamais dans le livrable.
 
 Restent aussi à l'auteur : atteindre vingt phrases pour que l'écart moyen du
 paquet dépasse dix nuits (point ouvert 10), et décider si la transition

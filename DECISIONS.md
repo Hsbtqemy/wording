@@ -855,7 +855,8 @@ qui est une surprise, c'est le gâcher. D'où :
   au lieu de disparaître en silence.
 
 ⚠️ Le texte de la question est la voix de celui qui offre, comme les phrases :
-il ne s'écrit pas à sa place.
+il ne s'écrit pas à sa place. Il a été donné le 11 septembre 2026 : « Ton
+prénom ? ».
 
 ⚠️ Personne ne sait si le `#` survit à l'adresse que Word compose pour le volet
 dans l'Office LTSC 2021. S'il ne survit pas, le repli est un `?` — et le prénom

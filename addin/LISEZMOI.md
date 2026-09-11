@@ -36,7 +36,8 @@ qu'ouvrir ne porte rien — c'est délibéré, il ne doit pas ressortir « modif
 
 ## Charger le manifeste dans Word
 
-Rien à modifier dans `manifest.xml` : les URL y sont déjà. Et où qu'on le
+Les URL de `manifest.xml` y sont déjà ; la seule chose qu'on peut y ajouter est
+le profil — voir « Le prénom et l'accord », plus bas. Et où qu'on le
 dépose, **le code vient toujours de GitHub Pages** — le manifeste ne fait que
 dire à Word où aller le chercher. C'est un fichier XML de 5,6 Ko, rien de plus.
 
@@ -83,6 +84,50 @@ Windows, ce qui fait apparaître ce chemin-là.
 Le dossier partagé n'héberge que le manifeste : Word y cherche des fichiers XML,
 et rien d'autre. Il doit rester joignable au démarrage de Word — sur sa propre
 machine, c'est acquis.
+
+## Le prénom et l'accord
+
+Le message de nuit peut dire un prénom, et accorder ce qu'il dit. Les deux se
+posent **dans le manifeste**, derrière un `#` ajouté à l'adresse du volet :
+c'est celui qui offre qui les connaît. L'accord ne se demande jamais — faire
+choisir entre « fort », « forte » et « fort.e », ce serait dévoiler une phrase
+avant sa nuit (décision 10).
+
+L'adresse apparaît **deux fois** dans `manifest.xml`, et les deux doivent porter
+le même profil :
+
+```xml
+<SourceLocation DefaultValue="https://hsbtqemy.github.io/wording/addin/volet.html#prenom=Camille&amp;accord=f" />
+…
+<bt:Url id="Paysage.Volet.Url" DefaultValue="https://hsbtqemy.github.io/wording/addin/volet.html#prenom=Camille&amp;accord=f" />
+```
+
+- ⚠️ **`&amp;` et non `&`** entre les deux : c'est du XML, et un `&` nu rend le
+  manifeste invalide — Word le refuse.
+- **`accord`** vaut `m`, `f` ou `i` : masculin, féminin, inclusif (« fort.e »).
+  Toute autre valeur, ou pas d'accord du tout, et les phrases qui s'accordent
+  ne sortent simplement pas.
+- **`prenom`** s'écrit de préférence **sans accents** : ils tombent de toute
+  façon au tracé, et une lettre accentuée dans une adresse doit être encodée
+  (`Zo%C3%A9`). Une espace s'écrit `%20`. Le message dessine A à Z, l'espace, le
+  trait d'union et l'apostrophe : `Marie-Eve` ou `N'Dri` passent tels quels.
+- **Sans prénom dans le manifeste**, le volet le demande une fois, à la
+  première ouverture : « Ton prénom ? ». La réponse reste sur la machine et
+  part dans le document avec la prochaine copie du paysage. Ignorée, la
+  question ne revient jamais.
+
+Le `#` ne part jamais vers GitHub, et il ne change pas l'origine : ajouter ou
+retirer un profil ne touche pas au paysage.
+
+Après avoir modifié le manifeste, le redéposer au même endroit et redémarrer
+Word. Sur Windows, Word garde parfois l'ancienne version en cache : vider
+`%LOCALAPPDATA%\Microsoft\Office\16.0\Wef\` le force à la relire.
+
+⚠️ **Personne ne sait encore si le `#` survit** à l'adresse que Word compose
+pour le volet dans l'Office LTSC 2021. S'il ne survit pas, le volet demande le
+prénom alors que le manifeste le donne — c'est la première chose que vérifie la
+passe `pilotage/qa/profil.md`. Le repli serait un `?` à la place du `#`, et le
+prénom passerait alors par les serveurs de GitHub.
 
 ---
 
