@@ -58,6 +58,8 @@ import corpus
 import grammaire
 import traits
 import paysage as paysage_mod
+import message as message_mod
+import phrases as phrases_mod
 from paysage import Paysage, empreinte, normaliser
 
 RACINE = Path(__file__).resolve().parent.parent
@@ -754,6 +756,133 @@ def cas_depuis_plant(plants) -> list:
     return sortie
 
 
+def cas_message() -> dict:
+    """
+    Le message de nuit, segment par segment, et sa mise en page a part.
+
+    La mise en page a sa propre liste parce qu'elle cache une espace
+    insecable, qui colle « ? » et « ! » au mot d'avant. « un petit cafe ? un
+    the ? » est la phrase du paquet ou le SECOND point d'interrogation
+    passerait seul a la ligne si l'insecable ne tenait que pour le premier —
+    ce que ferait String.replace, qui ne remplace qu'une occurrence.
+    """
+    phrases_ = ["il est tard, et tu ecris quand meme",
+                "un petit cafe ? un the ?",
+                "marie-eve, va dormir !",
+                "? ! ? !",
+                "",
+                "tres " * 12,
+                "n'oublie pas de boire de l'eau"]
+    teintes = {"nuit": None, "jour": grammaire.Teinte.du_jour(110, 14, 0.7)}
+    cas = []
+    for i, p in enumerate(phrases_):
+        for av in (0.0, 0.3, 0.77, 1.0):
+            for nom_t in (("nuit", "jour") if i < 2 else ("nuit",)):
+                t = grammaire.Toile()
+                message_mod.message(t, p, av, graine=40 + i, teinte=teintes[nom_t])
+                cas.append({"phrase": p, "avancement": av, "graine": 40 + i,
+                            "corps": message_mod.CORPS,
+                            "largeur": message_mod.LARGEUR, "teinte": nom_t,
+                            "cadre": list(t.cadre),
+                            "segments": [list(s) for s in t.segments],
+                            "noeuds": [list(n) for n in t.noeuds],
+                            "svg": t.svg(0, 0, 400, 200)})
+    # La planche de la main : un autre corps, une autre largeur de ligne.
+    t = grammaire.Toile()
+    message_mod.message(t, "MAIN", 1.0, corps=46, graine=300, largeur=8)
+    cas.append({"phrase": "MAIN", "avancement": 1.0, "graine": 300, "corps": 46,
+                "largeur": 8, "teinte": "nuit", "cadre": list(t.cadre),
+                "segments": [list(s) for s in t.segments],
+                "noeuds": [list(n) for n in t.noeuds],
+                "svg": t.svg(0, 0, 400, 200)})
+    return {
+        "alphabet": {k: [list(s) for s in v] for k, v in message_mod.A.items()},
+        "mises": [[p, message_mod._mise_en_page(p)] for p in phrases_]
+                 + [["MAIN", message_mod._mise_en_page("MAIN", 8)]],
+        "cas": cas,
+    }
+
+
+def cas_phrases() -> dict:
+    """
+    Les phrases de nuit : registres, profil, paquet — sur des nuits qui
+    TRAVERSENT le passage a 2027.
+
+    Toute nuit d'avant le 1er janvier 2027 porte un numero negatif. C'est la
+    que divmod, le modulo et la graine de JavaScript different de ceux de
+    Python, et c'est la que le raccord du paquet ne portait pas : un cahier qui
+    commencerait en 2027 ne verrait rien des trois.
+    """
+    from datetime import date, timedelta
+    profils = {
+        "camille": {"prenom": "camille", "accord": "f"},
+        "julien": {"prenom": "julien", "accord": "m"},
+        "inclusif": {"prenom": "Marie-Ève", "accord": "i"},
+        "sans prenom": {"prenom": None, "accord": "f"},
+        # L'apostrophe de Word, dans le prenom : elle doit ressortir en '.
+        "sans accord": {"prenom": "N\u2019Dri", "accord": None},
+        "sans rien": {"prenom": None, "accord": None},
+    }
+    debut = date(2026, 7, 1)
+    nuits = [(debut + timedelta(k)).isoformat() for k in range(300)]
+    ordinaires = {nom: [phrases_mod.phrase_de_la_nuit(p, d) for d in nuits]
+                  for nom, p in profils.items()}
+
+    suites = {"creux": [["reprise", 0]] * 6,
+              "deblocage": [["reprise", 0]] * 5 + [["ecriture", 80]],
+              "elan": [["ecriture", 95]] * 8,
+              "ordinaire": [["ecriture", 90]] * 3,
+              "frappe": [["frappe", 40]] * 3 + [["conversion", 60]]}
+    evenements = []
+    for nom_p in ("camille", "sans prenom"):
+        for nom_s, suite in suites.items():
+            # 2026-12-31 est la nuit -1 : un modulo negatif y servirait la
+            # case -1 d'un registre, qui n'existe pas.
+            for d in ("2026-09-11", "2026-12-31", "2027-01-01", "2027-06-15"):
+                n = phrases_mod.Nuit()
+                for v, m in suite:
+                    n.enregistrer(v, m)
+                evenements.append({
+                    "profil": nom_p, "suite": suite, "date": d,
+                    "evenement": n.evenement(), "mots": n.mots,
+                    "phrase": phrases_mod.phrase_de_la_nuit(profils[nom_p], d, n)})
+
+    bruts = (phrases_mod.COMMUNES + phrases_mod.NOMINATIVES + phrases_mod.DEBLOCAGE
+             + ["{heureux|heureuse|heureux.se}", "{prenom} et {fort|forte|fort.e}"])
+    remplis = [[b, nom, phrases_mod.remplir(b, p) if phrases_mod._servable(b, p)
+                else None]
+               for b in bruts for nom, p in profils.items()]
+
+    textes = ["Marie-Ève", "Zoë", "N\u2019Dri", "Jean Luc", "Zhou \u5468", "Ça",
+              "Œdipe", "ß", "\U0001f331", "O'Neil", "\u2018guillemets\u2019"]
+
+    # Deux corpus de meme longueur et de meme premiere phrase : ce que
+    # l'ancienne cle de memoire confondait. Tours negatifs compris.
+    a = ["meme debut", "a1", "a2", "a3", "a4", "a5"]
+    b = ["meme debut", "b1", "b2", "b3", "b4", "b5"]
+    jumeaux = [[t, phrases_mod._paquet(t, a), phrases_mod._paquet(t, b)]
+               for t in range(-3, 4)]
+
+    return {
+        "registres": {"COMMUNES": phrases_mod.COMMUNES,
+                      "NOMINATIVES": phrases_mod.NOMINATIVES,
+                      "DEBLOCAGE": phrases_mod.DEBLOCAGE,
+                      "ELAN": phrases_mod.ELAN, "CREUX": phrases_mod.CREUX},
+        "profils": profils,
+        "nuits": nuits,
+        "ordinaires": ordinaires,
+        "evenements": evenements,
+        "remplis": remplis,
+        # Des deux cotes, ces champs doivent LEVER.
+        "erreurs": ["{fort|forte}", "{prénom}, bonsoir", "{}", "{a|b|c|d}"],
+        "signes": [[x, sorted(phrases_mod.signes_hors_alphabet(x))] for x in textes],
+        "traces": [[x, phrases_mod.au_trace(x)] for x in textes],
+        "jumeaux": {"a": a, "b": b, "paquets": jumeaux},
+        "numeros": [[d, phrases_mod._numero_de_nuit(d)]
+                    for d in ("2026-09-11", "2027-01-01", "2020-02-29", "2031-12-31")],
+    }
+
+
 def cas_alea() -> dict:
     """
     Le generateur de Python, tirage par tirage.
@@ -796,7 +925,18 @@ def cas_alea() -> dict:
         r = random.Random(g)
         tris.append({"graine": g, "n": 9,
                      "ordre": sorted(range(9), key=lambda k: r.random())})
-    return {"cas": cas, "tris": tris}
+    # Le paquet battu de phrases.py : random.shuffle, que la decision 13
+    # disait inutile tant que les phrases n'etaient pas du livrable. Les
+    # graines negatives sont celles des nuits d'avant 2027 ; random.Random en
+    # prend la valeur absolue, et Alea doit en faire autant.
+    melanges = []
+    for g in (0, 1, -1, 7919, -7919, 15838, 104729, -7919 * 12 + 104729 * 3,
+              123456789):
+        for n in (1, 2, 3, 7, 10, 16):
+            x = list(range(n))
+            random.Random(g).shuffle(x)
+            melanges.append({"graine": g, "n": n, "ordre": x})
+    return {"cas": cas, "tris": tris, "melanges": melanges}
 
 
 def cas_tables() -> dict:
@@ -1135,6 +1275,8 @@ def fabriquer() -> dict:
         "graines": cas_graines(),
         "figures": cas_figures(),
         "depuis_plant": cas_depuis_plant(p.etat()["plants"]),
+        "message": cas_message(),
+        "phrases": cas_phrases(),
         "composition": cas_composition(p.etat()["plants"]),
         "tables": cas_tables(),
         "relectures": cas_relectures(),

@@ -738,6 +738,76 @@ const MUTATIONS = [
    "un massif d'un seul plant tombe dans la formule : division par zero,"
    + " que JavaScript ne signale pas"],
 
+  // ------------------------------ le message et les phrases de nuit (PHR-2)
+  // Les neuf premieres sont les jumelles de jardin/mutations.py sur
+  // phrases.py et message.py ; les quatre suivantes sont des pieges du
+  // portage seul. Trois d'entre elles ne mordent que sur une nuit d'avant le
+  // 1er janvier 2027, dont le numero est NEGATIF : le cahier en traverse.
+  ["message.js",
+   "  t.cadre = cadre_de(phrase, corps, largeur, x0, y0);",
+   "  t.cadre = null;",
+   "point ouvert 9, jumelle : le message se recentre a chaque lettre"],
+
+  ["message.js",
+   "  \"-\": [[0.5, 2.5, 2.5, 2.5]],",
+   "",
+   "decision 10, jumelle : le trait d'union quitte l'alphabet"],
+
+  ["phrases.js",
+   "    voisin = new Set(_paquet(tour - 1, corpus).slice(-garde));",
+   "    voisin = new Set();",
+   "point ouvert 10, jumelle : le raccord du paquet ne porte plus"],
+
+  ["phrases.js",
+   "    voisin = new Set(_paquet(tour + 1, corpus).slice(0, garde));",
+   "    voisin = new Set();",
+   "point ouvert 10, jumelle : avant 2027, la meme phrase deux soirs de suite"],
+
+  ["phrases.js",
+   "  if (champs.includes(\"prenom\") && !profil.prenom) return false;",
+   "  if (false) return false;",
+   "decision 10, jumelle : sans prenom, les nominatives restent dans le paquet"],
+
+  ["phrases.js",
+   "  if (champs.some((c) => c.includes(\"|\")) && !ACCORDS.includes(profil.accord)) return false;",
+   "  if (false) return false;",
+   "decision 10, jumelle : sans accord, la phrase qui s'accorde reste"],
+
+  ["phrases.js",
+   "    return formes[ACCORDS.indexOf(profil.accord)];",
+   "    return formes[0];",
+   "decision 10, jumelle : l'accord ne choisit plus, tout le monde au masculin"],
+
+  ["phrases.js",
+   "  const cle = JSON.stringify([tour, corpus]);",
+   "  const cle = JSON.stringify([tour, corpus.length, corpus[0]]);",
+   "jumelle : deux corpus de meme longueur et meme debut partagent un paquet"],
+
+  ["phrases.js",
+   "  return sans_accent(s.replace(/[\\u2019\\u2018]/g, \"'\"));",
+   "  return sans_accent(s);",
+   "jumelle : l'apostrophe de Word n'est plus ramenee, N'Dri ne se dessine plus"],
+
+  ["message.js",
+   "  const p = phrase.toUpperCase().replaceAll(\" ?\", \"\\u00a0?\").replaceAll(\" !\", \"\\u00a0!\");",
+   "  const p = phrase.toUpperCase().replace(\" ?\", \"\\u00a0?\").replace(\" !\", \"\\u00a0!\");",
+   "String.replace pour str.replace : une seule insecable, le second « ? » de « un the ? » passe seul a la ligne"],
+
+  ["phrases.js",
+   "  const tour = Math.floor(nuit / corpus.length);",
+   "  const tour = Math.trunc(nuit / corpus.length);",
+   "divmod devient la division de JavaScript : les nuits d'avant 2027 tombent dans le mauvais tour"],
+
+  ["phrases.js",
+   "      brut = registre[modulo(_numero_de_nuit(date_iso), registre.length)];",
+   "      brut = registre[_numero_de_nuit(date_iso) % registre.length];",
+   "le modulo de JavaScript est negatif : avant 2027, un registre sert sa case -1, qui n'existe pas"],
+
+  ["alea.js",
+   "      const j = this._endessous(i + 1);",
+   "      const j = this._endessous(i);",
+   "le melange tire un de moins : Sattolo au lieu de Fisher-Yates, une autre suite tout aussi plausible"],
+
 ];
 
 if (!existsSync(CAS)) {

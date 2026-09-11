@@ -88,7 +88,7 @@ machine, c'est acquis.
 
 ## Ce qu'il faut regarder en premier
 
-Le portage est vérifié par 164 000 comparaisons contre le Python, et le câblage
+Le portage est vérifié par 221 000 comparaisons contre le Python, et le câblage
 par une batterie contre un Word simulé. **Rien de tout cela ne prouve que le
 vrai Word se comporte comme le faux** — et surtout, à cette heure, *le paysage
 n'a jamais poussé dans un vrai Word*. Pas une fois.

@@ -32,6 +32,12 @@ import {
   composer, svg as svg_paysage, vue_de_travail, svg_apercu, gabarit,
   TABLES as TABLES_COMPOSITION,
 } from "../src/composition.js";
+import { A, _mise_en_page, message } from "../src/message.js";
+import {
+  COMMUNES, NOMINATIVES, DEBLOCAGE, ELAN, CREUX, Nuit, _numero_de_nuit,
+  _paquet, _servable, au_trace, phrase_de_la_nuit, remplir,
+  signes_hors_alphabet,
+} from "../src/phrases.js";
 
 const TOLERANCE = 1e-9;
 
@@ -213,6 +219,12 @@ titre("generateur de nombres");
     const cles = Array.from({ length: t.n }, () => r.random());
     const ordre = Array.from({ length: t.n }, (_, k) => k).sort((a, b) => cles[a] - cles[b]);
     meme(`tri par cle aleatoire, graine ${t.graine}`, t.ordre, ordre);
+  }
+  // Le paquet battu : random.shuffle, graines negatives comprises.
+  for (const m of cahier.alea.melanges) {
+    const x = Array.from({ length: m.n }, (_, k) => k);
+    new Alea(m.graine).shuffle(x);
+    meme(`shuffle(${m.n}), graine ${m.graine}`, m.ordre, x);
   }
   console.log(`  ${cahier.alea.cas.length} graines, ${tirages} tirages,`
     + ` ecart maximal ${ecartMax.toExponential(2)} (logarithme)`);
@@ -621,6 +633,99 @@ titre("guet");
   memeProfond("guet : aller-retour JavaScript", p.etat(),
               Paysage.depuis(p.serialiser()).etat());
   console.log(`  ${c.releves.length} releves, ${faits} faits`);
+}
+
+// Trie un ensemble comme sorted() de Python : par POINT DE CODE. Le tri par
+// defaut de JavaScript compare des unites UTF-16, et les deux ordres divergent
+// des qu'un caractere du plan de base au-dela de U+E000 croise un caractere
+// hors du plan de base.
+const parPointDeCode = (s) => Array.from(s).sort((x, y) => x.codePointAt(0) - y.codePointAt(0));
+
+/** Appelle f, et rend le message d'erreur au lieu de lever. */
+function sansLever(f) {
+  try { return f(); } catch (e) { return `LEVE : ${e.message}`; }
+}
+
+// --------------------------------------------------------------------------
+// 15. Le message de nuit
+// --------------------------------------------------------------------------
+// La mise en page d'abord, a part : elle cache une espace insecable, et une
+// panne la-dedans deplace un point d'interrogation d'une ligne a l'autre.
+titre("message de nuit");
+{
+  memeProfond("alphabet", cahier.message.alphabet, A);
+  for (const [p, attendu] of cahier.message.mises) {
+    const largeur = p === "MAIN" ? 8 : undefined;
+    meme(`mise en page ${JSON.stringify(p)}`, attendu, _mise_en_page(p, largeur));
+  }
+  let segments = 0;
+  for (const c of cahier.message.cas) {
+    const nom = `message(${JSON.stringify(c.phrase.slice(0, 18))}, ${c.avancement}, ${c.teinte})`;
+    const t = new Toile();
+    message(t, c.phrase, c.avancement, {
+      graine: c.graine, corps: c.corps, largeur: c.largeur,
+      teinte: c.teinte === "jour" ? teinteDeNom("jour") : null,
+    });
+    memeProfond(`${nom} cadre`, c.cadre, t.cadre);
+    if (meme(`${nom} : nombre de segments`, c.segments.length, t.segments.length)) {
+      memeProfond(`${nom} segments`, c.segments, t.segments);
+      memeProfond(`${nom} noeuds`, c.noeuds, t.noeuds);
+      meme(`${nom} svg`, c.svg, t.svg(0, 0, 400, 200));
+    }
+    segments += c.segments.length;
+  }
+  console.log(`  ${cahier.message.cas.length} messages, ${segments} segments`);
+}
+
+// --------------------------------------------------------------------------
+// 16. Les phrases de nuit
+// --------------------------------------------------------------------------
+// Sur des nuits qui TRAVERSENT le passage a 2027 : avant, les numeros sont
+// negatifs, et c'est la que divmod, le modulo et la graine different.
+titre("phrases de nuit");
+{
+  const P = cahier.phrases;
+  // Les registres sont une COPIE : la parite est ce qui l'empeche de deriver.
+  memeProfond("registres", P.registres, { COMMUNES, NOMINATIVES, DEBLOCAGE, ELAN, CREUX });
+  for (const [d, n] of P.numeros) meme(`numero de la nuit ${d}`, n, _numero_de_nuit(d));
+
+  let phrases = 0;
+  for (const [nom, profil] of Object.entries(P.profils)) {
+    const obtenues = P.nuits.map((d) => sansLever(() => phrase_de_la_nuit(profil, d)));
+    memeProfond(`paquet, profil ${nom}`, P.ordinaires[nom], obtenues);
+    phrases += obtenues.length;
+  }
+
+  for (const e of P.evenements) {
+    const n = new Nuit();
+    for (const [v, m] of e.suite) n.enregistrer(v, m);
+    const nom = `${e.suite[0][0]} x${e.suite.length}, ${e.profil}, ${e.date}`;
+    meme(`${nom} : evenement`, e.evenement, n.evenement());
+    meme(`${nom} : mots`, e.mots, n.mots);
+    meme(`${nom} : phrase`, e.phrase, sansLever(() => phrase_de_la_nuit(P.profils[e.profil], e.date, n)));
+  }
+
+  for (const [brut, nom, attendu] of P.remplis) {
+    const p = P.profils[nom];
+    meme(`remplir(${JSON.stringify(brut)}, ${nom})`, attendu,
+         _servable(brut, p) ? sansLever(() => remplir(brut, p)) : null);
+  }
+  for (const mal of P.erreurs) {
+    meme(`remplir(${JSON.stringify(mal)}) leve`, true,
+         sansLever(() => remplir(mal, { prenom: "camille", accord: "f" })).startsWith("LEVE"));
+  }
+
+  for (const [x, attendu] of P.signes) {
+    meme(`signes_hors_alphabet(${JSON.stringify(x)})`, attendu, parPointDeCode(signes_hors_alphabet(x)));
+  }
+  for (const [x, attendu] of P.traces) meme(`au_trace(${JSON.stringify(x)})`, attendu, au_trace(x));
+
+  for (const [tour, pa, pb] of P.jumeaux.paquets) {
+    meme(`paquet jumeau a, tour ${tour}`, pa, _paquet(tour, P.jumeaux.a));
+    meme(`paquet jumeau b, tour ${tour}`, pb, _paquet(tour, P.jumeaux.b));
+  }
+  console.log(`  ${phrases} nuits servies, ${P.evenements.length} evenements,`
+    + ` ${P.remplis.length} remplissages`);
 }
 
 // --------------------------------------------------------------------------

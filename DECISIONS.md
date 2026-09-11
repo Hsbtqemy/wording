@@ -1022,9 +1022,23 @@ paysage parfaitement présentable, et faux.
 `addin/src/pont.js` — le pont entre Word et le paysage.
 `addin/src/volet.js`, `volet.html`, `apercu.html`, `manifest.xml` — la coquille.
 
-**Reste à porter :** le message et les phrases. **L'add-in tient debout sans
-eux** : le message de nuit est un easter egg, et le registre `creux` de
-`phrases.py` appartient de toute façon à l'auteur.
+**Porté ensuite :** le message et les phrases — `addin/src/message.js` et
+`addin/src/phrases.js`, le 11 septembre 2026 (chantier PHR-2). La parité les
+couvre : 37 messages et leurs 5 773 segments, 1 800 nuits servies, 40
+événements routés, 84 remplissages de profil, identiques des deux côtés.
+**Ils ne sont pas encore câblés** : `volet.js` ne les importe pas, et l'add-in
+tient debout sans eux — le message de nuit est un easter egg, et le registre
+`creux` de `phrases.py` appartient de toute façon à l'auteur.
+
+Le cahier traverse les nuits d'avant le 1er janvier 2027, dont le numéro est
+négatif : c'est là que les deux langages ne comptent pas pareil, et c'est là
+aussi que le Python était faux — le raccord du paquet n'y portait pas (point
+ouvert 10). Sur les treize mutations ajoutées, trois ne mordent que sur une
+de ces nuits : le raccord d'avant 2027, `Math.trunc` là où `divmod` arrondit
+vers le bas, et `%`, négatif là où le modulo de Python ne l'est jamais. Deux
+autres sont des pièges du portage seul : `replace`, qui ne remplace que la
+première occurrence là où `str.replace` les remplace toutes — le second « ? »
+de « un petit cafe ? un the ? » perdait son insécable —, et le mélange de Sattolo (plus bas).
 
 ### Le pont, et ce qu'aucune parité ne peut voir
 
@@ -1152,6 +1166,13 @@ déterministe de toute façon ; la seule question était de savoir s'il devait �
 méthodes — `random`, `uniform`, `randrange`, `expovariate`. Ni `gauss`, ni
 `choice`, ni `shuffle` : les compter avant d'écrire a évité de porter ce dont
 personne n'a besoin. Cent trente lignes.
+
+⚠️ **Le compte oubliait `phrases.py`**, qui bat son paquet par `shuffle`
+depuis le premier commit : il ne comptait que ce qu'on portait alors.
+`shuffle` est entré dans `alea.js` avec les phrases, le 11 septembre 2026 —
+le Fisher–Yates de Python, qui tire `_randbelow(i + 1)` du dernier indice au
+premier. Une mutation le remplace par Sattolo, qui tire `_randbelow(i)` : une
+autre permutation, tout aussi plausible, que seule la parité distingue.
 
 **Mesuré :** 1 080 tirages sur 18 graines, dont les bornes où le semis change de
 forme — 0, 2³², 2⁵³−1. `random`, `uniform` et `randrange` tombent **au bit
@@ -2487,6 +2508,8 @@ deux divergent, c'est le JavaScript qui a un bug.
 | `src/grammaire.js` | portage de `grammaire.py`, sans les planches |
 | `src/traits.js` | portage de `traits.py` |
 | `src/paysage.js` | portage de `paysage.py` |
+| `src/message.js` | portage de `message.py` — pas encore câblé |
+| `src/phrases.js` | portage de `phrases.py` — pas encore câblé |
 | `parite/parite.js` | rejoue le cahier et compare — **code de sortie** |
 | `parite/mutations.js` | le vérificateur sait-il échouer ? |
 

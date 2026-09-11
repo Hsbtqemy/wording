@@ -166,6 +166,24 @@ export class Alea {
     return this._endessous(n);
   }
 
+  /**
+   * shuffle(x) : le melange de random.shuffle, en place, du dernier au premier.
+   *
+   * La decision 13 comptait quatre methodes — « ni gauss, ni choice, ni
+   * shuffle » — a une epoque ou phrases.py n'etait pas du livrable. Le paquet
+   * battu en a besoin. Meme algorithme que CPython : pour i de n-1 a 1, un j
+   * tire par _randbelow(i + 1), puis l'echange. Tirer _randbelow(i) donnerait
+   * un melange tout aussi plausible — celui de Sattolo — et une autre suite.
+   */
+  shuffle(x) {
+    for (let i = x.length - 1; i > 0; i--) {
+      const j = this._endessous(i + 1);
+      const tmp = x[i];
+      x[i] = x[j];
+      x[j] = tmp;
+    }
+  }
+
   uniform(a, b) {
     return a + (b - a) * this.random();
   }

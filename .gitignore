@@ -8,8 +8,10 @@ jardin-paysage.zip
 # contenu bouge a chaque mesure. La versionner ne ferait que du bruit.
 jardin/planches.html
 
-# Cahier de parite : 1,2 Mo regeneres par jardin/parite.py en quelques
-# secondes, et qui changent des qu'on touche au corpus.
+# Cahier de parite : 13,7 Mo regeneres par jardin/parite.py en quelques
+# secondes, et qui changent des qu'on touche au corpus. Ce commentaire disait
+# 1,2 Mo ; mesure le 11 septembre 2026, le cahier en pesait deja 12,2 avant
+# que le message de nuit n'y ajoute les siens.
 addin/parite/cas.json
 node_modules/
 
