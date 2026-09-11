@@ -909,11 +909,27 @@ au-dessus de `SEUIL_COLLAGE`, donc une greffe, qui ne crédite aucun mot. Le
 message n'apparaissait jamais, et le câblage était juste. Les essais écrivent
 désormais comme une personne, le texte trente secondes après l'Entrée.
 
-**Où ça se vérifie, côté volet :** `essais_volet.js`, dix essais — contre
-l'hôte simulé, ou sur `nuit.js` seul — et treize mutations, chacune attrapée
+**Où ça se vérifie, côté volet :** `essais_volet.js`, treize essais — contre
+l'hôte simulé, ou sur `nuit.js` seul — et dix-huit mutations, chacune attrapée
 par l'essai qui la vise. Le volet charge 74,7 Ko compressés au lieu de 61,6,
 `volet.html` compris (décision 13) : `message.js` 4,1, `nuit.js` 4,0,
 `phrases.js` 3,0, et le reste dans `volet.js` et `volet.html`.
+
+⚠️ **Trois promesses n'avaient pas d'essai à la première livraison** : la ligne
+vide du prénom composé, le prénom déjà répondu qui part avec les documents
+ouverts ensuite, et la réponse qui compte dès la nuit même. Une relecture à
+froid les a trouvées, et chacune de leurs régressions passait les trente-cinq
+essais du volet.
+
+⚠️ **Et l'essai du `#` ne traversait rien.** Il comparait les messages de trois
+adresses, pose comprise — or la pose suit le cadre de la vue, donc la graine du
+document, tirée au hasard à chaque volet monté. Trois volets différaient
+toujours, même sur la même phrase : l'essai passait sans que le `#` soit lu, et
+la mutation qui l'ignore n'était attrapée que par l'essai de la question.
+C'est l'essai jumeau, « la réponse compte dès cette nuit », qui l'a révélé en
+échouant sur deux phrases identiques. Les deux comparent désormais les traits
+en coordonnées locales, qui ne dépendent que de la phrase, de la nuit et des
+mots écrits.
 
 ⚠️ Les phrases sont le seul endroit du système où la voix de celui qui offre
 passe. Tout le reste marcherait pour n'importe qui. Elles ne se génèrent pas.

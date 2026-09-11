@@ -21,6 +21,7 @@ import { readFileSync } from "node:fs";
 import { choisir } from "./src/magasin.js";
 import { Veille } from "./src/nuit.js";
 import { phrase_de_la_nuit, DEBLOCAGE, CREUX } from "./src/phrases.js";
+import { CORPS } from "./src/message.js";
 
 // --------------------------------------------------------------------------
 // Le faux Office
@@ -920,6 +921,21 @@ function traits_du_message(etat) {
   return i < 0 ? -1 : (s.slice(i).match(/<line/g) || []).length;
 }
 
+/**
+ * Les traits du message en coordonnees LOCALES, sans la pose.
+ *
+ * ⚠️ PAS LE GROUPE ENTIER. La pose — translate, scale, epaisseur — suit le
+ * cadre de la vue, donc le paysage, donc la graine du document, tiree au
+ * hasard a chaque hote monte. Deux volets differaient TOUJOURS par la, meme
+ * sur la meme phrase : l'essai du # passait sans que le # soit lu, et la
+ * mutation qui l'ignore ne l'a jamais fait echouer. Les coordonnees locales ne
+ * dependent que de la phrase, de la nuit et des mots ecrits.
+ */
+function coordonnees(dessin) {
+  return [...dessin.matchAll(/x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"/g)]
+    .map((m) => m.slice(1).join(",")).join(" ");
+}
+
 /** Meme machine, meme localStorage : un second volet sur le stockage du premier. */
 function partager(etat, stockage) {
   etat.stockage = stockage;
@@ -1066,7 +1082,7 @@ suite.push(["le volet lit le prenom et l'accord derriere le # de son adresse",
       }
       const s = etat.elements.paysage.innerHTML;
       vrai(s.includes('<g class="message">'), `#${fragment} : le message doit etre la`);
-      dessins.push(s.slice(s.indexOf('<g class="message">')));
+      dessins.push(coordonnees(s.slice(s.indexOf('<g class="message">'))));
     }
     egal(new Set(dessins).size, 3, "trois adresses, trois messages : le # est lu");
   }]);
@@ -1158,6 +1174,90 @@ suite.push(["le message se pose dans le ciel, par-dessus le paysage", async () =
   vrai(bas < vy + vh * 0.45,
        `le message doit rester dans le haut de la vue, il descend a ${((bas - vy) / vh).toFixed(2)}`);
   vrai(gauche >= vx && droite <= vx + vw, "et tenir dans sa largeur");
+}]);
+
+// ⚠️ LES TROIS ESSAIS QUI SUIVENT MANQUAIENT a la premiere livraison. Une
+// relecture a froid a trouve trois promesses du cablage qu'aucun essai ne
+// traversait — et chacune de leurs regressions passait les trente-cinq autres.
+
+const jour_iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-`
+  + String(d.getDate()).padStart(2, "0");
+const lendemain = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, d.getHours());
+
+/** Ecrit trois paragraphes a partir de 3 h 05 cette nuit-la, et rend le message. */
+async function trois_paragraphes(etat, nuit) {
+  for (let k = 0; k < 3; k++) {
+    // eslint-disable-next-line no-await-in-loop
+    await ecrire_la_nuit(etat, new Date(nuit.getTime() + (5 + k) * 60000), NUIT(k));
+  }
+  const s = etat.elements.paysage.innerHTML;
+  const i = s.indexOf('<g class="message">');
+  return i < 0 ? "" : s.slice(i);
+}
+
+suite.push(["un prenom compose n'ouvre pas le message sur un blanc", async () => {
+  // A quatorze signes par ligne, « MARIE-ANTOINETTE, » ne tient pas : sans
+  // largeur_pour, _mise_en_page pousse une premiere ligne VIDE, et les
+  // premieres lettres tombent sur la deuxieme. On cherche une nuit ou le
+  // prenom ouvre la phrase — on ne la suppose pas.
+  const profil = { prenom: "Marie-Antoinette", accord: "f" };
+  const ouvre = (d) => phrase_de_la_nuit(profil, jour_iso(d)).toLowerCase()
+    .startsWith("marie-antoinette,");
+  let nuit = le_12_a(3);
+  for (let k = 0; k < 60 && !ouvre(nuit); k++) nuit = lendemain(nuit);
+  vrai(ouvre(nuit), "aucune nuit de ces deux mois ne s'ouvre sur le prenom");
+
+  const etat = monter_hote({ paragraphes: [{ texte: PHRASE }],
+                             fragment: "prenom=Marie-Antoinette&accord=f" });
+  await a_l_heure(nuit, () => demarrer(etat));
+  const dessin = await trois_paragraphes(etat, nuit);
+  // Les coordonnees des traits sont LOCALES au message : la premiere ligne
+  // occupe 0 a CORPS, la deuxieme commence a deux corps.
+  const ys = [...dessin.matchAll(/y1="([-\d.]+)" x2="[-\d.]+" y2="([-\d.]+)"/g)]
+    .flatMap((m) => [Number(m[1]), Number(m[2])]);
+  vrai(ys.length > 0, "le message doit porter des traits");
+  vrai(Math.min(...ys) < CORPS,
+       `les premieres lettres doivent tomber sur la premiere ligne, pas sous un blanc :`
+       + ` le plus haut trait est a ${Math.min(...ys)}`);
+}]);
+
+suite.push(["un prenom deja repondu part avec le document suivant", async () => {
+  // Repondu sur ce poste, dans un autre document : le volet le reprend, et le
+  // pose dans celui-ci — il partira avec sa premiere copie, pas avant.
+  const etat = monter_hote({ paragraphes: [{ texte: PHRASE }] });
+  etat.stockage.set("paysage:prenom", "Camille");
+  await demarrer(etat);
+  egal(etat.sauvegardes, 0, "ouvrir n'enregistre rien");
+  egal(etat.persistes["paysage.prenom"], undefined, "rien dans le fichier a l'ouverture");
+  await pousser(etat, "Un paragraphe tape a la main, du premier au dernier mot.");
+  egal(etat.persistes["paysage.prenom"], "Camille",
+       "il part avec la premiere copie de ce document");
+}]);
+
+suite.push(["la reponse compte des cette nuit, sans rouvrir", async () => {
+  // Une nuit ou le prenom change la premiere lettre de la phrase : sinon les
+  // deux dessins se ressembleraient au debut, avec ou sans lui.
+  const tete = (p, d) => phrase_de_la_nuit(p, jour_iso(d))[0];
+  const avec = { prenom: "Camille", accord: null };
+  const sans = { prenom: null, accord: null };
+  let nuit = le_12_a(3);
+  for (let k = 0; k < 60 && tete(avec, nuit) === tete(sans, nuit); k++) nuit = lendemain(nuit);
+  vrai(tete(avec, nuit) !== tete(sans, nuit), "aucune nuit ne distingue les deux profils");
+
+  const repondu = monter_hote({ paragraphes: [{ texte: PHRASE }], question: QUESTION });
+  await a_l_heure(nuit, () => demarrer(repondu));
+  repondu.elements.prenom.value = "Camille";
+  repondu.elements.demande.soumettre();
+  const d1 = await trois_paragraphes(repondu, nuit);
+
+  const par_adresse = monter_hote({ paragraphes: [{ texte: PHRASE }],
+                                    fragment: "prenom=Camille" });
+  await a_l_heure(nuit, () => demarrer(par_adresse));
+  const d2 = await trois_paragraphes(par_adresse, nuit);
+
+  vrai(coordonnees(d1).length > 0, "le message doit etre la");
+  vrai(coordonnees(d1) === coordonnees(d2),
+       "le prenom repondu doit compter cette nuit comme celui de l'adresse");
 }]);
 
 // --------------------------------------------------------------------------

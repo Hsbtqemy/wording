@@ -67,7 +67,7 @@ PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
 Attendu : `74 passes, 0 en echec` · `65/65` · `aucun ecart` · `23 passes` ·
-`35 passes` · `132/132`.
+`38 passes` · `137/137`.
 
 `essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
 qu'aucune parité ne peut couvrir, faute de Python en face. Elle y a trouvé
@@ -89,8 +89,9 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **25 min 19** (11 septembre 2026 à
-15 h 18, à 65 et 132 mutations). C'était 18 min 05 à 14 h 25, à 65 et 119,
+Durée mesurée de l'enchaînement complet : **21 min 29** (11 septembre 2026 à
+15 h 49, à 65 et 137 mutations). C'était 25 min 19 à 15 h 18, à 65 et 132,
+18 min 05 à 14 h 25, à 65 et 119,
 18 min 06 plus tôt dans l'après-midi à 64 et 106, 13 min 42 le matin même à 58
 et 106, 13 min 14 le 9 septembre au même compte, 14 min 50 à 54 et 103, 15 min 38 à
 50 et 100, 9 min 38 à 13 min 35 à 47 et 98, et 5 min 57 à 36 et 87.
@@ -108,11 +109,12 @@ mal autrement :
 
 | `essais.py` | `mutations.py` | `parite.py` | les deux `essais*.js` | `mutations.js` |
 |---|---|---|---|---|
-| 11–16 s | **14 min 39 à 21 min 44** | 4–7 s | < 1 s | **3 min 05 à 3 min 14** |
+| 11–16 s | **14 min 39 à 21 min 44** | 4–7 s | < 1 s | **3 min 01 à 3 min 14** |
 
 Les deux colonnes lourdes sont **chronométrées**, chaque suite enveloppée d'un
-chronomètre dans la même commande : 1 303 693 ms et 194 423 ms le 11 septembre
-2026 à 15 h 18, à 65 et 132 mutations ; 878 893 ms et 184 837 ms à 14 h 25, à
+chronomètre dans la même commande : 1 086 353 ms et 181 255 ms le 11 septembre
+2026 à 15 h 49, à 65 et 137 mutations ; 1 303 693 ms et 194 423 ms à 15 h 18,
+à 65 et 132 ; 878 893 ms et 184 837 ms à 14 h 25, à
 65 et 119 ; 918 453 ms et 148 856 ms plus tôt dans
 l'après-midi, à 64 et 106 ; 678 939 ms et 123 525 ms le matin, à 58 et 106.
 ⚠️ `mutations.js`, dont pas une ligne n'avait changé entre le matin et
@@ -124,7 +126,9 @@ mutations, 1,55 s par relance au lieu de 1,40 : cohérent avec un cahier de
 parité passé de 12,2 à 13,7 Mo, que chaque relance de la parité relit.
 ⚠️ Et `mutations.py` a pris **sept minutes de plus** entre 14 h 25 et 15 h 18,
 sur un Python identique à l'octet près : 20 s par relance au lieu de 13,5. La
-plus forte variation mesurée à code égal — rien d'autre que la charge.
+plus forte variation mesurée à code égal — rien d'autre que la charge. Une
+demi-heure plus tard, toujours au même octet près, il en rendait trois et
+demie ; et `mutations.js` allait 13 s plus vite avec cinq mutations de plus.
 
 ⚠️ Elles étaient jusque-là **déduites** du total, et les deux déductions —
 « ≈ 13 min » et « ≈ 2 min » — dépassaient ensemble les 13 min 14 dont elles
@@ -142,7 +146,7 @@ chaîne, mesurer les deux versions **l'une après l'autre** — sinon on retire 
 travail juste pour rien.
 
 `mutations.py` relance `essais.py` soixante-cinq fois, et `mutations.js`
-relance la parité ou la batterie du volet cent trente-deux fois. Assez
+relance la parité ou la batterie du volet cent trente-sept fois. Assez
 long pour donner envie de paralléliser, ce qu'il ne faut surtout pas faire.
 
 ⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par soixante-cinq.**

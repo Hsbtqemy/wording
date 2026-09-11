@@ -490,6 +490,42 @@ const MUTATIONS = [
    "le message tombe du ciel sur le plant",
    "volet"],
 
+  // Ce que la premiere batterie ne traversait pas, trouve par une relecture a
+  // froid : trois promesses du cablage — les deux premieres mutations visent
+  // la meme, la ligne vide du prenom compose — et chacune de ces regressions
+  // passait les trente-cinq essais du volet. La derniere etait deja tenue par
+  // un essai ; il lui manquait sa mutation.
+  ["nuit.js",
+   "  while (largeur < 60 && _mise_en_page(phrase, largeur)[0] === \"\") largeur += 1;",
+   "",
+   "a quatorze signes, un prenom compose ouvre le message sur une ligne vide",
+   "volet"],
+
+  ["nuit.js",
+   "          { graine: veille.graine, largeur: largeur_pour(veille.phrase) });",
+   "          { graine: veille.graine, largeur: LARGEUR_VOLET });",
+   "le ciel oublie d'elargir : le prenom compose retombe sous un blanc",
+   "volet"],
+
+  ["volet.js",
+   "    Office.context.document.settings.set(REGLAGE_PRENOM, prenom);\n  }",
+   "  }",
+   "un prenom deja repondu ne part pas avec les documents ouverts ensuite",
+   "volet"],
+
+  ["volet.js",
+   "  if (veille) veille.profil = profil;",
+   "",
+   "la reponse ne compte qu'a la prochaine ouverture : cette nuit se passe de"
+   + " prenom",
+   "volet"],
+
+  ["volet.js",
+   "    localStorage.setItem(CLE_PRENOM, prenom);",
+   "    localStorage.getItem(CLE_PRENOM);",
+   "le prenom repondu ne va pas au dossier : il ne vit que la session",
+   "volet"],
+
   // ------------------------------------------------------------------- guet
   // Le guet est le premier morceau du cablage Word couvert par la PARITE : le
   // rapprochement de deux instantanes a un Python en face. Ces mutations se

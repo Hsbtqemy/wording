@@ -40,7 +40,8 @@ export const MOTS_POUR_TOUT_REVELER = 800;
  *
  * message.js en met vingt-deux, ce qui va a une planche. Le volet est une
  * colonne de 340 px : a vingt-deux, une lettre y fait une dizaine de pixels, a
- * quatorze pres de seize. La mise en page reste celle de la spec, et la parite
+ * quatorze pres de seize — au calcul, pas encore vu dans un vrai volet. La
+ * mise en page reste celle de la spec, et la parite
  * la compare deja a une autre largeur que celle par defaut (la planche de la
  * main, a huit).
  */
