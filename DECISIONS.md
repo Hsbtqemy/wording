@@ -817,8 +817,9 @@ une police. C'est ce qui l'empêche de casser la langue graphique.
 ne suffit pas. Complet vers 800 mots dans la fenêtre de nuit.
 
 **Décidé :** distribution en **paquet battu**, pas en tirage indépendant. Des
-tirages indépendants produisent des répétitions immédiates. État actuel : écart
-moyen de 11 nuits, minimum 5. La vraie réponse est d'atteindre 20 phrases, pas
+tirages indépendants produisent des répétitions immédiates. État actuel, mesuré
+le 11 septembre 2026 : écart moyen de 10 nuits, minimum 4 — il était écrit 11
+et 5 ici, et c'est le point ouvert 10 qui disait juste. La vraie réponse est d'atteindre 20 phrases, pas
 d'empiler de la logique de brassage.
 
 Le prénom et l'accord de genre sont un **profil**. Le cadeau peut être offert à
@@ -859,6 +860,16 @@ il ne s'écrit pas à sa place.
 ⚠️ Personne ne sait si le `#` survit à l'adresse que Word compose pour le volet
 dans l'Office LTSC 2021. S'il ne survit pas, le repli est un `?` — et le prénom
 passe alors par les serveurs de GitHub.
+
+**Où ça se vérifie**, côté spécification : `essais.py`, cinq essais — l'accord
+et ses trois formes, le paquet resserré sans prénom ni accord, deux corpus
+jumeaux, l'alphabet sous toutes les formes, le prénom composé — et six
+mutations, une par promesse. Le paquet mémorisé changeait de clé au passage :
+`(tour, longueur, première phrase)` aurait confondu « sans accord » et « sans
+prénom » le jour où ils auraient la même taille, et servi une nominative à
+quelqu'un qu'on ne sait pas nommer. Coût : 1,9 ms par passage d'`essais.py`,
+chronométré dans le processus ; la mesure en tours alternés donnait +716 ms de
+médiane, mais un tour sur trois allait dans l'autre sens — c'était la charge.
 
 ⚠️ Les phrases sont le seul endroit du système où la voix de celui qui offre
 passe. Tout le reste marcherait pour n'importe qui. Elles ne se génèrent pas.
@@ -2316,7 +2327,7 @@ caméra passe.
        gardant le seuil d'origine — il ne doit pas être réajusté, sinon on
        recommence la faute ;
     5. mesurer le surcoût en **tours alternés** (voir `CLAUDE.md`), puisque
-       tout ce qui entre dans `essais.py` est multiplié par cinquante-huit.
+       tout ce qui entre dans `essais.py` est multiplié par soixante-quatre.
 
     ⚠️ Et vérifier au passage que chaque essai **traverse** ce qu'il prétend
     surveiller. Le quatrième de la liste ci-dessus tournait à maturité 0,50 en

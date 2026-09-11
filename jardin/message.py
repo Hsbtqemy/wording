@@ -79,6 +79,9 @@ A = {
     ",": [(1.5,4.2,1.1,5.6)],
     "!": [(1.5,0,1.5,3.4),(1.5,4.4,1.5,5)],
     ".": [(1.4,4.7,1.6,5)],
+    # Le trait d'union, pour les prenoms composes (decision 10) : « Marie-Eve »
+    # ne se dessinait pas. La barre du E, raccourcie.
+    "-": [(0.5,2.5,2.5,2.5)],
     " ": [],
 }
 

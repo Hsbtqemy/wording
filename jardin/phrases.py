@@ -33,6 +33,7 @@ retombe sur le paquet ordinaire — rien ne casse, il manque juste ce qui compte
 from __future__ import annotations
 
 import random
+import re
 import unicodedata
 from dataclasses import dataclass, field
 from datetime import date as _date
@@ -49,7 +50,7 @@ ORIGINE = "2027-01-01"
 COMMUNES = [
     "il est tard, et tu ecris quand meme",
     "personne ne te regarde. moi si.",
-    "tu es trop {fort}",
+    "tu es trop {fort|forte|fort.e}",
     "j'aime bien ce paragraphe, ca tue",
     "un petit cafe ? un the ?",
     "alleeeeeeeez",
@@ -94,15 +95,93 @@ REGISTRES = {
     "elan": ELAN,
 }
 
+# Le profil (decision 10, revisee le 11 septembre 2026) : un prenom et un
+# accord, l'un et l'autre facultatifs. L'accord est fixe par celui qui offre,
+# dans le manifeste ; le prenom aussi, ou demande une fois. Les demander tous
+# les deux devoilait le message : montrer « fort / forte / fort.e » pour faire
+# choisir, c'etait annoncer une phrase avant sa premiere nuit.
 PROFILS = {
-    "camille": {"prenom": "camille", "accord": "e"},
-    "julien": {"prenom": "julien", "accord": ""},
+    "camille": {"prenom": "camille", "accord": "f"},
+    "julien": {"prenom": "julien", "accord": "m"},
 }
+
+# L'ordre des formes dans une phrase qui s'accorde : {fort|forte|fort.e}.
+#
+# Avant, l'accord etait un SUFFIXE colle a un seul mot — « fort » + « e ».
+# Ca ne tient que pour les feminins en -e : « heureux » ne donne pas
+# « heureuxe ». La phrase porte donc ses trois formes, et l'accord choisit.
+# Pas de point median dans la forme inclusive : l'alphabet ne le dessine pas.
+ACCORDS = ("m", "f", "i")
+_CHAMP = re.compile(r"\{([^{}]*)\}")
+
+# L'apostrophe que Word tape, et que l'alphabet ne connait pas.
+_APOSTROPHES = str.maketrans({"\u2019": "'", "\u2018": "'"})
 
 
 def sans_accent(s: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", s)
                    if unicodedata.category(c) != "Mn")
+
+
+def au_trace(s: str) -> str:
+    """Ce que le trace ecrit : sans accents, et l'apostrophe ramenee a '."""
+    return sans_accent(s.translate(_APOSTROPHES))
+
+
+def signes_hors_alphabet(texte: str) -> set:
+    """
+    Les signes que l'alphabet ne sait pas dessiner, une fois normalises.
+
+    Pour la saisie du prenom (decision 10) : un signe qu'on ne dessine pas se
+    signale a la saisie. Le trace, lui, le sauterait sans rien dire — `A.get`
+    rend une lettre vide — et « Zhou » suivi d'un ideogramme deviendrait
+    « ZHOU » la nuit venue.
+    """
+    return {c for c in au_trace(texte).upper() if c not in A}
+
+
+def _servable(brut: str, profil: dict) -> bool:
+    """
+    Le profil permet-il de remplir cette phrase ?
+
+    Sans prenom, une nominative ne sort pas ; sans accord, une phrase qui
+    s'accorde non plus. Le paquet se resserre, rien ne casse — et l'ecart
+    moyen baisse avec lui.
+    """
+    champs = _CHAMP.findall(brut)
+    if "prenom" in champs and not profil.get("prenom"):
+        return False
+    if any("|" in c for c in champs) and profil.get("accord") not in ACCORDS:
+        return False
+    return True
+
+
+def remplir(brut: str, profil: dict) -> str:
+    """
+    La phrase, champs remplis. STRICTE : leve ValueError s'il manque de quoi.
+
+    Le tri se fait en amont (`_servable`) ; ici, une phrase qu'on ne peut pas
+    remplir est une erreur, pas un « None, encore debout ? » trace a trois
+    heures du matin. C'est aussi ce qui fait echouer bruyamment les essais si
+    le tri saute.
+    """
+    def champ(m):
+        c = m.group(1)
+        if c == "prenom":
+            if not profil.get("prenom"):
+                raise ValueError(f"{brut!r} : pas de prenom")
+            return profil["prenom"]
+        if "|" not in c:
+            raise ValueError(f"{brut!r} : champ inconnu {{{c}}}")
+        formes = c.split("|")
+        if len(formes) != len(ACCORDS):
+            raise ValueError(f"{brut!r} : {len(formes)} formes, il en faut "
+                             f"{len(ACCORDS)}")
+        accord = profil.get("accord")
+        if accord not in ACCORDS:
+            raise ValueError(f"{brut!r} : pas d'accord")
+        return formes[ACCORDS.index(accord)]
+    return _CHAMP.sub(champ, brut)
 
 
 # --------------------------------------------------------------------------
@@ -177,7 +256,14 @@ def _paquet(tour: int, corpus: list) -> list:
 
     On construit donc les tours en chaine, en memorisant.
     """
-    cle = (tour, len(corpus), corpus[0] if corpus else "")
+    # La cle est le corpus ENTIER. L'ancienne — (tour, longueur, premiere
+    # phrase) — suffisait tant qu'il n'existait qu'un corpus. Depuis que le
+    # paquet depend du profil (decision 10), deux corpus peuvent avoir la meme
+    # longueur et la meme premiere phrase : « sans accord » et « sans prenom »,
+    # des qu'il y aura autant de phrases qui s'accordent que de nominatives. Le
+    # paquet de l'un aurait ete servi a l'autre — une nominative a quelqu'un
+    # qu'on ne sait pas nommer.
+    cle = (tour, tuple(corpus))
     if cle in _MEMOIRE_PAQUETS:
         return _MEMOIRE_PAQUETS[cle]
 
@@ -218,12 +304,16 @@ def phrase_de_la_nuit(profil: dict, date_iso: str, nuit: Nuit | None = None) -> 
 
     Si le registre de l'evenement est vide, on retombe sur le paquet. C'est le
     cas du creux tant que ses phrases ne sont pas ecrites.
+
+    Une phrase que le profil ne permet pas de remplir ne sort pas : le paquet
+    et les registres sont tries d'abord (decision 10).
     """
-    corpus = COMMUNES + NOMINATIVES
+    corpus = [b for b in COMMUNES + NOMINATIVES if _servable(b, profil)]
     brut = None
 
     if nuit is not None:
-        registre = REGISTRES.get(nuit.evenement() or "", [])
+        registre = [b for b in REGISTRES.get(nuit.evenement() or "", [])
+                    if _servable(b, profil)]
         if registre:
             # Dans un registre d'evenement, on tourne sur la date pour ne pas
             # servir deux fois la meme a deux declenchements rapproches.
@@ -232,8 +322,7 @@ def phrase_de_la_nuit(profil: dict, date_iso: str, nuit: Nuit | None = None) -> 
     if brut is None:
         brut = _du_paquet(date_iso, corpus)
 
-    return sans_accent(brut.format(prenom=profil["prenom"],
-                                   fort="fort" + profil["accord"]))
+    return au_trace(remplir(brut, profil))
 
 
 # --------------------------------------------------------------------------
@@ -242,9 +331,9 @@ def verifier(profils=PROFILS) -> bool:
     tout = COMMUNES + NOMINATIVES + DEBLOCAGE + ELAN + CREUX
     for p in profils.values():
         for brut in tout:
-            t = sans_accent(brut.format(prenom=p["prenom"],
-                                        fort="fort" + p["accord"])).upper()
-            manque |= {c for c in t if c not in A}
+            for accord in ACCORDS:        # toutes les formes, pas seulement la sienne
+                manque |= signes_hors_alphabet(
+                    remplir(brut, {"prenom": p["prenom"], "accord": accord}))
     print(f"  caracteres non tracables : {sorted(manque) or 'aucun'}")
 
     # Ecart entre deux occurrences de la meme phrase, sur deux ans.

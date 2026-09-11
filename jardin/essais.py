@@ -449,20 +449,18 @@ def _():
     return "5 avancements, 1 cadre"
 
 
-@essai("message / l'alphabet couvre toutes les phrases")
+@essai("message / l'alphabet couvre toutes les phrases, sous toutes leurs formes")
 def _():
-    from message import A
     import phrases
     manque = set()
     tout = (phrases.COMMUNES + phrases.NOMINATIVES + phrases.DEBLOCAGE
             + phrases.ELAN + phrases.CREUX)
-    for profil in phrases.PROFILS.values():
-        for brut in tout:
-            t = phrases.sans_accent(brut.format(
-                prenom=profil["prenom"], fort="fort" + profil["accord"])).upper()
-            manque |= {c for c in t if c not in A}
+    for brut in tout:
+        for accord in ("m", "f", "i"):
+            manque |= phrases.signes_hors_alphabet(
+                phrases.remplir(brut, {"prenom": "camille", "accord": accord}))
     assert not manque, f"non tracables : {sorted(manque)}"
-    return f"{len(tout)} phrases, 2 profils"
+    return f"{len(tout)} phrases, trois accords"
 
 
 @essai("message / les lettres cessent de venir d'une grille")
@@ -477,6 +475,24 @@ def _():
                             for s in t.segments[:6]))
     assert len(set(angles)) == 3, "les angles sont identiques d'un tirage a l'autre"
     return "3 tirages, 3 jeux d'angles"
+
+
+@essai("message / un prenom compose se dessine, un signe inconnu se signale")
+def _():
+    from grammaire import Toile
+    from message import message
+    from phrases import signes_hors_alphabet
+    # L'apostrophe et l'ideogramme sont ECHAPPES : l'apostrophe est celle que
+    # Word tape, et un editeur qui la redresserait en ' rendrait l'essai creux.
+    for prenom in ("Marie-Ève", "Zoë", "N\u2019Dri", "Jean Luc"):
+        hors = signes_hors_alphabet(prenom)
+        assert not hors, f"{prenom!r} : {sorted(hors)} non tracables"
+    hors = signes_hors_alphabet("Zhou \u5468")
+    assert hors == {"\u5468"}, f"l'ideogramme devait se signaler, pas {hors}"
+    t = Toile()
+    message(t, "-", 1.0, graine=1)
+    assert t.segments, "le trait d'union ne trace rien"
+    return "Marie-Eve, Zoe, N'Dri passent ; un ideogramme se signale"
 
 
 # ==========================================================================
@@ -524,6 +540,60 @@ def _():
     ph = phrase_de_la_nuit(PROFILS["julien"], "2027-06-01", n)
     assert ph and isinstance(ph, str)
     return "creux vide -> repli, aucune exception"
+
+
+@essai("phrases / l'accord choisit sa forme (decision 10)")
+def _():
+    from phrases import remplir
+    brut = "tu es trop {fort|forte|fort.e}"
+    vus = {a: remplir(brut, {"prenom": None, "accord": a}) for a in ("m", "f", "i")}
+    assert vus == {"m": "tu es trop fort", "f": "tu es trop forte",
+                   "i": "tu es trop fort.e"}, vus
+    # Ce que le suffixe d'avant ne savait pas faire.
+    assert remplir("{heureux|heureuse|heureux.se}",
+                   {"prenom": None, "accord": "f"}) == "heureuse"
+    for mal in ("{fort|forte}", "{prénom}, bonsoir"):
+        try:
+            remplir(mal, {"prenom": "camille", "accord": "f"})
+        except ValueError:
+            continue
+        raise AssertionError(f"{mal!r} accepte sans rien dire")
+    return "fort, forte, fort.e ; deux champs mal formes refuses"
+
+
+@essai("phrases / sans prenom ni accord, le paquet se resserre sans casser")
+def _():
+    from phrases import phrase_de_la_nuit, au_trace, COMMUNES, NOMINATIVES
+    from datetime import date
+    base = date(2027, 1, 1).toordinal()
+    # Quarante nuits : quatre tours d'un paquet de dix au plus, donc chaque
+    # phrase est TRAVERSEE — une nominative qui aurait echappe au tri y sort
+    # forcement, et `remplir` leve.
+    nuits = [date.fromordinal(base + n).isoformat() for n in range(40)]
+    simples = {au_trace(b) for b in COMMUNES + NOMINATIVES if "{" not in b}
+    for nom, p in (("sans prenom", {"prenom": None, "accord": "f"}),
+                   ("sans accord", {"prenom": "camille", "accord": None}),
+                   ("sans rien", {"prenom": None, "accord": None})):
+        servies = {phrase_de_la_nuit(p, d) for d in nuits}
+        assert not any(c in s for s in servies for c in "{|}"), (nom, servies)
+        assert simples <= servies, (nom, "perdues :", simples - servies)
+        if p["prenom"]:
+            assert any(p["prenom"] in s for s in servies), (nom, "le prenom ne sort plus")
+    return "trois profils incomplets, quarante nuits, aucune exception"
+
+
+@essai("phrases / deux paquets de meme longueur ne se confondent pas")
+def _():
+    from phrases import _paquet
+    # Meme longueur, meme premiere phrase : exactement ce que l'ancienne cle
+    # de memoire confondait.
+    a = ["meme debut", "a1", "a2", "a3", "a4", "a5"]
+    b = ["meme debut", "b1", "b2", "b3", "b4", "b5"]
+    for tour in range(3):
+        pa, pb = _paquet(tour, a), _paquet(tour, b)
+        assert sorted(pa) == sorted(a), (tour, pa)
+        assert sorted(pb) == sorted(b), (tour, "le paquet de l'autre :", pb)
+    return "deux corpus jumeaux, deux paquets"
 
 
 @essai("grammaire / le vegetal pousse sans jamais reculer (decision 1)")

@@ -65,7 +65,7 @@ python jardin/essais.py && python jardin/mutations.py \
 PowerShell 5.1 n'a pas `&&` : ecrire `a; if ($?) { b }`, ou passer par
 l'outil Bash.
 
-Attendu : `70 passes, 0 en echec` · `58/58` · `aucun ecart` · `23 passes` ·
+Attendu : `74 passes, 0 en echec` · `64/64` · `aucun ecart` · `23 passes` ·
 `25 passes` · `106/106`.
 
 `essais_volet.js` éprouve le **câblage Office.js** contre un hôte simulé — ce
@@ -88,10 +88,10 @@ régressions dans des fichiers que personne n'a touchés. Un filet existe (copie
 `.intact` relue au démarrage), il ne protège pas de deux écritures simultanées.
 Après coup, vérifier `git status`.
 
-Durée mesurée de l'enchaînement complet : **13 min 42** (11 septembre 2026, à 58
-et 106 mutations). C'était 13 min 14 le 9 septembre au même compte, 14 min 50 à
-54 et 103, 15 min 38 à 50 et 100, 9 min 38 à 13 min 35 à 47 et 98, et 5 min 57 à
-36 et 87.
+Durée mesurée de l'enchaînement complet : **18 min 06** (11 septembre 2026 dans
+l'après-midi, à 64 et 106 mutations). C'était 13 min 42 le matin même à 58 et
+106, 13 min 14 le 9 septembre au même compte, 14 min 50 à 54 et 103, 15 min 38 à
+50 et 100, 9 min 38 à 13 min 35 à 47 et 98, et 5 min 57 à 36 et 87.
 
 ⚠️ **Lire cette suite dans l'ordre : 15 min 38, puis 14 min 50, puis 13 min 14 —
 pendant que la chaîne gagnait huit mutations et deux essais.** Le code n'a pas
@@ -104,20 +104,23 @@ mal autrement :
 
 | `essais.py` | `mutations.py` | `parite.py` | les deux `essais*.js` | `mutations.js` |
 |---|---|---|---|---|
-| 13–16 s | **11 min 19** | 4–5 s | < 1 s | **2 min 04** |
+| 11–16 s | **15 min 18** | 4–6 s | < 1 s | **2 min 29** |
 
-Les deux colonnes lourdes sont **chronométrées** depuis le 11 septembre 2026 —
-678 939 ms et 123 525 ms, chaque suite enveloppée d'un chronomètre dans la même
-commande, sur une seule passe dont la charge n'est pas connue.
+Les deux colonnes lourdes sont **chronométrées**, chaque suite enveloppée d'un
+chronomètre dans la même commande : 918 453 ms et 148 856 ms le 11 septembre
+2026 dans l'après-midi, à 64 mutations ; 678 939 ms et 123 525 ms le matin, à
+58. ⚠️ `mutations.js`, dont pas une ligne n'avait changé entre les deux, a pris
+20 % de plus l'après-midi : les six mutations ajoutées expliquent environ une
+minute vingt des quatre minutes d'écart, la charge le reste.
 
 ⚠️ Elles étaient jusque-là **déduites** du total, et les deux déductions —
 « ≈ 13 min » et « ≈ 2 min » — dépassaient ensemble les 13 min 14 dont elles
 étaient tirées. Un chiffre déduit d'un total où l'essentiel est justement ce
 qu'on déduit ne valait rien, et ça se voyait à l'addition.
 
-`mutations.py` fait donc 11,7 s par relance, moins qu'un `essais.py` seul : ce
-n'est pas un raccourci — chaque relance est un passage entier, aucun essai ne
-s'arrête au premier échec —, c'est la fourchette de la charge.
+`mutations.py` fait donc 11,7 à 14,4 s par relance selon la charge — parfois
+moins qu'un `essais.py` seul : ce n'est pas un raccourci, chaque relance est un
+passage entier, aucun essai ne s'arrête au premier échec.
 
 ⚠️ La fourchette est de la **charge machine, pas du code** : deux mesures dos à
 dos du même `essais.py` ont donné 14 194 ms et 14 018 ms là où il avait mis
@@ -125,11 +128,11 @@ dos du même `essais.py` ont donné 14 194 ms et 14 018 ms là où il avait mis
 chaîne, mesurer les deux versions **l'une après l'autre** — sinon on retire du
 travail juste pour rien.
 
-`mutations.py` relance `essais.py` cinquante-huit fois, et `mutations.js`
+`mutations.py` relance `essais.py` soixante-quatre fois, et `mutations.js`
 relance la parité ou la batterie du volet cent six fois. Assez
 long pour donner envie de paralléliser, ce qu'il ne faut surtout pas faire.
 
-⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par cinquante-huit.**
+⚠️ **Tout ce qu'on ajoute à `essais.py` est donc multiplié par soixante-quatre.**
 Un essai qui balayait les tailles de massif de 2 à 40 en végétal a coûté 12,8 s
 par passage — neuf minutes de chaîne — pour une propriété qui ne dépend pas de
 la famille. Mesurer le coût d'un essai neuf fait partie de l'écrire : voir la

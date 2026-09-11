@@ -288,6 +288,40 @@ MUTATIONS = [
      "        queue = set()",
      "point ouvert 10 : le raccord du paquet ne porte plus"),
 
+    # ---------------------------------------------------------------- profil
+    # Decision 10 revisee : le profil peut etre incomplet, et le paquet se
+    # resserre au lieu de casser. Chacune de ces regressions ferait tracer une
+    # phrase fausse a trois heures du matin — ou planter la nuit.
+    ("phrases.py",
+     '    if "prenom" in champs and not profil.get("prenom"):',
+     "    if False:",
+     "decision 10 : sans prenom, les nominatives restent dans le paquet"),
+
+    ("phrases.py",
+     '    if any("|" in c for c in champs) and profil.get("accord") not in ACCORDS:',
+     "    if False:",
+     "decision 10 : sans accord, une phrase qui s'accorde reste dans le paquet"),
+
+    ("phrases.py",
+     "        return formes[ACCORDS.index(accord)]",
+     "        return formes[0]",
+     "decision 10 : l'accord ne choisit plus, tout le monde est au masculin"),
+
+    ("phrases.py",
+     "    cle = (tour, tuple(corpus))",
+     '    cle = (tour, len(corpus), corpus[0] if corpus else "")',
+     "deux corpus de meme longueur et meme debut partagent un paquet"),
+
+    ("phrases.py",
+     "    return sans_accent(s.translate(_APOSTROPHES))",
+     "    return sans_accent(s)",
+     "l'apostrophe de Word n'est plus ramenee : N'Dri ne se dessine plus"),
+
+    ("message.py",
+     '    "-": [(0.5,2.5,2.5,2.5)],',
+     "",
+     "decision 10 : le trait d'union quitte l'alphabet, Marie-Eve ne se dessine plus"),
+
     # ------------------------------------------------------------------ guet
     # Le guet remplace les evenements de paragraphe, absents de la machine
     # cible (point ouvert 19). Aucune de ces regressions ne fait planter quoi
