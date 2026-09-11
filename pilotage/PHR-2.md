@@ -5,19 +5,20 @@ statut: interrompu
 
 # PHR-2 — le message de nuit et les phrases, dans l'add-in
 
-**Arrêté sur** — `fcb55da`, 11 septembre : la décision 10 révisée. Le profil ne se
-demande plus au rattachement du dossier ; l'accord est fixé par celui qui offre, dans
-le manifeste, le prénom peut l'être aussi, sinon il est demandé une fois et jamais
-redemandé. Rien n'est encore porté.
+**Arrêté sur** — `ca1cfe9`, 11 septembre : la spécification Python de la décision 10
+révisée est faite et éprouvée — phrases à trois formes, paquet resserré sans prénom ni
+accord, « - » dans l'alphabet, et la clé de mémoire du paquet devenue le corpus
+entier. Rien n'est encore porté : la suite est `message.js` et `phrases.js`, avec
+leur parité.
 
 ## Reste
 
 ### Spécification
-- [ ] Dans `phrases.py`, une phrase qui s'accorde porte ses trois formes
+- [x] Dans `phrases.py`, une phrase qui s'accorde porte ses trois formes
   `{fort|forte|fort.e}` et l'accord choisit ; sans prénom les nominatives sortent du
   paquet, sans accord les phrases qui s'accordent aussi — et `essais.py` le vérifie
-- [ ] L'alphabet de `message.py` dessine « - », et `verifier()` accepte un prénom
-  composé
+- [x] L'alphabet de `message.py` dessine « - », et `signes_hors_alphabet` laisse
+  passer un prénom composé
 
 ### Portage
 - [ ] `addin/src/message.js` porte `message.py` — alphabet en segments, tracé à la main,

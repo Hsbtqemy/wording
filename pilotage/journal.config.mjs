@@ -15,7 +15,7 @@ export default {
   // Les deux langages sont separes expres : `jardin/` est la specification, `addin/`
   // le livrable, et quand ils divergent c'est le JavaScript qui a un bug. Leurs
   // batteries sont detachees de leur code, parce que tout ce qui entre dans essais.py
-  // est multiplie par cinquante-huit : sa masse se lit a part.
+  // est multiplie par soixante-quatre : sa masse se lit a part.
   //
   // Les planches aussi : un SVG de planche se reecrit en entier a chaque rendu, et
   // noierait la courbe de la spec.
@@ -38,7 +38,7 @@ export default {
 
   // Pas de `veille`, et c'est une decision. Elle veut UN fichier et un seuil en
   // lignes ; la seule limite reelle du depot n'a pas cette forme. Ce qui coute ici,
-  // c'est le TEMPS d'essais.py, multiplie par cinquante-huit — des lignes ne le
+  // c'est le TEMPS d'essais.py, multiplie par soixante-quatre — des lignes ne le
   // mesurent pas — et le poids du livrable se mesure sans se borner (decision 13).
   // Un seuil pose pour remplir le champ serait une borne calee sur rien :
   // exactement ce que CLAUDE.md interdit.

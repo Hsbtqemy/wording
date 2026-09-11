@@ -32,7 +32,7 @@ graine fixe, un seuil numérique ajusté sur elle.
 ## Contexte
 
 La méthode est au point 16 de `DECISIONS.md`, et elle ne se réinvente pas. ⚠️ Tout ce
-qui entre dans `essais.py` est multiplié par cinquante-huit : un essai réparé sur douze
+qui entre dans `essais.py` est multiplié par soixante-quatre : un essai réparé sur douze
 graines coûte douze fois sa mesure à chaque mutation.
 
 ⚠️ Les quatre du 9 septembre ont été trouvés en perturbant le code, ce qui fait remonter
