@@ -557,11 +557,19 @@ def main() -> int:
             os.remove(cote)
         if r.returncode:
             attrapees += 1
-            coupables = [l.strip()[6:].strip() for l in r.stdout.splitlines()
-                         if l.strip().startswith("ECHEC")]
+            # ECHEC ET ERREUR. Seul ECHEC etait lu : un essai qui leve au lieu
+            # d'asserter — `remplir` refusant une nominative sans prenom — rendait
+            # la mutation « attrapee » sans dire par quoi. Et si essais.py tombe
+            # avant le premier essai, aucun nom n'existe : on dit alors pourquoi,
+            # plutot que de laisser croire qu'un essai a vu la regression.
+            coupables = [l.strip().split(None, 1)[1] for l in r.stdout.splitlines()
+                         if l.strip().startswith(("ECHEC ", "ERREUR "))]
             print(f"  ok    {libelle}")
             for c in coupables:
                 print(f"          rattrapee par : {c}")
+            if not coupables:
+                cause = (r.stderr.strip().splitlines() or ["sortie vide"])[-1]
+                print(f"          aucun essai nomme — essais.py : {cause}")
         else:
             manquees.append((libelle, "aucun essai ne la voit"))
             print(f"  ECHAPPE {libelle}")
