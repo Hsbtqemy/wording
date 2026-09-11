@@ -413,29 +413,30 @@ const MUTATIONS = [
    "volet"],
 
   ["volet.js",
-   "  const du_fichier = Office.context.document.settings.get(REGLAGE_PRENOM) || null;",
+   "  const du_fichier = Office.context.document.settings.get(reglage) || null;",
    "  const du_fichier = null;",
-   "le prenom venu dans le document ne compte pas : une autre machine le redemande",
+   "le prenom et le genre venus dans le document ne comptent pas : une autre"
+   + " machine les redemande",
    "volet"],
 
   ["volet.js",
-   "    localStorage.setItem(CLE_DEMANDE, \"1\");",
-   "    localStorage.getItem(CLE_DEMANDE);",
+   "    localStorage.setItem(marque, \"1\");",
+   "    localStorage.getItem(marque);",
    "ignoree, la question revient a chaque ouverture : un rappel",
    "volet"],
 
   ["nuit.js",
-   "  return !profil.prenom && !deja_demande && question.trim() !== \"\";",
-   "  return !profil.prenom && !deja_demande;",
+   "  return !connu && !deja_demande && question.trim() !== \"\";",
+   "  return !connu && !deja_demande;",
    "la question s'affiche sans son texte, et se consume avant qu'il soit ecrit",
    "volet"],
 
   ["volet.js",
-   "  Office.context.document.settings.set(REGLAGE_PRENOM, prenom);\n"
-   + "  profil = { ...profil, prenom };",
-   "  Office.context.document.settings.set(REGLAGE_PRENOM, prenom);\n"
+   "  Office.context.document.settings.set(reglage, valeur);\n"
+   + "  if (veille) veille.profil = profil;",
+   "  Office.context.document.settings.set(reglage, valeur);\n"
    + "  Office.context.document.settings.saveAsync();\n"
-   + "  profil = { ...profil, prenom };",
+   + "  if (veille) veille.profil = profil;",
    "repondre enregistre le document : Word demande d'enregistrer un fichier ou"
    + " l'on n'a rien tape",
    "volet"],
@@ -508,8 +509,8 @@ const MUTATIONS = [
    "volet"],
 
   ["volet.js",
-   "    Office.context.document.settings.set(REGLAGE_PRENOM, prenom);\n  }",
-   "  }",
+   "    if (du_fichier !== du_dossier) Office.context.document.settings.set(reglage, du_dossier);",
+   "",
    "un prenom deja repondu ne part pas avec les documents ouverts ensuite",
    "volet"],
 
@@ -521,9 +522,31 @@ const MUTATIONS = [
    "volet"],
 
   ["volet.js",
-   "    localStorage.setItem(CLE_PRENOM, prenom);",
-   "    localStorage.getItem(CLE_PRENOM);",
+   "    localStorage.setItem(cle, valeur);",
+   "    localStorage.getItem(cle);",
    "le prenom repondu ne va pas au dossier : il ne vit que la session",
+   "volet"],
+
+  // ---------------------------------------------------------------- le genre
+  // Demande depuis le 11 septembre 2026 sous trois choix neutres, a cote du
+  // prenom (decision 10, revisee une seconde fois).
+  ["volet.js",
+   "  const genre = poser(profil.accord, \"question-genre\", CLE_DEMANDE_ACCORD);",
+   "  const genre = poser(profil.accord, \"question-genre\", CLE_DEMANDE);",
+   "une seule marque pour deux questions : la phrase du genre donnee apres coup,"
+   + " le genre n'est jamais demande",
+   "volet"],
+
+  ["volet.js",
+   "      if (!prenom) forme.hidden = true;",
+   "",
+   "le genre choisi, la question reste affichee : rien ne dit qu'on a repondu",
+   "volet"],
+
+  ["volet.js",
+   "    accord: lu.accord || repris(CLE_ACCORD, REGLAGE_ACCORD, (v) => ACCORDS.includes(v)),",
+   "    accord: lu.accord,",
+   "le genre repondu ne revient pas a l'ouverture suivante : il faudrait le redemander",
    "volet"],
 
   // ------------------------------------------------------------------- guet

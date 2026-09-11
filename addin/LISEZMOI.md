@@ -89,9 +89,10 @@ machine, c'est acquis.
 
 Le message de nuit peut dire un prénom, et accorder ce qu'il dit. Les deux se
 posent **dans le manifeste**, derrière un `#` ajouté à l'adresse du volet :
-c'est celui qui offre qui les connaît. L'accord ne se demande jamais — faire
-choisir entre « fort », « forte » et « fort.e », ce serait dévoiler une phrase
-avant sa nuit (décision 10).
+c'est celui qui offre qui les connaît. S'ils n'y sont pas, le volet les
+demande, une fois (voir plus bas) — le genre sous trois choix neutres,
+« M · F · NB » : faire choisir entre « fort », « forte » et « fort.e »
+dévoilerait une phrase avant sa nuit (décision 10).
 
 L'adresse apparaît **deux fois** dans `manifest.xml`, et les deux doivent porter
 le même profil :
@@ -105,8 +106,7 @@ le même profil :
 - ⚠️ **`&amp;` et non `&`** entre les deux : c'est du XML, et un `&` nu rend le
   manifeste invalide — Word le refuse.
 - **`accord`** vaut `m`, `f` ou `i` : masculin, féminin, inclusif (« fort.e »).
-  Toute autre valeur, ou pas d'accord du tout, et les phrases qui s'accordent
-  ne sortent simplement pas.
+  Toute autre valeur compte comme absente.
 - **`prenom`** s'écrit de préférence **sans accents** : ils tombent de toute
   façon au tracé, et une lettre accentuée dans une adresse doit être encodée
   (`Zo%C3%A9`). Une espace s'écrit `%20`. Le message dessine A à Z, l'espace, le
@@ -115,6 +115,10 @@ le même profil :
   première ouverture : « Ton prénom ? ». La réponse reste sur la machine et
   part dans le document avec la prochaine copie du paysage. Ignorée, la
   question ne revient jamais.
+- **Sans accord dans le manifeste**, le volet demande le genre de la même
+  façon, dans la même question : « Tu te genres comment ? », puis M, F ou
+  NB. Ignoré, il ne revient pas, et les phrases qui s'accordent ne sortent
+  pas.
 
 Le `#` ne part jamais vers GitHub, et il ne change pas l'origine : ajouter ou
 retirer un profil ne touche pas au paysage.

@@ -61,6 +61,13 @@
     padding: 2px 0; outline: none;
   }
   #hors { color: var(--pale); font-size: 11px; min-height: 1em; }
+  #partie-prenom, #partie-genre { display: flex; flex-direction: column; gap: 4px; }
+  #demande [hidden] { display: none; }
+  #question-genre { margin: 0; font-size: 12px; font-style: italic; }
+  .choix { display: flex; gap: 16px; }
+  .choix button[aria-pressed="true"] {
+    color: var(--encre); border-bottom-color: var(--encre);
+  }
   /* Un bouton discret : il ne demande rien, il ouvre. */
   button {
     font: inherit; font-size: 12px; color: var(--pale);
@@ -75,20 +82,34 @@
 <body>
   <div id="paysage"></div>
   <!--
-    La question du prenom (decision 10). Posee une fois, a la premiere
-    ouverture, si le manifeste ne donne pas de prenom ; ignoree, jamais
-    reposee.
+    Les deux questions du profil (decision 10) : le prenom, et le genre.
+    Chacune posee une fois, a la premiere ouverture, si le manifeste ne donne
+    pas sa reponse ; ignoree, jamais reposee.
 
-    ⚠️ SON TEXTE EST CELUI DE QUI OFFRE, donne le 11 septembre 2026. C'est sa
-    voix, comme les phrases de nuit : il ne se change pas a sa place. Vide, la
-    question ne s'afficherait pas. L'insecable garde le « ? » avec son mot
-    dans un volet etroit, comme dans le message de nuit.
+    ⚠️ LEURS TEXTES SONT CEUX DE QUI OFFRE. « Ton prénom ? » et « Tu te genres
+    comment ? » ont ete donnes le 11 septembre 2026. C'est sa voix, comme les
+    phrases de nuit : ni l'un ni l'autre ne s'ecrit ni ne se change a sa
+    place. Vide, une question ne s'afficherait pas.
+    L'insecable garde le « ? » avec son mot dans un volet etroit.
+
+    Les trois choix sont neutres : montrer « fort / forte / fort.e »
+    devoilerait une phrase avant sa nuit, « M · F · NB » ne devoile rien.
   -->
   <form id="demande" hidden>
-    <label id="question" for="prenom">Ton prénom&nbsp;?</label>
-    <input id="prenom" type="text" autocomplete="given-name" maxlength="40"
-           spellcheck="false">
-    <span id="hors"></span>
+    <div id="partie-prenom">
+      <label id="question" for="prenom">Ton prénom&nbsp;?</label>
+      <input id="prenom" type="text" autocomplete="given-name" maxlength="40"
+             spellcheck="false">
+      <span id="hors"></span>
+    </div>
+    <div id="partie-genre">
+      <p id="question-genre">Tu te genres comment&nbsp;?</p>
+      <div class="choix">
+        <button id="accord-m" type="button">M</button>
+        <button id="accord-f" type="button">F</button>
+        <button id="accord-i" type="button">NB</button>
+      </div>
+    </div>
   </form>
   <div id="pied">
     <span id="mot"></span>

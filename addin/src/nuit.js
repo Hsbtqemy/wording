@@ -81,15 +81,17 @@ export function profil_de_l_adresse(href) {
 }
 
 /**
- * Faut-il poser la question du prenom ? Une fois, et seulement si rien ne le
- * donne deja.
+ * Faut-il poser une question du profil — le prenom, ou le genre ? Une fois, et
+ * seulement si rien ne donne deja la reponse.
  *
  * ⚠️ PAS SANS SON TEXTE. Il est la voix de celui qui offre, et il reste vide
  * tant qu'il ne l'a pas ecrit : la question se tait alors — et elle n'est pas
  * comptee comme posee, pour l'etre le jour ou le texte existera.
+ *
+ * @param connu la reponse que l'adresse, le dossier ou le document donnent deja
  */
-export function faut_il_demander(profil, question, deja_demande) {
-  return !profil.prenom && !deja_demande && question.trim() !== "";
+export function faut_il_demander(connu, question, deja_demande) {
+  return !connu && !deja_demande && question.trim() !== "";
 }
 
 /**

@@ -32,8 +32,8 @@
  *   - les deux magasins branches sur l'hote (decision 16) ;
  *   - la lecture du corps, et celle des styles quand la structure bouge ;
  *   - le tic de deux secondes (decision 12) ;
- *   - le profil, la question du prenom, et la nuit branchee sur le tic
- *     (decision 10) — ce qui en decide est dans nuit.js.
+ *   - le profil, les questions du prenom et du genre, et la nuit branchee
+ *     sur le tic (decision 10) — ce qui en decide est dans nuit.js.
  */
 
 import { Guet, INTERVALLE, compter_paragraphes } from "./guet.js";
@@ -42,6 +42,7 @@ import { graine_du_document } from "./grammaire.js";
 import { vue_de_travail } from "./composition.js";
 import { Veille, dans_le_ciel, mots_de_nuit, profil_de_l_adresse,
          faut_il_demander, signalement } from "./nuit.js";
+import { ACCORDS } from "./phrases.js";
 
 let paysage = null;
 let guet = null;
@@ -143,91 +144,141 @@ function ranger() {
 // --------------------------------------------------------------------------
 // Le profil (decision 10)
 // --------------------------------------------------------------------------
-// Le prenom, quand il a ete DONNE en reponse : au dossier, et dans le document
-// par la prochaine copie du paysage — jamais par une copie a lui seul.
+// Le prenom et le genre, quand ils ont ete DONNES en reponse : au dossier, et
+// dans le document par la prochaine copie du paysage — jamais par une copie a
+// eux seuls.
 const CLE_PRENOM = "paysage:prenom";
 const REGLAGE_PRENOM = "paysage.prenom";
-// La question a ete posee. Ignoree, elle n'est jamais reposee : ce serait un
-// rappel.
+const CLE_ACCORD = "paysage:accord";
+const REGLAGE_ACCORD = "paysage.accord";
+// Chaque question a ete posee. Ignoree, elle n'est jamais reposee : ce serait
+// un rappel. UNE MARQUE PAR QUESTION : la phrase du genre peut arriver apres
+// que le prenom a ete demande, et elle doit pouvoir se poser quand meme.
 const CLE_DEMANDE = "paysage:prenom:demande";
+const CLE_DEMANDE_ACCORD = "paysage:accord:demande";
 
 /**
- * Le profil : l'adresse d'abord — c'est celui qui offre qui l'a posee dans le
- * manifeste —, puis un prenom deja donne en reponse, au dossier, ou dans le
- * document s'il vient d'une autre machine. L'accord ne vient QUE de l'adresse :
- * il ne se demande pas, parce que le demander devoilerait une phrase.
+ * Le profil, champ par champ : l'adresse d'abord — c'est celui qui offre qui
+ * l'a posee dans le manifeste —, puis une reponse deja donnee.
+ *
+ * L'accord se demande depuis le 11 septembre 2026, sous trois choix neutres :
+ * c'est MONTRER « fort / forte / fort.e » qui devoilait une phrase, pas
+ * demander le genre (decision 10).
  */
 function profil_du_volet() {
   const lu = profil_de_l_adresse(window.location.href);
-  if (lu.prenom) return lu;
-  let prenom = null;
-  try {
-    prenom = localStorage.getItem(CLE_PRENOM);
-  } catch { /* donnees de site bloquees : le document peut encore le rendre */ }
-  const du_fichier = Office.context.document.settings.get(REGLAGE_PRENOM) || null;
-  if (!prenom) {
-    prenom = du_fichier;
-  } else if (du_fichier !== prenom) {
-    // set() sans saveAsync, comme l'identifiant : il partira avec la
-    // prochaine copie, et ouvrir ne marque rien comme modifie.
-    Office.context.document.settings.set(REGLAGE_PRENOM, prenom);
-  }
-  return { prenom, accord: lu.accord };
+  return {
+    prenom: lu.prenom || repris(CLE_PRENOM, REGLAGE_PRENOM),
+    accord: lu.accord || repris(CLE_ACCORD, REGLAGE_ACCORD, (v) => ACCORDS.includes(v)),
+  };
 }
 
 /**
- * La question du prenom, une fois (decision 10).
+ * Une reponse deja donnee : au dossier d'abord, sinon dans le document venu
+ * d'une autre machine. Trouvee au dossier et absente du document, elle y est
+ * posee — set() sans saveAsync, comme l'identifiant : elle partira avec la
+ * prochaine copie, et ouvrir ne marque rien comme modifie.
+ */
+function repris(cle, reglage, valable = (v) => Boolean(v)) {
+  let du_dossier = null;
+  try {
+    du_dossier = localStorage.getItem(cle);
+  } catch { /* donnees de site bloquees : le document peut encore la rendre */ }
+  const du_fichier = Office.context.document.settings.get(reglage) || null;
+  if (du_dossier && valable(du_dossier)) {
+    if (du_fichier !== du_dossier) Office.context.document.settings.set(reglage, du_dossier);
+    return du_dossier;
+  }
+  return du_fichier && valable(du_fichier) ? du_fichier : null;
+}
+
+/**
+ * Une question du profil (decision 10) : posee si elle a son texte, si rien ne
+ * donne deja la reponse, et si elle ne l'a jamais ete. Rend vrai si elle l'est.
  *
- * ⚠️ SON TEXTE N'EST PAS ICI. Il est dans volet.html, et il est vide : c'est la
- * voix de celui qui offre, comme les phrases. Tant qu'il n'est pas ecrit, la
- * question se tait — voir faut_il_demander().
+ * ⚠️ LEURS TEXTES NE SONT PAS ICI. Ils sont dans volet.html : c'est la voix de
+ * celui qui offre, comme les phrases. Sans le sien, une question se tait —
+ * voir faut_il_demander().
  *
  * Posee, elle est marquee AUSSITOT, pas a la reponse : ignoree, elle n'est
  * jamais reposee.
  */
-function demander_prenom() {
-  const forme = document.getElementById("demande");
-  const question = document.getElementById("question");
-  const champ = document.getElementById("prenom");
-  if (!forme || !question || !champ) return;
+function poser(connu, id_texte, marque) {
+  const texte = document.getElementById(id_texte);
+  if (!texte) return false;
   let deja = true;
   try {
-    deja = localStorage.getItem(CLE_DEMANDE) === "1";
+    deja = localStorage.getItem(marque) === "1";
   } catch { /* sans memoire de l'avoir posee, on ne la pose pas */ }
-  if (!faut_il_demander(profil, question.textContent || "", deja)) return;
+  if (!faut_il_demander(connu, texte.textContent || "", deja)) return false;
   try {
-    localStorage.setItem(CLE_DEMANDE, "1");
+    localStorage.setItem(marque, "1");
   } catch {
-    return;
+    return false;
   }
+  return true;
+}
+
+/** Les deux questions, dans une seule forme : celles qui restent a poser. */
+function demander() {
+  const forme = document.getElementById("demande");
+  const partie_prenom = document.getElementById("partie-prenom");
+  const partie_genre = document.getElementById("partie-genre");
+  const champ = document.getElementById("prenom");
+  if (!forme || !partie_prenom || !partie_genre || !champ) return;
+  const prenom = poser(profil.prenom, "question", CLE_DEMANDE);
+  const genre = poser(profil.accord, "question-genre", CLE_DEMANDE_ACCORD);
+  if (!prenom && !genre) return;
+  partie_prenom.hidden = !prenom;
+  partie_genre.hidden = !genre;
   forme.hidden = false;
+
   const hors = document.getElementById("hors");
   // Un signe que l'alphabet ne dessine pas se signale A LA SAISIE, au lieu de
   // disparaitre en silence au trace.
   champ.addEventListener("input", () => {
     if (hors) hors.textContent = signalement(champ.value);
   });
+  // Entree ferme la forme : ce qui n'a pas ete repondu est ignore, et ne
+  // reviendra pas.
   forme.addEventListener("submit", (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    repondre(champ.value);
+    const valeur = champ.value.trim();
+    if (valeur) repondre("prenom", valeur);
     forme.hidden = true;
   });
+  for (const accord of ACCORDS) {
+    const bouton = document.getElementById(`accord-${accord}`);
+    if (!bouton) continue;
+    bouton.addEventListener("click", () => {
+      repondre("accord", accord);
+      for (const autre of ACCORDS) {
+        const b = document.getElementById(`accord-${autre}`);
+        if (b) b.setAttribute("aria-pressed", String(autre === accord));
+      }
+      // Seule, la question du genre se retire des qu'on a choisi ; avec le
+      // prenom, c'est Entree qui ferme.
+      if (!prenom) forme.hidden = true;
+    });
+  }
 }
 
 /**
- * ⚠️ REPONDRE N'ECRIT PAS DANS LE DOCUMENT. Le prenom va au dossier, et au
- * reglage de la session par set() SANS saveAsync : il part avec la prochaine
- * copie du paysage, jamais dans une copie pour lui seul — Word demanderait
+ * ⚠️ REPONDRE N'ECRIT PAS DANS LE DOCUMENT. La reponse va au dossier, et au
+ * reglage de la session par set() SANS saveAsync : elle part avec la prochaine
+ * copie du paysage, jamais dans une copie pour elle seule — Word demanderait
  * d'enregistrer un fichier ou l'on n'a rien tape.
+ *
+ * Et elle compte des cette nuit : la veille recoit le profil neuf.
  */
-function repondre(texte) {
-  const prenom = (texte || "").trim();
-  if (!prenom) return;
+function repondre(champ, valeur) {
+  profil = { ...profil, [champ]: valeur };
+  const [cle, reglage] = champ === "prenom"
+    ? [CLE_PRENOM, REGLAGE_PRENOM] : [CLE_ACCORD, REGLAGE_ACCORD];
   try {
-    localStorage.setItem(CLE_PRENOM, prenom);
-  } catch { /* il vivra la session, et partira quand meme avec la copie */ }
-  Office.context.document.settings.set(REGLAGE_PRENOM, prenom);
-  profil = { ...profil, prenom };
+    localStorage.setItem(cle, valeur);
+  } catch { /* elle vivra la session, et partira quand meme avec la copie */ }
+  Office.context.document.settings.set(reglage, valeur);
   if (veille) veille.profil = profil;
 }
 
@@ -467,7 +518,7 @@ Office.onReady(async (info) => {
   // La nuit part des mots de nuit deja la : le capital de depart est acquis,
   // il ne revele rien (decision 11).
   veille = new Veille(profil, mots_de_nuit(paysage));
-  demander_prenom();
+  demander();
 
   dessiner();
   setInterval(tic, INTERVALLE);

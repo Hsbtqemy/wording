@@ -29,7 +29,7 @@ import { CORPS } from "./src/message.js";
 function monter_hote({ plafond = 109, url = "C:/These/chapitre1.docx",
                        paragraphes = [], reglages = {},
                        refus_sauvegarde = false,
-                       fragment = "", question = "" } = {}) {
+                       fragment = "", question = "", question_genre = "" } = {}) {
   const etat = {
     paras: [],        // {id, text, style}
     suivant: 0,
@@ -193,6 +193,8 @@ function monter_hote({ plafond = 109, url = "C:/These/chapitre1.docx",
       // s'ouvrait avant le clic, sans jamais cliquer.
       ecouteurs: {},
       addEventListener(type, h) { this.ecouteurs[type] = h; },
+      attributs: {},
+      setAttribute(k, v) { this.attributs[k] = String(v); },
       cliquer() {
         if (!this.ecouteurs.click) throw new Error("rien n'ecoute le clic");
         return this.ecouteurs.click();
@@ -202,12 +204,17 @@ function monter_hote({ plafond = 109, url = "C:/These/chapitre1.docx",
   };
   const elements = { paysage: faireElement(), mot: faireElement(),
                      apercu: faireElement(),
-                     // La question du prenom, comme dans volet.html : cachee, et
-                     // son texte vide tant que celui qui offre ne l'a pas ecrit.
+                     // Les questions du profil, comme dans volet.html : cachees,
+                     // et leurs textes a ceux de qui offre — les essais leur en
+                     // donnent un a eux, qui ne part jamais dans le livrable.
                      demande: faireElement(), question: faireElement(),
-                     prenom: faireElement(), hors: faireElement() };
+                     prenom: faireElement(), hors: faireElement(),
+                     "partie-prenom": faireElement(), "partie-genre": faireElement(),
+                     "question-genre": faireElement(), "accord-m": faireElement(),
+                     "accord-f": faireElement(), "accord-i": faireElement() };
   elements.demande.hidden = true;
   elements.question.textContent = question;
+  elements["question-genre"].textContent = question_genre;
   elements.prenom.value = "";
   elements.demande.soumettre = function soumettre() {
     if (!this.ecouteurs.submit) throw new Error("rien n'ecoute la reponse");
@@ -1259,6 +1266,92 @@ suite.push(["la reponse compte des cette nuit, sans rouvrir", async () => {
   vrai(coordonnees(d1) === coordonnees(d2),
        "le prenom repondu doit compter cette nuit comme celui de l'adresse");
 }]);
+
+// Le genre, demande depuis le 11 septembre 2026 sous trois choix neutres
+// (decision 10 revisee une seconde fois).
+const TEXTE_GENRE = "(texte d'essai du genre, pas celui du cadeau)";
+
+suite.push(["sans accord dans l'adresse, le genre est demande une fois", async () => {
+  const paras = [{ texte: PHRASE }];
+  // Le prenom vient de l'adresse : seule la question du genre se pose.
+  const a = monter_hote({ paragraphes: paras, question: QUESTION,
+                          question_genre: TEXTE_GENRE, fragment: "prenom=Camille" });
+  await demarrer(a);
+  egal(a.elements.demande.hidden, false, "posee a la premiere ouverture");
+  egal(a.elements["partie-genre"].hidden, false, "le genre est demande");
+  egal(a.elements["partie-prenom"].hidden, true, "pas le prenom, que l'adresse donne");
+
+  const b = monter_hote({ paragraphes: paras, question: QUESTION, question_genre: TEXTE_GENRE,
+                          fragment: "prenom=Camille", reglages: a.persistes });
+  partager(b, a.stockage);
+  await demarrer(b);
+  egal(b.elements.demande.hidden, true, "ignoree, elle n'est jamais reposee");
+
+  const c = monter_hote({ paragraphes: paras, question_genre: TEXTE_GENRE,
+                          fragment: "prenom=Camille&accord=f" });
+  await demarrer(c);
+  egal(c.elements.demande.hidden, true, "un accord dans l'adresse : rien a demander");
+
+  const d = monter_hote({ paragraphes: paras, question_genre: TEXTE_GENRE,
+                          fragment: "prenom=Camille", reglages: { "paysage.accord": "i" } });
+  await demarrer(d);
+  egal(d.elements.demande.hidden, true, "un accord venu dans le document : rien non plus");
+
+  const e = monter_hote({ paragraphes: paras, fragment: "prenom=Camille" });
+  await demarrer(e);
+  egal(e.elements.demande.hidden, true, "sans sa phrase, pas de question du genre");
+  egal(e.stockage.has("paysage:accord:demande"), false,
+       "et elle reste a poser, pour le jour ou la phrase sera donnee");
+
+  // UNE MARQUE PAR QUESTION. Le prenom demande d'abord, seul ; la phrase du
+  // genre donnee ensuite : a l'ouverture suivante, le genre se pose quand meme.
+  const f = monter_hote({ paragraphes: paras, question: QUESTION });
+  await demarrer(f);
+  egal(f.elements["partie-genre"].hidden, true, "sans sa phrase, le genre ne se montre pas");
+  const g = monter_hote({ paragraphes: paras, question: QUESTION, question_genre: TEXTE_GENRE,
+                          reglages: f.persistes });
+  partager(g, f.stockage);
+  await demarrer(g);
+  egal(g.elements.demande.hidden, false, "la phrase donnee plus tard, le genre est demande");
+  egal(g.elements["partie-prenom"].hidden, true, "mais pas le prenom, deja demande");
+
+  // Et les trois choix de volet.html designent bien les trois formes.
+  const html = readFileSync(new URL("./volet.html", import.meta.url), "utf-8");
+  for (const [id, choix] of [["accord-m", "M"], ["accord-f", "F"], ["accord-i", "NB"]]) {
+    vrai(new RegExp(`id="${id}"[^>]*>${choix}<`).test(html),
+         `volet.html : « ${choix} » doit choisir ${id}`);
+  }
+}]);
+
+suite.push(["choisir le genre n'ecrit rien dans le document, et compte des cette nuit",
+  async () => {
+    // Une nuit ou l'accord change la premiere lettre de la phrase.
+    const tete = (p, d) => phrase_de_la_nuit(p, jour_iso(d))[0];
+    const avec = { prenom: null, accord: "f" };
+    const sans = { prenom: null, accord: null };
+    let nuit = le_12_a(3);
+    for (let k = 0; k < 60 && tete(avec, nuit) === tete(sans, nuit); k++) nuit = lendemain(nuit);
+    vrai(tete(avec, nuit) !== tete(sans, nuit), "aucune nuit ne distingue les deux profils");
+
+    const choisi = monter_hote({ paragraphes: [{ texte: PHRASE }], question_genre: TEXTE_GENRE });
+    await a_l_heure(nuit, () => demarrer(choisi));
+    choisi.elements["accord-f"].cliquer();
+    egal(choisi.elements.demande.hidden, true,
+         "seule, la question du genre se retire des qu'on a choisi");
+    egal(choisi.sauvegardes, 0, "choisir ne sauvegarde pas le document");
+    egal(choisi.persistes["paysage.accord"], undefined, "rien dans le fichier");
+    egal(choisi.reglages["paysage.accord"], "f", "le reglage attend dans la session");
+    egal(choisi.stockage.get("paysage:accord"), "f", "et le dossier le garde");
+    const d1 = await trois_paragraphes(choisi, nuit);
+    egal(choisi.persistes["paysage.accord"], "f", "il part avec la copie du paysage");
+
+    const par_adresse = monter_hote({ paragraphes: [{ texte: PHRASE }], fragment: "accord=f" });
+    await a_l_heure(nuit, () => demarrer(par_adresse));
+    const d2 = await trois_paragraphes(par_adresse, nuit);
+    vrai(coordonnees(d1).length > 0, "le message doit etre la");
+    vrai(coordonnees(d1) === coordonnees(d2),
+         "le genre choisi doit compter cette nuit comme celui de l'adresse");
+  }]);
 
 // --------------------------------------------------------------------------
 // Le manifeste

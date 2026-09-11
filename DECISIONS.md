@@ -858,6 +858,17 @@ qui est une surprise, c'est le gâcher. D'où :
 il ne s'écrit pas à sa place. Il a été donné le 11 septembre 2026 : « Ton
 prénom ? ».
 
+**Révisé une seconde fois le même jour : le genre se demande aussi**, sous
+trois choix neutres, « M · F · NB » — les accords `m`, `f`, `i`. Ce qui
+dévoilait une phrase, c'était de *montrer* « fort / forte / fort.e », pas de
+demander le genre. Même règle que le prénom : le manifeste l'emporte ; posé une
+fois, à la première ouverture, dans la même forme que le prénom ; ignoré, jamais
+redemandé ; la réponse ne va dans le document qu'avec la prochaine copie. Une
+ligne de celui qui offre introduit les trois choix — « Tu te genres
+comment ? », donnée le même jour ; vide, le genre ne se demanderait pas. **Une marque par question** : la ligne du
+genre donnée après que le prénom a été demandé, le genre se pose quand même à
+l'ouverture suivante.
+
 ⚠️ Personne ne sait si le `#` survit à l'adresse que Word compose pour le volet
 dans l'Office LTSC 2021. S'il ne survit pas, le repli est un `?` — et le prénom
 passe alors par les serveurs de GitHub.
@@ -910,9 +921,9 @@ au-dessus de `SEUIL_COLLAGE`, donc une greffe, qui ne crédite aucun mot. Le
 message n'apparaissait jamais, et le câblage était juste. Les essais écrivent
 désormais comme une personne, le texte trente secondes après l'Entrée.
 
-**Où ça se vérifie, côté volet :** `essais_volet.js`, treize essais — contre
-l'hôte simulé, ou sur `nuit.js` seul — et dix-huit mutations, chacune attrapée
-par l'essai qui la vise. Le volet charge 74,7 Ko compressés au lieu de 61,6,
+**Où ça se vérifie, côté volet :** `essais_volet.js`, quinze essais — contre
+l'hôte simulé, ou sur `nuit.js` seul — et vingt et une mutations, chacune
+attrapée par l'essai qui la vise. Le volet charge 74,7 Ko compressés au lieu de 61,6,
 `volet.html` compris (décision 13) : `message.js` 4,1, `nuit.js` 4,0,
 `phrases.js` 3,0, et le reste dans `volet.js` et `volet.html`.
 
