@@ -5,11 +5,12 @@ statut: interrompu
 
 # PHR-2 — le message de nuit et les phrases, dans l'add-in
 
-**Arrêté sur** — `ca1cfe9`, 11 septembre : la spécification Python de la décision 10
-révisée est faite et éprouvée — phrases à trois formes, paquet resserré sans prénom ni
-accord, « - » dans l'alphabet, et la clé de mémoire du paquet devenue le corpus
-entier. Rien n'est encore porté : la suite est `message.js` et `phrases.js`, avec
-leur parité.
+**Arrêté sur** — `5091d60`, 11 septembre : `message.js` et `phrases.js` sont portés,
+sans un écart sur 221 218 comparaisons, et leurs treize mutations sont attrapées
+(119/119). En chemin, le raccord du paquet s'est révélé faux pour toute nuit d'avant
+2027 — corrigé dans la spec d'abord (`84026f4`). Rien n'est câblé : `volet.js`
+n'importe aucun des deux. La suite est le câblage, en commençant par lire le profil
+derrière le `#` ; les deux modules y ajouteront 7,1 Ko compressés.
 
 ## Reste
 
@@ -21,11 +22,11 @@ leur parité.
   passer un prénom composé
 
 ### Portage
-- [ ] `addin/src/message.js` porte `message.py` — alphabet en segments, tracé à la main,
+- [x] `addin/src/message.js` porte `message.py` — alphabet en segments, tracé à la main,
   révélation — et la parité le compare au Python sans écart
-- [ ] `addin/src/phrases.js` porte `phrases.py` — registres, routage par événement,
+- [x] `addin/src/phrases.js` porte `phrases.py` — registres, routage par événement,
   paquet battu — et la parité le compare au Python sans écart
-- [ ] Chaque mutation que `jardin/mutations.py` porte sur `phrases.py` ou `message.py` a
+- [x] Chaque mutation que `jardin/mutations.py` porte sur `phrases.py` ou `message.py` a
   sa jumelle dans `addin/parite/mutations.js`, et la batterie l'attrape
 
 ### Câblage
