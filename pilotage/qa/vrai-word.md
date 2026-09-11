@@ -47,3 +47,6 @@ Ne couvre pas la coupure germe → famille (GRA-2) : elle se regarde, elle ne se
 - [ ] Un document neuf, enregistré dans le dossier de la thèse avant d'écrire, volet
   ouvert : ce qui s'affiche — le paysage déjà poussé, ou une forme repartie de zéro —
   est écrit dans `DECISIONS.md`
+- [ ] Un document neuf, jamais enregistré, volet ouvert, quelques lignes écrites : ce
+  qui s'affiche — le paysage d'un autre document non enregistré, ou une forme neuve —
+  est écrit dans `DECISIONS.md`

@@ -5,7 +5,8 @@ statut: à venir
 
 # PHR-1 — les phrases de nuit
 
-**Point de départ** — le mécanisme est prêt, les phrases sont à écrire. Le registre
+**Point de départ** — le mécanisme est prêt en Python, pas encore dans l'add-in (PHR-2) ;
+les phrases sont à écrire. Le registre
 `CREUX` de `jardin/phrases.py` est vide exprès (point ouvert 1) ; le paquet battu en
 compte dix, sept communes et trois nominatives, et l'écart moyen entre deux retours
 d'une même phrase plafonne donc à dix nuits (point ouvert 10).
@@ -25,3 +26,6 @@ l'écart moyen une fois le paquet rempli ; rien de plus.
 
 Ce qu'il ne faut pas mettre dans `CREUX`, tel que le registre le dit lui-même : rien qui
 félicite, rien qui encourage, rien qui demande quoi que ce soit.
+
+⚠️ Tant que PHR-2 n'est pas livré, rien de ce qui s'écrit ici n'arrive dans Word : le
+message de nuit et les phrases n'existent que dans `jardin/`.
