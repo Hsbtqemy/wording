@@ -18,6 +18,8 @@ d'une même phrase plafonne donc à dix nuits (point ouvert 10).
   dépasse dix nuits
 - [x] Le texte de la question du prénom est écrit par celui qui offre (décision 10) —
   « Ton prénom ? », dans le `label` de `addin/volet.html`
+- [x] La ligne qui introduit le genre, `#question-genre` de `addin/volet.html`, est
+  écrite par celui qui offre — « Tu te genres comment ? »
 
 ## Contexte
 

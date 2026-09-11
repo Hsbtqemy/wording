@@ -5,13 +5,15 @@ statut: interrompu
 
 # PHR-2 — le message de nuit et les phrases, dans l'add-in
 
-**Arrêté sur** — `472b042`, 11 septembre : le câblage est fait et éprouvé contre
-l'hôte simulé — le profil lu derrière le `#`, la question du prénom posée une fois, le
-message de nuit dans le ciel du volet, révélé aux mots et non à l'heure (`286f23a`,
-puis `92ad1cb` pour trois promesses sans essai et un essai du `#` qui ne lisait rien).
-La question a son texte, donné par qui offre : « Ton prénom ? ». `LISEZMOI.md` dit où
-poser le profil dans le manifeste. Il ne reste que la passe `qa/profil.md` sur
-l'Office LTSC 2021 — à jouer d'abord avec le manifeste qui porte le profil.
+**Arrêté sur** — `7c96459`, 11 septembre : le câblage est fait et éprouvé contre
+l'hôte simulé — le profil lu derrière le `#`, le message de nuit dans le ciel du
+volet, révélé aux mots et non à l'heure (`286f23a`, puis `92ad1cb` pour trois
+promesses sans essai et un essai du `#` qui ne lisait rien). Sans profil dans le
+manifeste, le volet pose une question, une fois : « Ton prénom ? » (`472b042`), et
+depuis `7c96459` « Tu te genres comment ? » sous trois choix neutres, M · F · NB —
+les deux textes donnés par qui offre. `LISEZMOI.md` dit où poser le profil dans le
+manifeste. Il ne reste que la passe `qa/profil.md` sur l'Office LTSC 2021 — à jouer
+d'abord avec le manifeste qui porte le profil.
 
 ## Reste
 
@@ -44,6 +46,9 @@ l'Office LTSC 2021 — à jouer d'abord avec le manifeste qui porte le profil.
   ne casse rien (décision 15)
 - [x] Le poids ajouté à ce que charge le volet est mesuré, brut et compressé, et écrit
   dans le corps du commit
+- [x] Sans accord dans l'adresse, le volet demande le genre une fois — « M · F · NB »,
+  dans la même question que le prénom, sous une ligne de qui offre ; choisir n'écrit
+  rien dans le document — `essais_volet.js` le vérifie
 
 ### Vrai Word
 - [ ] La passe `qa/profil.md` est jouée sur l'Office LTSC 2021, et chacune de ses cases

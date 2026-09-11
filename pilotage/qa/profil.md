@@ -39,6 +39,14 @@ Ne couvre pas le message lui-même : il ne sort qu'entre 2 h et 5 h, et se rév�
 - [ ] Un prénom portant un signe que l'alphabet ne dessine pas : le signe est signalé à
   la saisie, pas perdu en silence
 
+### Le genre
+
+- [ ] Le manifeste sans accord : le genre est demandé à la première ouverture, sous
+  « Tu te genres comment ? », avec les trois choix « M · F · NB » — et à nulle autre
+- [ ] Seul le genre demandé (le prénom dans le manifeste) : un choix le retire aussitôt
+- [ ] Le genre choisi, document fermé sans rien taper : Word ne demande pas
+  d'enregistrer les modifications
+
 ### Le document
 
 - [ ] Le prénom donné, document fermé sans rien taper : Word ne demande pas
